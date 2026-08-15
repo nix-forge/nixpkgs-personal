@@ -1,6 +1,9 @@
 { pkgs }:
 let
   inherit (pkgs) callPackage;
+  darwinPackages = {
+    linearmouse = callPackage ./by-name/li/linearmouse/package.nix { };
+  };
   darwinArmPackages = {
     claude-desktop = callPackage ./by-name/cl/claude-desktop/package.nix { };
     libreoffice = callPackage ./by-name/li/libreoffice/package.nix { };
@@ -16,6 +19,7 @@ in
   openai-skills = callPackage ./by-name/op/openai-skills/package.nix { };
   ttf-ms-win11-auto = callPackage ./by-name/tt/ttf-ms-win11-auto/package.nix { };
 }
+// pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin darwinPackages
 // pkgs.lib.optionalAttrs (
   pkgs.stdenv.hostPlatform.isAarch64 && pkgs.stdenv.hostPlatform.isDarwin
 ) darwinArmPackages
