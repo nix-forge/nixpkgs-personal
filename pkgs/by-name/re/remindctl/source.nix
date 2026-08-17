@@ -1,11 +1,11 @@
 {
-  version = "0.3.2";
+  version = "0.3.4";
   src = {
-    url = "https://github.com/openclaw/remindctl/releases/download/v0.3.2/remindctl-macos.zip";
-    hash = "sha256-ApG2LtUP9awBEVxMAb261enBLFG3VwXP2xbQ1JJFWg8=";
+    url = "https://github.com/openclaw/remindctl/releases/download/v0.3.4/remindctl-macos.zip";
+    hash = "sha256-tqEfSOMf59lL6HyDnho7ZM0kokY+OmjVYyzjuvB+QKE=";
   };
   skill = {
-    url = "https://raw.githubusercontent.com/openclaw/remindctl/v0.3.2/SKILL.md";
-    hash = "sha256-yUcR8X1P3Qmdncpiw4A2huE8H8PNUYm2zH5B/j9UxdE=";
+    url = "https://raw.githubusercontent.com/openclaw/remindctl/v0.3.4/SKILL.md";
+    hash = "sha256-SnJowQVvfG0n5Rk80A+lQOfh2MNJ+Pvidee71txrRmU=";
   };
 }
