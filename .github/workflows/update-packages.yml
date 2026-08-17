@@ -9,7 +9,9 @@ concurrency:
 permissions: {}
 jobs:
   update:
-    runs-on: ubuntu-24.04
+    # Some updaters execute and validate native arm64 macOS release artifacts.
+    # Keep this on the same runner class as the aarch64-darwin CI matrix.
+    runs-on: macos-14
     timeout-minutes: 90
     permissions:
       contents: write
@@ -55,4 +57,6 @@ jobs:
               --title "maint: update package sources" \
               --body "Automated package source updates.")
           fi
-          gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --squash --delete-branch
+          # GitHub's merge queue handles branch deletion itself; gh rejects
+          # --delete-branch when the target branch uses a merge queue.
+          gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --squash
