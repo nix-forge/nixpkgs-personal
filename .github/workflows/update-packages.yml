@@ -14,6 +14,7 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 90
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -57,6 +58,16 @@ jobs:
               --title "maint: update package sources" \
               --body "Automated package source updates.")
           fi
+
+          # Pull requests created with GITHUB_TOKEN require workflow approval.
+          # Explicit workflow_dispatch events are exempt and publish the same
+          # required checks against the generated update commit.
+          gh workflow run ci.yml --repo "$REPOSITORY" --ref "$branch"
+          gh workflow run codeql.yml --repo "$REPOSITORY" --ref "$branch"
+          gh workflow run dependency-review.yml --repo "$REPOSITORY" --ref "$branch" \
+            -f base_ref=main \
+            -f head_ref="$branch"
+
           # GitHub's merge queue handles branch deletion itself; gh rejects
           # --delete-branch when the target branch uses a merge queue.
           gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --squash
