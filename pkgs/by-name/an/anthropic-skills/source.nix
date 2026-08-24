@@ -1,9 +1,9 @@
 {
-  version = "unstable-2026-08-13";
+  version = "unstable-2026-08-21";
   src = {
     owner = "anthropics";
     repo = "skills";
-    rev = "f6656c1256d5a8adfa37db9110046ef20bac644c";
-    hash = "sha256-5/0f5AnGWX3oM+M9Xm/zSmooz11+S1YRdFPmAX+DXi0=";
+    rev = "3b3fad96af16a10759d930941b4520ba0c40edae";
+    hash = "sha256-nVid8vENmLDh7ffDqh+bJbEWtXcVltA0qa2rItmniZM=";
   };
 }
