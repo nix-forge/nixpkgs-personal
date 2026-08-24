@@ -1,0 +1,59 @@
+From 80e5de40ebbe7102a02e9cc32645b8620216d5f4 Mon Sep 17 00:00:00 2001
+From: Nixpkgs Personal <noreply@example.invalid>
+Date: Sun, 23 Aug 2026 00:00:00 -0700
+Subject: [PATCH] fix Swift 5.10 concurrency and SDK diagnostics
+
+Nixpkgs currently provides Swift 5.10 and the macOS 14 SDK. Capturing a mutable
+local variable in an unstructured Task is rejected by the compiler's concurrency
+checks, and the SDK has the older spelling of the capture-device notifications.
+Keep the same synchronous bridge and cancellation behaviour, but store its
+result behind the existing thread-safe synchronization pattern and use the
+equivalent stable notification constants.
+---
+ Sources/Vorssaint/Services/Media/MediaService.swift         | 21 +++++++++++++++++----
+ Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift |  4 ++--
+ 2 files changed, 23 insertions(+), 6 deletions(-)
+
+diff --git a/Sources/Vorssaint/Services/Media/MediaService.swift b/Sources/Vorssaint/Services/Media/MediaService.swift
+index c96d24844467..5e206191c258 100644
+--- a/Sources/Vorssaint/Services/Media/MediaService.swift
++++ b/Sources/Vorssaint/Services/Media/MediaService.swift
+@@ -122,0 +123,17 @@ private final class MediaCancellationToken {
++private final class AsyncResultBox<T>: @unchecked Sendable {
++    private let lock = NSLock()
++    private var result: Result<T, Error>?
++
++    func set(_ result: Result<T, Error>) {
++        lock.lock()
++        self.result = result
++        lock.unlock()
++    }
++
++    func get() -> Result<T, Error>? {
++        lock.lock()
++        defer { lock.unlock() }
++        return result
++    }
++}
++
+@@ -901 +918 @@ final class MediaService: ObservableObject {
+-        var result: Result<T, Error>?
++        let resultBox = AsyncResultBox<T>()
+@@ -905 +922 @@ final class MediaService: ObservableObject {
+-                result = .success(try await operation())
++                resultBox.set(.success(try await operation()))
+@@ -907 +924 @@ final class MediaService: ObservableObject {
+-                result = .failure(error)
++                resultBox.set(.failure(error))
+@@ -919 +936 @@ final class MediaService: ObservableObject {
+-        guard let result else {
++        guard let result = resultBox.get() else {
+diff --git a/Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift b/Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift
+index 94db309339f1..e0f4f19b9a8f 100644
+--- a/Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift
++++ b/Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift
+@@ -236,2 +236,2 @@ final class CameraPreviewService: ObservableObject {
+-        for name in [AVCaptureDevice.wasConnectedNotification,
+-                     AVCaptureDevice.wasDisconnectedNotification] {
++        for name in [NSNotification.Name.AVCaptureDeviceWasConnected,
++                     NSNotification.Name.AVCaptureDeviceWasDisconnected] {

@@ -13,6 +13,7 @@ let
     spotify-spotx = callPackage ./by-name/sp/spotify-spotx/package.nix { };
     steam = callPackage ./by-name/st/steam/package.nix { };
     t3-code = callPackage ./by-name/t3/t3-code/package.nix { };
+    vorssaint = callPackage ./by-name/vo/vorssaint/package.nix { };
   };
 in
 {
