@@ -47,7 +47,9 @@
           };
           python-compile = {
             enable = true;
-            entry = "${lib.getExe pkgs.python3} -m compileall -q scripts";
+            # Compile every package updater as well as the top-level scripts.
+            # -B verifies syntax without leaving __pycache__ files in a working tree.
+            entry = "${lib.getExe pkgs.python3} -B -m compileall -q scripts pkgs";
             language = "system";
             always_run = true;
             pass_filenames = false;

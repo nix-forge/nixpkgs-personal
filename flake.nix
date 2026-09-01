@@ -44,12 +44,16 @@
             config.allowUnfree = true;
           };
           packages = import ./pkgs { pkgs = packagePkgs; };
-          update = pkgs.writeShellApplication {
+          update = pkgs.replaceVarsWith {
             name = "update-packages";
-            runtimeInputs = [ pkgs.python3 ];
-            text = ''
-              exec python "$PWD/scripts/update-packages.py" "$@"
-            '';
+            src = ./scripts/update-packages.sh;
+            dir = "bin";
+            isExecutable = true;
+            replacements = {
+              bash = "${pkgs.bash}/bin/bash";
+              git = "${pkgs.git}/bin/git";
+              python = "${pkgs.python3}/bin/python3";
+            };
           };
         in
         {

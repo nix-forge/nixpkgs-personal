@@ -25,6 +25,11 @@ def github_api_headers(user_agent: str) -> dict[str, str]:
     unauthenticated fallback keeps local updates usable when no GitHub
     credentials are configured, while authenticated runs avoid low API rate
     limits.
+
+    Returns:
+        GitHub API headers, including an authorization header when a token is
+        available in the environment.
+
     """
     headers = {
         "Accept": "application/vnd.github+json",
