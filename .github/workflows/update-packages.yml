@@ -27,6 +27,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh auth setup-git
       - name: Update pinned sources
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: nix develop --command python scripts/update-packages.py --all --keep-going
       - name: Create or update the auto-merge pull request
         env:

@@ -16,9 +16,9 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NoReturn
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 from scripts.update_support import HTTPS_CONTEXT
@@ -59,9 +59,25 @@ def _fetch_json(url: str, *, label: str) -> object:
     if parsed_url.scheme != "https":
         _fail(f"unsupported URL scheme for {label}: {parsed_url.scheme!r}")
 
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "nix-forge-nixpkgs-personal-updater",
+    }
+    github_token = os.environ.get("GITHUB_TOKEN")
+    if github_token:
+        headers["Authorization"] = f"Bearer {github_token}"
+
     try:
-        with urlopen(url, timeout=30, context=HTTPS_CONTEXT) as response:
+        request = Request(url, headers=headers)
+        with urlopen(request, timeout=30, context=HTTPS_CONTEXT) as response:
             return json.load(response)
+    except HTTPError as exc:
+        if exc.code == 403 and exc.headers.get("X-RateLimit-Remaining") == "0":
+            _fail(
+                f"GitHub API rate limit exhausted while fetching {label}; "
+                "provide GITHUB_TOKEN when running the updater"
+            )
+        _fail(f"failed to fetch {label} from {url}: HTTP {exc.code}")
     except (json.JSONDecodeError, URLError) as exc:
         _fail(f"failed to fetch {label} from {url}: {exc}")
 
