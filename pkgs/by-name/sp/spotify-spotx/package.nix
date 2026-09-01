@@ -13,6 +13,7 @@
   perl,
   util-linux,
   unzip,
+  writeText,
   zip,
   darwin,
 }:
@@ -23,6 +24,9 @@ let
 
   spotxSrc = fetchFromGitHub source.spotx;
   spotifySrc = fetchurl { inherit (source.spotify) url hash; };
+  entitlements = writeText "spotify-spotx-entitlements.plist" (
+    builtins.readFile ./entitlements.plist
+  );
 in
 stdenvNoCC.mkDerivation {
   inherit pname;
@@ -31,6 +35,16 @@ stdenvNoCC.mkDerivation {
   dontUnpack = true;
   dontFixup = true;
   strictDeps = true;
+
+  # Spicetify derives its final package with `spotify.overrideAttrs`, appending
+  # its resource changes to this package's post-install work. Keep signing in
+  # an explicit final phase so it covers the completed app bundle rather than
+  # only the pre-Spicetify executable files. This remains a normal sandboxed
+  # Nix build; darwin.sigtool provides the sandbox-compatible Mach-O signer.
+  phases = [
+    "installPhase"
+    "signSpotifyBundlePhase"
+  ];
 
   nativeBuildInputs = [
     bash
@@ -90,20 +104,24 @@ stdenvNoCC.mkDerivation {
     rm -f "$out/Applications/Spotify.app/Contents/Resources/Apps/xpui.bak"
 
     runHook postInstall
-
-    export CODESIGN_ALLOCATE="${darwin.cctools}/bin/codesign_allocate"
-
-    while IFS= read -r executable; do
-      if file "$executable" | grep -q 'Mach-O'; then
-        codesign --force --entitlements ${./entitlements.plist} --sign - "$executable"
-      fi
-    done < <(find "$out/Applications/Spotify.app" -type f -perm -0100)
-
     runHook postInstallCheck
   '';
 
+  signSpotifyBundlePhase = ''
+    runHook preSignSpotifyBundle
+
+    export CODESIGN_ALLOCATE="${darwin.cctools}/bin/codesign_allocate"
+    while IFS= read -r executable; do
+      if file "$executable" | grep -q 'Mach-O'; then
+        codesign --force --entitlements ${entitlements} --sign - "$executable"
+      fi
+    done < <(find "$out/Applications/Spotify.app" -type f -perm -0100)
+
+    runHook postSignSpotifyBundle
+  '';
+
   passthru = {
-    entitlements = ./entitlements.plist;
+    inherit entitlements;
     updateScript = [ ./update.py ];
   };
 
