@@ -21,6 +21,9 @@ in
   openai-skills = callPackage ./by-name/op/openai-skills/package.nix { };
   ttf-ms-win11-auto = callPackage ./by-name/tt/ttf-ms-win11-auto/package.nix { };
 }
+// pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+  bibata-cursors-hyprcursor = callPackage ./by-name/bi/bibata-cursors-hyprcursor/package.nix { };
+}
 // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin darwinPackages
 // pkgs.lib.optionalAttrs (
   pkgs.stdenv.hostPlatform.isAarch64 && pkgs.stdenv.hostPlatform.isDarwin
