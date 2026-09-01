@@ -18,7 +18,9 @@ let
 in
 {
   anthropic-skills = callPackage ./by-name/an/anthropic-skills/package.nix { };
+  mattpocock-skills = callPackage ./by-name/ma/mattpocock-skills/package.nix { };
   openai-skills = callPackage ./by-name/op/openai-skills/package.nix { };
+  pstack-skills = callPackage ./by-name/ps/pstack-skills/package.nix { };
   ttf-ms-win11-auto = callPackage ./by-name/tt/ttf-ms-win11-auto/package.nix { };
 }
 // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
