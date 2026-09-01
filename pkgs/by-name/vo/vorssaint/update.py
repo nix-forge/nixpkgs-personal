@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
+from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NoReturn
 from urllib.error import HTTPError, URLError
@@ -72,7 +73,10 @@ def _fetch_json(url: str, *, label: str) -> object:
         with urlopen(request, timeout=30, context=HTTPS_CONTEXT) as response:
             return json.load(response)
     except HTTPError as exc:
-        if exc.code == 403 and exc.headers.get("X-RateLimit-Remaining") == "0":
+        if (
+            exc.code == HTTPStatus.FORBIDDEN
+            and exc.headers.get("X-RateLimit-Remaining") == "0"
+        ):
             _fail(
                 f"GitHub API rate limit exhausted while fetching {label}; "
                 "provide GITHUB_TOKEN when running the updater"
