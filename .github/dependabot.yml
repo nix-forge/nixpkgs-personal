@@ -7,7 +7,7 @@ updates:
       day: monday
       time: "06:30"
       timezone: America/Los_Angeles
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 1
     rebase-strategy: auto
     labels: ["dependencies", "github-actions"]
     commit-message:
@@ -15,7 +15,7 @@ updates:
       include: scope
     groups:
       github-actions-minor-patch:
-        update-types: ["minor", "patch"]
+        patterns: ["*"]
   - package-ecosystem: nix
     directory: "/"
     schedule:
@@ -23,7 +23,7 @@ updates:
       day: monday
       time: "07:00"
       timezone: America/Los_Angeles
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 1
     rebase-strategy: auto
     labels: ["dependencies", "nix"]
     commit-message:
@@ -31,4 +31,4 @@ updates:
       include: scope
     groups:
       nix-inputs-minor-patch:
-        update-types: ["minor", "patch"]
+        patterns: ["*"]
