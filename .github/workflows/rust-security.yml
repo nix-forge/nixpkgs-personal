@@ -1,0 +1,34 @@
+name: Rust security
+on:
+  pull_request:
+    paths:
+      - pkgs/by-name/wi/wireguard-roaming-controller/Cargo.lock
+      - pkgs/by-name/wi/wireguard-roaming-controller/Cargo.toml
+      - pkgs/by-name/wi/wireguard-roaming-controller/deny.toml
+  push:
+    branches: [main]
+    paths:
+      - pkgs/by-name/wi/wireguard-roaming-controller/Cargo.lock
+      - pkgs/by-name/wi/wireguard-roaming-controller/Cargo.toml
+      - pkgs/by-name/wi/wireguard-roaming-controller/deny.toml
+  schedule:
+    - cron: "31 4 * * 2"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  advisories:
+    name: Current RustSec advisories
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: DeterminateSystems/determinate-nix-action@527f17dd63d2d60d3e5552934bc84b9a33a14d11 # v3.22.2
+      - name: Materialize partition source
+        run: nix store add-path flake/dev
+      - name: Check current advisories
+        run: >-
+          nix develop --command cargo deny --manifest-path pkgs/by-name/wi/wireguard-roaming-controller/Cargo.toml --all-features --locked check advisories

@@ -1,0 +1,46 @@
+[package]
+name = "wireguard-roaming-controller"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.97"
+publish = false
+description = "Fail-open WireGuard roaming controller for nix-darwin"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+rustix = { version = "=1.1.4", features = ["fs", "process"] }
+signal-hook = { version = "=0.4.4", default-features = false, features = [
+  "iterator",
+] }
+wait-timeout = "=0.2.1"
+
+[lints.rust]
+warnings = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+unsafe_code = "forbid"
+unreachable_pub = "deny"
+unused_crate_dependencies = "deny"
+let_underscore_drop = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+allow_attributes_without_reason = "deny"
+dbg_macro = "deny"
+let_underscore_must_use = "deny"
+tests_outside_test_module = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+missing_errors_doc = "allow"
+module_name_repetitions = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+overflow-checks = true
+panic = "abort"
