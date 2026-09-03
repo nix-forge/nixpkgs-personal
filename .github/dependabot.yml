@@ -32,3 +32,19 @@ updates:
     groups:
       nix-inputs-minor-patch:
         patterns: ["*"]
+  - package-ecosystem: cargo
+    directory: "/pkgs/by-name/wi/wireguard-roaming-controller"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:30"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 1
+    rebase-strategy: auto
+    labels: ["dependencies", "rust"]
+    commit-message:
+      prefix: "build"
+      include: scope
+    groups:
+      rust-minor-patch:
+        patterns: ["*"]
