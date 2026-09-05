@@ -1,0 +1,15 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  concurrency-*,
+  performance-*,
+  portability-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-multi-level-implicit-pointer-conversion
+WarningsAsErrors: "*"
+HeaderFilterRegex: ".*FinderFavoritesBridge.*"
+FormatStyle: file
+SystemHeaders: false
