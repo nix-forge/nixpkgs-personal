@@ -22,7 +22,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    workdir="$PWD/work"
+    workdir="$out/.extract-work"
     isodir="$workdir/iso"
     extracteddir="$workdir/extracted"
     mkdir -p "$isodir" "$extracteddir"
@@ -56,6 +56,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
     install -d "$out/share/licenses/${finalAttrs.pname}"
     install -m444 "$extracteddir/license.rtf" "$out/share/licenses/${finalAttrs.pname}/license.rtf"
+
+    rm -rf "$workdir"
 
     runHook postInstall
   '';
