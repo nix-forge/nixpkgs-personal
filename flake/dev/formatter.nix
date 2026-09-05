@@ -30,6 +30,7 @@
       autoFix = false;
     };
 
+    rustfmt.enable = true;
     shfmt.enable = true;
     shellcheck.enable = true;
     taplo.enable = true;

@@ -11,7 +11,7 @@ jobs:
   update:
     # Some updaters execute and validate native arm64 macOS release artifacts.
     # Keep this on the same runner class as the aarch64-darwin CI matrix.
-    runs-on: macos-14
+    runs-on: macos-26
     timeout-minutes: 90
     permissions:
       actions: write

@@ -20,7 +20,7 @@ them to `pkgs`, use `inputs.nixpkgs-personal.overlays.default`.
 
 | Platform                        | Supported outputs                 |
 | ------------------------------- | --------------------------------- |
-| `x86_64-linux`, `aarch64-linux` | Agent skills and Windows 11 fonts |
+| `x86_64-linux`, `aarch64-linux` | ChatGPT/Codex Desktop, agent skills, cursors, and Windows 11 fonts |
 | `aarch64-darwin`                | All packages                      |
 
 `x86_64-darwin` is intentionally unsupported because nixpkgs unstable has
@@ -35,3 +35,8 @@ change pinned source metadata and are checked by CI before automated merge. New
 packages follow the nixpkgs-style `pkgs/by-name/<prefix>/<name>` layout and must
 declare accurate metadata, platform support, tests where feasible, and an
 updater when upstream can be safely discovered.
+
+The WireGuard roaming controller runs rustfmt, Rust compiler checks, strict
+Clippy, tests, rustdoc, cargo-machete, and cargo-deny during its Nix build. The
+development shell supplies the same Rust tools. CI also checks current RustSec
+advisories and scans the Rust source with CodeQL.

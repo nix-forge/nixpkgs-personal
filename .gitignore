@@ -3,4 +3,5 @@
 __pycache__/
 *.py[codz]
 result
+target/
 .pre-commit-config.yaml

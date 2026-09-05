@@ -59,7 +59,7 @@ jobs:
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
           - system: aarch64-darwin
-            runner: macos-14
+            runner: macos-26
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -80,7 +80,7 @@ jobs:
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
           - system: aarch64-darwin
-            runner: macos-14
+            runner: macos-26
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     permissions:
@@ -123,3 +123,61 @@ jobs:
             [[ -n "$package" ]] || continue
             nix build ".#$package" --keep-going --show-trace --print-build-logs
           done <<<"$targets"
+  swift-quality:
+    name: Swift quality (macOS 26)
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: DeterminateSystems/determinate-nix-action@527f17dd63d2d60d3e5552934bc84b9a33a14d11 # v3.22.2
+      - name: Materialize partition source
+        run: nix store add-path flake/dev
+      - name: Compiler, lint, test, and dead-code checks
+        env:
+          OCR_CAPTURE_RUN_SANITIZERS: "0"
+        run: nix develop --command pkgs/by-name/oc/ocr-capture/Scripts/check-quality.sh
+      - name: Xcode Swift 6 formatter compatibility
+        run: >-
+          xcrun swift-format lint --configuration pkgs/by-name/oc/ocr-capture/.swift-format --parallel --strict --recursive pkgs/by-name/oc/ocr-capture/Sources pkgs/by-name/oc/ocr-capture/Tests
+  swift-sanitizers:
+    name: Swift ${{ matrix.sanitizer }} sanitizer
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, thread]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: >-
+          swift test --package-path pkgs/by-name/oc/ocr-capture --sanitize "${{ matrix.sanitizer }}"
+  swift-compiler-audits:
+    name: Swift compiler audit (${{ matrix.audit }})
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        audit: [strict-memory-safety, legacy-backend]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Strict memory-safety diagnostics
+        if: matrix.audit == 'strict-memory-safety'
+        run: >-
+          swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -strict-memory-safety
+      - name: Legacy Vision backend under Swift 6
+        if: matrix.audit == 'legacy-backend'
+        run: >-
+          swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -D -Xswiftc OCR_CAPTURE_NIX_BUILD
