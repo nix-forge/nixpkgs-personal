@@ -64,7 +64,7 @@ clang-tidy \
 
 bash -n Scripts/check-quality.sh
 shellcheck --shell=bash --severity=style Scripts/check-quality.sh
-shfmt -d -i 2 -ci -sr Scripts/check-quality.sh
+shfmt -d -i 2 Scripts/check-quality.sh
 
 nixfmt --check package.nix
 statix check package.nix
