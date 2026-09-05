@@ -1,4 +1,4 @@
-"""Update the pinned SpotX-supported Spotify macOS package."""
+"""Update SpotX-Bash and the pinned SpotX-supported Spotify macOS package."""
 
 from __future__ import annotations
 
