@@ -122,6 +122,11 @@ jobs:
           while IFS= read -r package; do
             [[ -n "$package" ]] || continue
             nix build ".#$package" --keep-going --show-trace --print-build-logs
+            if [[ "$package" == openai-codex-desktop ]]; then
+              nix build --no-link --keep-going --show-trace --print-build-logs \
+                ".#checks.$SYSTEM.openai-codex-desktop-updater" \
+                ".#checks.$SYSTEM.openai-codex-desktop-package-contract"
+            fi
           done <<<"$targets"
   swift-quality:
     name: Swift quality (macOS 26)
