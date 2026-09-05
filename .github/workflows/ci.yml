@@ -144,7 +144,7 @@ jobs:
       - name: Compiler, lint, test, and dead-code checks
         env:
           OCR_CAPTURE_RUN_SANITIZERS: "0"
-        run: nix develop --command pkgs/by-name/oc/ocr-capture/Scripts/check-quality.sh
+        run: nix develop .#swift-quality --command pkgs/by-name/oc/ocr-capture/Scripts/check-quality.sh
       - name: Xcode Swift 6 formatter compatibility
         run: >-
           xcrun swift-format lint --configuration pkgs/by-name/oc/ocr-capture/.swift-format --parallel --strict --recursive pkgs/by-name/oc/ocr-capture/Sources pkgs/by-name/oc/ocr-capture/Tests

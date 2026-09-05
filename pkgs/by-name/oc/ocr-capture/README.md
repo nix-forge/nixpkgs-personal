@@ -60,12 +60,15 @@ features when the SDK provides them.
 
 ## Development checks
 
-From the `nixpkgs-personal` development shell:
+From the `nixpkgs-personal` repository on macOS with Xcode installed:
 
 ```console
-nix develop
+nix develop .#swift-quality
 pkgs/by-name/oc/ocr-capture/Scripts/check-quality.sh
 ```
+
+The dedicated shell supplies SwiftLint and Periphery without the unrelated
+repository tooling. Xcode supplies Swift and swift-format.
 
 The suite runs swift-format, SwiftLint, compiler warnings and strict concurrency,
 unit tests, strict-memory checks, Periphery, AddressSanitizer, and
