@@ -1,16 +1,16 @@
 {
-  version = "1.2.97.270";
+  version = "1.2.98.301";
   spotify = {
-    build = "1.2.97.270.ge94a76a2";
-    buildId = "4199";
+    build = "1.2.98.301.gfcaeba72";
+    buildId = "4419";
     arch = "osx-arm64";
-    url = "https://upgrade.scdn.co/upgrade/client/osx-arm64/spotify-autoupdate-1.2.97.270.ge94a76a2-4199.tbz?fauth=eyJraWQiOiJTUE9UWlNIVEtDOTM4QVRBTzc5UDRIQzg1QzVJVUsySk9TUTUiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzY2RuLXVybC1zaWduZXIiLCJleHAiOjE3ODk5MTYyODksIm5iZiI6MTc4NzMyNDI4OSwicGF0aCI6Ii91cGdyYWRlL2NsaWVudC9vc3gtYXJtNjQvc3BvdGlmeS1hdXRvdXBkYXRlLTEuMi45Ny4yNzAuZ2U5NGE3NmEyLTQxOTkudGJ6In0.YAiuyXcCiAZYMCe-ZZYgRJt2jPok8h96L9HVH9YMq9AdtB3V45FISGMTCmx_HZwMwxGrZsW5Vz_7IKrA8TBih5mVLhf8SoqsmVW4U0ryQnWKOOnwkXUPYvzl42YUvY-B3_nIaGG2jrFi-c3A6QHrBqkA7fKpwh184Phlqw5AJpNP0gXyj184aLUQD02CiEx431sRrigtz4aefK9cGpBznhc94AMxd8U391RC7We9AbcSOdDdCKbOjXhy9w3Rf3Z9d53GAfrH1ZJVvGlhp8-JCBJHReMqs8YBqt9MIoot6mksr9GZb0jlMm8BnWPI4AhWG0NJeBmo2Y1XrgtlL8nGzg";
-    hash = "sha256-KARrVB2LRnyU4f7kAPR82IY0cVGuoQGZEL7ABk4Y+ZI=";
+    url = "https://upgrade.scdn.co/upgrade/client/osx-arm64/spotify-autoupdate-1.2.98.301.gfcaeba72-4419.tbz?fauth=eyJraWQiOiJTUE9UWlNIVEtDOTM4QVRBTzc5UDRIQzg1QzVJVUsySk9TUTUiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzY2RuLXVybC1zaWduZXIiLCJleHAiOjE3OTAzMzkyODMsIm5iZiI6MTc4Nzc0NzI4MywicGF0aCI6Ii91cGdyYWRlL2NsaWVudC9vc3gtYXJtNjQvc3BvdGlmeS1hdXRvdXBkYXRlLTEuMi45OC4zMDEuZ2ZjYWViYTcyLTQ0MTkudGJ6In0.c1rEwNAa-ZL7z17XMXf6a3wIHU8M-_QfpFdeG0QHg8UPcDJVNLJ2lQSX1RoZ_ifkWVFY94XC1AWSAxbMHJbvHbdh0bWs8hbD9pyrd3JmMCKIFgDKZfV_dd_itjZ0hSMAh_8yAKn6p_PlaAGB16GwToQ83h_-qo4elNtPjyzzlyV7IxkZYjEw5DhFQdQJtyzYuMDcsjMtJnIcEes9_p8sM3G4S2PDruA1ReJjJn2G-mCfqLdKcERaN0crQ3aLS4u8BtbeOEd_PAH-28HxFQLN1IdaMsXpL7-7axVdtQ00-fe-0HBUGRA50rhbnVmMhVIvDt4OGqBxFi0DNtKJS0ZREQ";
+    hash = "sha256-7erUdSMvuGqOb0jm72FL6okOUmbNIBEjXn+dxKde6Ek=";
   };
   spotx = {
     owner = "SpotX-Official";
     repo = "SpotX-Bash";
-    rev = "1572d6cd4fdc1ca56970ac8db192f2e18812e828";
-    hash = "sha256-+92plcw35VwSJTykWpg2uVKRtrVhBhFUTwD80K2L1kQ=";
+    rev = "7bee47814477d43287b2fbc2ac10b24db781969d";
+    hash = "sha256-8OlI9dDVByi4Dhlci7y8y7TivPuoyvtdTaexHqWAEyI=";
   };
 }
