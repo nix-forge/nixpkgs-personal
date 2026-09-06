@@ -24,6 +24,7 @@
             ]
             ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.rcodesign ]
             ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+              pkgs.asar
               pkgs.desktop-file-utils
               pkgs.patchelf
             ];
@@ -78,6 +79,19 @@
                 file ${codexDesktop}/lib/chatgpt/ChatGPT | grep -F 'ELF 64-bit'
                 patchelf --print-interpreter ${codexDesktop}/lib/chatgpt/ChatGPT | grep -F /nix/store/
                 ${codexDesktop}/lib/chatgpt/resources/codex --version | grep -F codex-cli
+                asar list --is-pack ${codexDesktop}/lib/chatgpt/resources/app.asar > asar-files
+                if grep -E '^pack[[:space:]]*: .*\.node$' asar-files; then
+                  echo 'Native modules must stay unpacked for autoPatchelf' >&2
+                  exit 1
+                fi
+                grep -E '^unpack[[:space:]]*: .*@parcel/watcher-.*/watcher\.node$' asar-files
+                asar extract ${codexDesktop}/lib/chatgpt/resources/app.asar app-asar
+                detect_libc=app-asar/node_modules/@parcel/watcher/node_modules/detect-libc/lib/filesystem.js
+                grep -F "const LDD_PATH = '${pkgs.stdenv.cc.libc.bin}/bin/ldd';" \
+                  "$detect_libc"
+                if grep -F "const LDD_PATH = '/usr/bin/ldd';" "$detect_libc"; then
+                  exit 1
+                fi
                 touch "$out"
               ''
           );
