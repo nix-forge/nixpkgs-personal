@@ -5,6 +5,7 @@
   fetchurl,
   unzip,
   dpkg,
+  asar,
   autoPatchelfHook,
   makeWrapper,
   wrapGAppsHook3,
@@ -119,6 +120,7 @@ else
     inherit (sourceForSystem) version;
 
     nativeBuildInputs = [
+      asar
       autoPatchelfHook
       dpkg
       makeWrapper
@@ -167,7 +169,6 @@ else
 
     strictDeps = true;
     __structuredAttrs = true;
-    dontPatch = true;
     dontConfigure = true;
     dontBuild = true;
     # Preserve the upstream native payload, which contains helper binaries for
@@ -183,6 +184,25 @@ else
       cd source
 
       runHook postUnpack
+    '';
+
+    patchPhase = ''
+      runHook prePatch
+
+      # detect-libc otherwise probes /usr/bin/ldd, then falls back to
+      # process.report.getReport(), which traps in Electron 42 on NixOS when
+      # @parcel/watcher initializes for a project.
+      asar extract usr/lib/chatgpt/resources/app.asar app-asar
+      substituteInPlace \
+        app-asar/node_modules/@parcel/watcher/node_modules/detect-libc/lib/filesystem.js \
+        --replace-fail \
+        "const LDD_PATH = '/usr/bin/ldd';" \
+        "const LDD_PATH = '${stdenv.cc.libc.bin}/bin/ldd';"
+      # Keep native modules and their helper executables outside the archive
+      # so autoPatchelf updates the files Electron actually loads.
+      asar pack app-asar usr/lib/chatgpt/resources/app.asar --unpack-dir node_modules
+
+      runHook postPatch
     '';
 
     installPhase = ''
