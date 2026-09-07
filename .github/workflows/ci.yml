@@ -1,9 +1,12 @@
 name: CI
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      base_sha:
+        description: Base commit for affected package selection.
+        required: false
+        type: string
   merge_group:
     types: [checks_requested]
 concurrency:
@@ -93,7 +96,7 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@527f17dd63d2d60d3e5552934bc84b9a33a14d11 # v3.22.2
       - name: Build affected packages
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           SYSTEM: ${{ matrix.system }}
         shell: bash
         run: |
@@ -186,3 +189,14 @@ jobs:
         if: matrix.audit == 'legacy-backend'
         run: >-
           swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -D -Xswiftc OCR_CAPTURE_NIX_BUILD
+  queue-tests:
+    name: Merge queue regression tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s .github/tests
