@@ -33,6 +33,10 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
       # Swift 6 silently: skipping it both validates the upstream source and
       # prompts removal of the now-dead patch via the warning above.
       patches = lib.optionals needsSwift510CompatibilityPatch [ ./swift-5.10-concurrency.patch ];
+      patchFlags = [
+        "-p1"
+        "--fuzz=0"
+      ];
 
       nativeBuildInputs = [
         coreutils

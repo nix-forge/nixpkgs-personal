@@ -9,16 +9,22 @@ checks, and the SDK has the older spelling of the capture-device notifications.
 Keep the same synchronous bridge and cancellation behaviour, but store its
 result behind the existing thread-safe synchronization pattern and use the
 equivalent stable notification constants.
----
- Sources/Vorssaint/Services/Media/MediaService.swift         | 21 +++++++++++++++++----
- Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift |  4 ++--
- 2 files changed, 23 insertions(+), 6 deletions(-)
+
+Refresh against Vorssaint 3.3.5 with contextual hunks. The result box must
+remain at file scope, after MediaCancellationToken and before MediaService.
 
 diff --git a/Sources/Vorssaint/Services/Media/MediaService.swift b/Sources/Vorssaint/Services/Media/MediaService.swift
-index c96d24844467..5e206191c258 100644
 --- a/Sources/Vorssaint/Services/Media/MediaService.swift
 +++ b/Sources/Vorssaint/Services/Media/MediaService.swift
-@@ -122,0 +123,17 @@ private final class MediaCancellationToken {
+@@ -120,10 +120,27 @@
+ 
+     func cancel() {
+         lock.lock()
+         _isCancelled = true
+         lock.unlock()
++    }
++}
++
 +private final class AsyncResultBox<T>: @unchecked Sendable {
 +    private let lock = NSLock()
 +    private var result: Result<T, Error>?
@@ -33,27 +39,60 @@ index c96d24844467..5e206191c258 100644
 +        lock.lock()
 +        defer { lock.unlock() }
 +        return result
-+    }
-+}
-+
-@@ -901 +918 @@ final class MediaService: ObservableObject {
+     }
+ }
+ 
+ final class MediaService: ObservableObject {
+     static let shared = MediaService()
+@@ -1042,17 +1059,17 @@
+     }
+ 
+     private func runAsync<T>(token: MediaCancellationToken,
+                              _ operation: @escaping () async throws -> T) throws -> T {
+         let semaphore = DispatchSemaphore(value: 0)
 -        var result: Result<T, Error>?
 +        let resultBox = AsyncResultBox<T>()
-@@ -905 +922 @@ final class MediaService: ObservableObject {
+ 
+         let task = Task {
+             do {
 -                result = .success(try await operation())
 +                resultBox.set(.success(try await operation()))
-@@ -907 +924 @@ final class MediaService: ObservableObject {
+             } catch {
 -                result = .failure(error)
 +                resultBox.set(.failure(error))
-@@ -919 +936 @@ final class MediaService: ObservableObject {
+             }
+             semaphore.signal()
+         }
+ 
+         while semaphore.wait(timeout: .now() + .milliseconds(50)) == .timedOut {
+@@ -1060,11 +1077,11 @@
+                 task.cancel()
+                 throw MediaFailureBox(.cancelled)
+             }
+         }
+         try checkCancellation(token)
 -        guard let result else {
 +        guard let result = resultBox.get() else {
+             throw MediaFailureBox(.failed("Video metadata unavailable."))
+         }
+         return try result.get()
+     }
+ 
 diff --git a/Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift b/Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift
-index 94db309339f1..e0f4f19b9a8f 100644
 --- a/Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift
 +++ b/Sources/Vorssaint/Services/QuickTools/CameraPreviewService.swift
-@@ -236,2 +236,2 @@ final class CameraPreviewService: ObservableObject {
+@@ -231,12 +231,12 @@
+     /// unplugged) only matter while the panel is up, so the observers live
+     /// exactly as long as it does.
+     private func installDeviceObservers() {
+         guard deviceObservers.isEmpty else { return }
+         let center = NotificationCenter.default
 -        for name in [AVCaptureDevice.wasConnectedNotification,
 -                     AVCaptureDevice.wasDisconnectedNotification] {
 +        for name in [NSNotification.Name.AVCaptureDeviceWasConnected,
 +                     NSNotification.Name.AVCaptureDeviceWasDisconnected] {
+             deviceObservers.append(center.addObserver(forName: name, object: nil,
+                                                       queue: .main) { [weak self] _ in
+                 self?.handleDevicesChanged()
+             })
+         }

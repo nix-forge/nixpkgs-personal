@@ -150,7 +150,11 @@
           };
 
           end-of-file-fixer.enable = true;
-          trim-trailing-whitespace.enable = true;
+          trim-trailing-whitespace = {
+            enable = true;
+            # Context markers on blank patch lines are meaningful whitespace.
+            excludes = [ "\\.patch$" ];
+          };
           mixed-line-endings = {
             enable = true;
             args = [ "--fix=lf" ];
