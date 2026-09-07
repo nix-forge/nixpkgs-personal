@@ -144,7 +144,8 @@ jobs:
 
           while IFS= read -r package; do
             [[ -n "$package" ]] || continue
-            nix build ".#$package" --cores 2 --max-jobs 1 --keep-going --show-trace --print-build-logs
+            # Keep builds serial while using the CPUs available on this runner.
+            nix build ".#$package" --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
             if [[ "$package" == openai-codex-desktop ]]; then
               nix build --no-link --keep-going --show-trace --print-build-logs \
                 ".#checks.$SYSTEM.openai-codex-desktop-updater" \
