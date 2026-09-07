@@ -90,7 +90,8 @@ jobs:
           - system: aarch64-darwin
             runner: macos-26
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
+    # Full cold builds include font compilation and a multi-gigabyte ISO fetch.
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
