@@ -4,7 +4,13 @@ default:
     @just --list
 
 check:
+    nix store add-path flake/dev
+    nix eval --option allow-import-from-derivation false --json .#checks --apply 'builtins.mapAttrs (_: checks: builtins.mapAttrs (_: check: check.drvPath) checks)' > /dev/null
     nix flake check --all-systems --no-build
+
+test:
+    nix store add-path flake/dev
+    nix build --no-link .#checks.$(nix eval --impure --raw --expr builtins.currentSystem).package-independence .#checks.$(nix eval --impure --raw --expr builtins.currentSystem).package-unit-tests
 
 fmt:
     nix fmt

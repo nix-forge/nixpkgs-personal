@@ -36,7 +36,19 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s "$out/Applications/Bitwarden.app/Contents/Info.plist"
+    test -x "$out/Applications/Bitwarden.app/Contents/MacOS/Bitwarden"
+    test -x "$out/bin/bitwarden"
+    runHook postInstallCheck
+  '';
+
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/bi/bitwarden-desktop/update.py"
+  ];
 
   meta = {
     description = "Secure and free password manager for all of your devices";

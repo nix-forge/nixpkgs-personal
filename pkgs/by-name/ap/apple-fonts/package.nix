@@ -119,7 +119,9 @@ let
     mkFont entry archive;
 in
 symlinkJoin {
-  name = "apple-fonts-${manifest.version}";
+  pname = "apple-fonts";
+  inherit (manifest) version;
+  strictDeps = true;
   paths = lib.attrValues assets;
   preferLocalBuild = true;
   allowSubstitutes = false;

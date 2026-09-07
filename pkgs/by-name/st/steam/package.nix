@@ -18,6 +18,8 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [ unzip ];
   sourceRoot = ".";
   strictDeps = true;
+  dontBuild = true;
+  dontConfigure = true;
 
   dontUnpack = true;
   dontFixup = true;
@@ -86,7 +88,19 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s "$out/Applications/Steam.app/Contents/Info.plist"
+    test -x "$out/Applications/Steam.app/Contents/MacOS/steam_osx"
+    test -x "$out/bin/steam"
+    runHook postInstallCheck
+  '';
+
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/st/steam/update.py"
+  ];
 
   meta = {
     description = "Valve's official Steam app bundle for macOS";

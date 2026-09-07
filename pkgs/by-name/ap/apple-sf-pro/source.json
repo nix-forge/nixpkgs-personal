@@ -1,0 +1,291 @@
+{
+  "name": "apple-sf-pro",
+  "kind": "dmg",
+  "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Pro.dmg",
+  "hash": "sha256-qQlPDem3idc1RO5Q/FKgiE1Kn3/PYt5Sl04yBPOnSmI=",
+  "files": [
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Black.otf",
+      "sha256": "887d16c8097cd8f56cedd203719b5e7f6a9f0c276b312e0b64d43338bc15f231",
+      "faces": ["SFProDisplay-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-BlackItalic.otf",
+      "sha256": "9d394da254d2bc753ffb103c25d1c15c802190025c63e1f749635c1ff8e9e857",
+      "faces": ["SFProDisplay-BlackItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Bold.otf",
+      "sha256": "d9b90a6639037ced25b26be7d4e884fb5f52854a1a9d8c4c7f8d4094b8780d4a",
+      "faces": ["SFProDisplay-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-BoldItalic.otf",
+      "sha256": "18808c94d1cfda849e30f692c1b0e3c7752fb598b446f9ddf9f2c1b4419f4134",
+      "faces": ["SFProDisplay-BoldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Heavy.otf",
+      "sha256": "2cbeb3a5fe05cd0211223e8f76b4d5bd9ae672f4d9a046aa55affbf67c02649e",
+      "faces": ["SFProDisplay-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-HeavyItalic.otf",
+      "sha256": "54e7c2c60d4e19ec404e6bfa699f8cdd86931c2b41dbfd564c23ad4fe9373019",
+      "faces": ["SFProDisplay-HeavyItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Light.otf",
+      "sha256": "f5c4fe8b41dde1d516c9e49a00ecbbc3798c70c89a313e03e71aec230c73aab2",
+      "faces": ["SFProDisplay-Light"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-LightItalic.otf",
+      "sha256": "d8f47c70e131c100e9f605635b57c3e04deca072f3a5f6df7e0e875aafac57a7",
+      "faces": ["SFProDisplay-LightItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Medium.otf",
+      "sha256": "837625e77fde0a5a55a4d38c016b001f217ed2234ab36a6302ceddf9978aea97",
+      "faces": ["SFProDisplay-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-MediumItalic.otf",
+      "sha256": "1c5ad464b76ac27cd11597b8c2104785af42649200aa1dc6fa12230f9b26e0e1",
+      "faces": ["SFProDisplay-MediumItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Regular.otf",
+      "sha256": "569752285a0b63728a16d2e1b2ba6fa9c8ddb3bbaeeac0f77adac64a47a02785",
+      "faces": ["SFProDisplay-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-RegularItalic.otf",
+      "sha256": "b6e69239ee361c9c5b48fd748b88d12d702fef360fdaf4c1056857546a76b5ee",
+      "faces": ["SFProDisplay-RegularItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Semibold.otf",
+      "sha256": "8311e0518388b9b1bfe3f545f1aef1daad6b6a8d7a19ec475c134535f825f66f",
+      "faces": ["SFProDisplay-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-SemiboldItalic.otf",
+      "sha256": "75ecf67948c90f060cd7bc413886d31f94a109bc3f6fa25d9023b0e75a43d710",
+      "faces": ["SFProDisplay-SemiboldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Thin.otf",
+      "sha256": "396eab147d84c4f5eeca7badf10a5908b2a76f38f11253edef287b124b674ef6",
+      "faces": ["SFProDisplay-Thin"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-ThinItalic.otf",
+      "sha256": "e6a99af28dcff7add782c7f7827fe1dfdf85dec94faae2f491e5c56bb2617bcf",
+      "faces": ["SFProDisplay-ThinItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-Ultralight.otf",
+      "sha256": "72c0665e84340cf719db28b2ef36eb3d373cda3c217f927a9277fd3a73c1d542",
+      "faces": ["SFProDisplay-Ultralight"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Display-UltralightItalic.otf",
+      "sha256": "5e879334814202089ae48225816bdcde4c55ffd79e72643a4d24fcaeb93ba32f",
+      "faces": ["SFProDisplay-UltralightItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Italic.ttf",
+      "sha256": "bf45ba36c9d3d623c374d41c95d2cea0b6f845690df0a6422b98c714a20896a0",
+      "faces": [
+        "SFPro-BlackItalic",
+        "SFPro-BoldItalic",
+        "SFPro-HeavyItalic",
+        "SFPro-LightItalic",
+        "SFPro-MediumItalic",
+        "SFPro-RegularItalic",
+        "SFPro-SemiboldItalic",
+        "SFPro-ThinItalic",
+        "SFPro-UltralightItalic"
+      ]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Black.otf",
+      "sha256": "94c2a687119a8751255886065a879c2d50e6d9092aa3578b60b1f6c28fe22e03",
+      "faces": ["SFProRounded-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Bold.otf",
+      "sha256": "a387c36fbb58ef88c44e4474133bbaf8fee626c6cbcc235bcdebaf3467218e9a",
+      "faces": ["SFProRounded-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Heavy.otf",
+      "sha256": "fbe67bccd28c81a430a53a8f150c1dd4ccb2858c7e6150cfe17e38c1a98955e5",
+      "faces": ["SFProRounded-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Light.otf",
+      "sha256": "82b7a4b6dd9e340d1708c57c418f4a836c68b1f7f70933d8c2cc0aef3423a7bf",
+      "faces": ["SFProRounded-Light"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Medium.otf",
+      "sha256": "0f26a96fa528bcc43ed5ad54b1e741b454c479ed63e941a7557d070d6335b52e",
+      "faces": ["SFProRounded-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Regular.otf",
+      "sha256": "71839907c1efc9cd08329ebd510b3f070efc27b8893a414f2391ff92dad5e636",
+      "faces": ["SFProRounded-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Semibold.otf",
+      "sha256": "450d49de852874c1b3ec53bebb9f67a885a909cc81333e86db9ba60c2a82f20d",
+      "faces": ["SFProRounded-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Thin.otf",
+      "sha256": "5b708f1906e85a2c06d9fbe2e94e5ac56618b4121ee5492e386e9f7ce7517bbd",
+      "faces": ["SFProRounded-Thin"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Ultralight.otf",
+      "sha256": "a2af5d4519ee4a279c7fceada2aa0b9816ef23b1b9070320b8869297d8cf3795",
+      "faces": ["SFProRounded-Ultralight"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Black.otf",
+      "sha256": "6964a437b23e3b1b22244a547b9396cc372067987bc80585834d70cbe65d0cdb",
+      "faces": ["SFProText-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-BlackItalic.otf",
+      "sha256": "3525c9c69d22f2737a7a6aba9cd125662a2833c136b517847cea57e90958b1e3",
+      "faces": ["SFProText-BlackItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Bold.otf",
+      "sha256": "dd73883d094a45b9f8207961168d687796c2f670d982d416c443516bfe54a9e6",
+      "faces": ["SFProText-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-BoldItalic.otf",
+      "sha256": "f7114b8ce80624d653564441b33b1d98299904253302f3e5803a8e28e54f81cc",
+      "faces": ["SFProText-BoldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Heavy.otf",
+      "sha256": "ef1b47fef93edf3e76950cf558b9c0604d6f21df36ab3e652723ba27dde29e6d",
+      "faces": ["SFProText-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-HeavyItalic.otf",
+      "sha256": "b844d728a0e29f280d7bcea693dffb00f86b84478f1184ffba62a095260dea0b",
+      "faces": ["SFProText-HeavyItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Light.otf",
+      "sha256": "0756b1ed840318ca0a0a22731c7750b34ca7331bbfdf35f703b56fb22ba7e4af",
+      "faces": ["SFProText-Light"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-LightItalic.otf",
+      "sha256": "5e18bc120ef8592aa771a00cdd61116e229dec454fd67aade0924b1670311217",
+      "faces": ["SFProText-LightItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Medium.otf",
+      "sha256": "87be8b81201b7ca5c631036dfb7f9dcbfa25896dec6ecb08e8d0fafebb7b9afa",
+      "faces": ["SFProText-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-MediumItalic.otf",
+      "sha256": "203654ea81c6736583fe5d367bce1bebdb2721e88aa47dff3599e0e1fb8a7227",
+      "faces": ["SFProText-MediumItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Regular.otf",
+      "sha256": "2da7e3fdb744566f9c96a9a3e48949e8b24209fc0b9bcf1d101f5dc88359f065",
+      "faces": ["SFProText-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-RegularItalic.otf",
+      "sha256": "2117689003424414912655a75b03af55c8978141d7a348656b6c2ab0c9ea48d4",
+      "faces": ["SFProText-RegularItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Semibold.otf",
+      "sha256": "1314411ab8c720273a9b57a6ad1d51888bd14ec6db3569970078bfb27c002bd9",
+      "faces": ["SFProText-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-SemiboldItalic.otf",
+      "sha256": "24d184c33b1a415e75153612770be4c09567f33757edc2d0a00f1f98c2260e87",
+      "faces": ["SFProText-SemiboldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Thin.otf",
+      "sha256": "abd9bd2767f1767e7c980f3a7621d2a77b775ea455a7d57524dfab5b24d3b3b2",
+      "faces": ["SFProText-Thin"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-ThinItalic.otf",
+      "sha256": "c499c7881b287c380e8e5fcf584e0143771d0452125d7c6d65d72edbff9f95df",
+      "faces": ["SFProText-ThinItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-Ultralight.otf",
+      "sha256": "fc8060db212a919b397cd724511384341a051c3613fee8960d659f5ad79a3ebb",
+      "faces": ["SFProText-Ultralight"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro-Text-UltralightItalic.otf",
+      "sha256": "3a1207ff9241cb44fdc9f6a66283d69e1a4a674c4eb8e6a6658de362d2aac126",
+      "faces": ["SFProText-UltralightItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Pro.ttf",
+      "sha256": "26e2ab7338d25b79276b9363f22bb7576850f7f326a8fb97ba2419cf0f923012",
+      "faces": [
+        "SFPro-Black",
+        "SFPro-Bold",
+        "SFPro-CompressedBlack",
+        "SFPro-CompressedBold",
+        "SFPro-CompressedHeavy",
+        "SFPro-CompressedLight",
+        "SFPro-CompressedMedium",
+        "SFPro-CompressedRegular",
+        "SFPro-CompressedSemibold",
+        "SFPro-CompressedThin",
+        "SFPro-CompressedUltralight",
+        "SFPro-CondensedBlack",
+        "SFPro-CondensedBold",
+        "SFPro-CondensedHeavy",
+        "SFPro-CondensedLight",
+        "SFPro-CondensedMedium",
+        "SFPro-CondensedRegular",
+        "SFPro-CondensedSemibold",
+        "SFPro-CondensedThin",
+        "SFPro-CondensedUltralight",
+        "SFPro-ExpandedBlack",
+        "SFPro-ExpandedBold",
+        "SFPro-ExpandedHeavy",
+        "SFPro-ExpandedLight",
+        "SFPro-ExpandedMedium",
+        "SFPro-ExpandedRegular",
+        "SFPro-ExpandedSemibold",
+        "SFPro-ExpandedThin",
+        "SFPro-ExpandedUltralight",
+        "SFPro-Heavy",
+        "SFPro-Light",
+        "SFPro-Medium",
+        "SFPro-Regular",
+        "SFPro-Semibold",
+        "SFPro-Thin",
+        "SFPro-Ultralight"
+      ]
+    }
+  ],
+  "version": "8.0.1.1784315035"
+}

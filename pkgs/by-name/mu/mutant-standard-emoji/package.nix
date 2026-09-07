@@ -37,6 +37,7 @@ let
       hash = source.artworkHash;
     };
 
+    strictDeps = true;
     nativeBuildInputs = [ python ];
     unpackPhase = ''
       runHook preUnpack
@@ -85,6 +86,7 @@ let
 in
 stdenvNoCC.mkDerivation {
   inherit (compiledFont) pname version meta;
+  strictDeps = true;
   nativeBuildInputs = [ python ];
   dontUnpack = true;
   dontConfigure = true;

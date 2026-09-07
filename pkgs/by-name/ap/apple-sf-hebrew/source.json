@@ -1,0 +1,39 @@
+{
+  "name": "apple-sf-hebrew",
+  "kind": "dmg",
+  "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Hebrew.dmg",
+  "hash": "sha256-MljkBxW4vPRelEHbv3IYruqlcAZdzB97+lXJ7W0Lk4Q=",
+  "files": [
+    {
+      "path": "payload-0/Library/Fonts/SF-Hebrew-Rounded.ttf",
+      "sha256": "6edb960be6b293693dca5fa65a95dd893994f107b56412ee58ff6bc28d599384",
+      "faces": [
+        "SFHebrewRounded-Black",
+        "SFHebrewRounded-Bold",
+        "SFHebrewRounded-Heavy",
+        "SFHebrewRounded-Light",
+        "SFHebrewRounded-Medium",
+        "SFHebrewRounded-Regular",
+        "SFHebrewRounded-Semibold",
+        "SFHebrewRounded-Thin",
+        "SFHebrewRounded-Ultralight"
+      ]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Hebrew.ttf",
+      "sha256": "d89384f68ba3d43cef12aac0581b4281630fa5d3ef65d7d35e7b0a99e317314d",
+      "faces": [
+        "SFHebrew-Black",
+        "SFHebrew-Bold",
+        "SFHebrew-Heavy",
+        "SFHebrew-Light",
+        "SFHebrew-Medium",
+        "SFHebrew-Regular",
+        "SFHebrew-Semibold",
+        "SFHebrew-Thin",
+        "SFHebrew-Ultralight"
+      ]
+    }
+  ],
+  "version": "6.0.1.1726709071"
+}

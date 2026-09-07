@@ -74,8 +74,10 @@ jobs:
         run: nix store add-path flake/dev
       - env:
           TARGET_SYSTEM: ${{ matrix.system }}
-        run: nix flake check --keep-going --show-trace --print-build-logs --no-build --option allow-import-from-derivation
-          false --system "$TARGET_SYSTEM"
+        run: |
+          nix eval --option allow-import-from-derivation false --json ".#checks.$TARGET_SYSTEM" \
+            --apply 'builtins.mapAttrs (_: check: check.drvPath)' > /dev/null
+          nix flake check --keep-going --show-trace --print-build-logs --no-build --option allow-import-from-derivation false --system "$TARGET_SYSTEM"
   build:
     name: Build (${{ matrix.system }})
     needs: [lint, flake]
@@ -99,6 +101,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: DeterminateSystems/determinate-nix-action@021c8a1bd3570eb21f5c20a054812b0c4d9ca614 # v3.22.3
+      - name: Materialize partition source
+        run: nix store add-path flake/dev
+      - name: Check package independence and local tests
+        env:
+          SYSTEM: ${{ matrix.system }}
+        run: >-
+          nix build --no-link --print-build-logs ".#checks.$SYSTEM.package-independence" ".#checks.$SYSTEM.package-unit-tests"
       - name: Check font import and update contracts
         env:
           SYSTEM: ${{ matrix.system }}
@@ -117,8 +126,8 @@ jobs:
             changed_files=$(git diff --name-only "$BASE_SHA" HEAD)
           fi
 
-          all_packages=$(nix eval --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
-          if grep -qE '^(flake\.nix|flake\.lock|pkgs/default\.nix)$' <<<"$changed_files"; then
+          all_packages=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
+          if grep -qE '^(flake\.nix|flake\.lock|pkgs/default\.nix|flake/|tests/)' <<<"$changed_files"; then
             targets="$all_packages"
           elif grep -q '^pkgs/by-name/' <<<"$changed_files"; then
             targets=$(sed -nE 's#^pkgs/by-name/[^/]+/([^/]+)/.*#\1#p' <<<"$changed_files" | sort -u)
@@ -134,7 +143,7 @@ jobs:
 
           while IFS= read -r package; do
             [[ -n "$package" ]] || continue
-            nix build ".#$package" --keep-going --show-trace --print-build-logs
+            nix build ".#$package" --cores 2 --max-jobs 1 --keep-going --show-trace --print-build-logs
             if [[ "$package" == openai-codex-desktop ]]; then
               nix build --no-link --keep-going --show-trace --print-build-logs \
                 ".#checks.$SYSTEM.openai-codex-desktop-updater" \
@@ -142,9 +151,13 @@ jobs:
             fi
           done <<<"$targets"
   swift-quality:
-    name: Swift quality (macOS 26)
+    name: Swift quality (${{ matrix.package }})
     runs-on: macos-26
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [oc/ocr-capture, fi/finder-favorites]
     permissions:
       contents: read
     steps:
@@ -157,13 +170,16 @@ jobs:
       - name: Compiler, lint, test, and dead-code checks
         env:
           OCR_CAPTURE_RUN_SANITIZERS: "0"
-        run: nix develop .#swift-quality --command pkgs/by-name/oc/ocr-capture/Scripts/check-quality.sh
+          PACKAGE: ${{ matrix.package }}
+        run: nix develop --command "pkgs/by-name/$PACKAGE/Scripts/check-quality.sh"
       - name: Xcode Swift 6 formatter compatibility
+        env:
+          PACKAGE: ${{ matrix.package }}
         run: >-
-          xcrun swift-format lint --configuration pkgs/by-name/oc/ocr-capture/.swift-format --parallel
-          --strict --recursive pkgs/by-name/oc/ocr-capture/Sources pkgs/by-name/oc/ocr-capture/Tests
+          xcrun swift-format lint --configuration "pkgs/by-name/$PACKAGE/.swift-format" --parallel --strict
+          --recursive "pkgs/by-name/$PACKAGE/Sources" "pkgs/by-name/$PACKAGE/Tests"
   swift-sanitizers:
-    name: Swift ${{ matrix.sanitizer }} sanitizer
+    name: Swift ${{ matrix.sanitizer }} sanitizer (${{ matrix.package }})
     runs-on: macos-26
     timeout-minutes: 20
     permissions:
@@ -172,14 +188,16 @@ jobs:
       fail-fast: false
       matrix:
         sanitizer: [address, thread]
+        package: [oc/ocr-capture, fi/finder-favorites]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - env:
           SANITIZER: ${{ matrix.sanitizer }}
+          PACKAGE: ${{ matrix.package }}
         run: >-
-          swift test --package-path pkgs/by-name/oc/ocr-capture --sanitize "$SANITIZER"
+          swift test --package-path "pkgs/by-name/$PACKAGE" --sanitize "$SANITIZER"
   swift-compiler-audits:
     name: Swift compiler audit (${{ matrix.audit }})
     runs-on: macos-26

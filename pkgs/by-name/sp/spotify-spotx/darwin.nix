@@ -123,7 +123,10 @@ stdenvNoCC.mkDerivation {
     signingMethod = "rcodesign-recursive-bundle";
     spotxVersion = source.version;
     spotifyVersion = source.version;
-    updateScript = [ ./update.py ];
+    updateScript = [
+      "python3"
+      "pkgs/by-name/sp/spotify-spotx/update.py"
+    ];
   };
 
   meta = {

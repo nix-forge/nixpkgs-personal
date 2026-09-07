@@ -1,4 +1,9 @@
-{ callPackage, fetchFromGitHub }:
+{
+  lib,
+  callPackage,
+  fetchFromGitHub,
+  jemalloc,
+}:
 let
   source = import ./source.nix;
   src = fetchFromGitHub {
@@ -6,12 +11,17 @@ let
     repo = "noctalia";
     inherit (source) rev hash;
   };
-  upstream = callPackage ./upstream-package.nix {
+  upstream = callPackage ./upstream.nix {
     inherit src;
     inherit (source) version;
   };
 in
 upstream.overrideAttrs (old: {
+  strictDeps = true;
+  # Upstream lists the linked allocator among build tools. Strict dependency
+  # separation requires its headers and pkg-config file in the target inputs.
+  nativeBuildInputs = lib.remove jemalloc (old.nativeBuildInputs or [ ]);
+  buildInputs = (old.buildInputs or [ ]) ++ [ jemalloc ];
   pname = "noctalia-personal";
   patches = (old.patches or [ ]) ++ [
     ./symbolic-bar-icons.patch

@@ -1,6 +1,8 @@
 { pkgs }:
 let
-  inherit (pkgs) callPackage;
+  # Keep nested callPackage calls in the same upstream scope. In an overlay,
+  # prev.callPackage otherwise closes over final and can inject personal packages.
+  callPackage = pkgs.lib.callPackageWith (pkgs // { inherit callPackage; });
   appleFonts = callPackage ./by-name/ap/apple-fonts/package.nix { };
   darwinPackages = {
     bitwarden-desktop = callPackage ./by-name/bi/bitwarden-desktop/package.nix { };
@@ -30,14 +32,14 @@ in
 {
   anthropic-skills = callPackage ./by-name/an/anthropic-skills/package.nix { };
   apple-fonts = appleFonts;
-  apple-new-york = appleFonts.developerFonts.apple-new-york;
-  apple-sf-arabic = appleFonts.developerFonts.apple-sf-arabic;
-  apple-sf-armenian = appleFonts.developerFonts.apple-sf-armenian;
-  apple-sf-compact = appleFonts.developerFonts.apple-sf-compact;
-  apple-sf-georgian = appleFonts.developerFonts.apple-sf-georgian;
-  apple-sf-hebrew = appleFonts.developerFonts.apple-sf-hebrew;
-  apple-sf-mono = appleFonts.developerFonts.apple-sf-mono;
-  apple-sf-pro = appleFonts.developerFonts.apple-sf-pro;
+  apple-new-york = callPackage ./by-name/ap/apple-new-york/package.nix { };
+  apple-sf-arabic = callPackage ./by-name/ap/apple-sf-arabic/package.nix { };
+  apple-sf-armenian = callPackage ./by-name/ap/apple-sf-armenian/package.nix { };
+  apple-sf-compact = callPackage ./by-name/ap/apple-sf-compact/package.nix { };
+  apple-sf-georgian = callPackage ./by-name/ap/apple-sf-georgian/package.nix { };
+  apple-sf-hebrew = callPackage ./by-name/ap/apple-sf-hebrew/package.nix { };
+  apple-sf-mono = callPackage ./by-name/ap/apple-sf-mono/package.nix { };
+  apple-sf-pro = callPackage ./by-name/ap/apple-sf-pro/package.nix { };
   emojione-legacy = callPackage ./by-name/em/emojione-legacy/package.nix { };
   firefox-emoji = callPackage ./by-name/fi/firefox-emoji/package.nix { };
   google-fonts-design = callPackage ./by-name/go/google-fonts-design/package.nix { };
@@ -52,9 +54,7 @@ in
   ttf-ms-win11-auto = callPackage ./by-name/tt/ttf-ms-win11-auto/package.nix { };
 }
 // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-  apple-color-emoji = callPackage ./by-name/ap/apple-color-emoji/package.nix {
-    apple-fonts = appleFonts;
-  };
+  apple-color-emoji = callPackage ./by-name/ap/apple-color-emoji/package.nix { };
   bibata-cursors-hyprcursor = callPackage ./by-name/bi/bibata-cursors-hyprcursor/package.nix { };
   noctalia-dark-app-icons = callPackage ./by-name/no/noctalia-dark-app-icons/package.nix { };
   noctalia-personal = callPackage ./by-name/no/noctalia-personal/package.nix { };

@@ -44,7 +44,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   passthru = {
     agentSkill = "${finalAttrs.finalPackage}/share/agent-skills/apple-reminders";
-    updateScript = [ ./update.py ];
+    updateScript = [
+      "python3"
+      "pkgs/by-name/re/remindctl/update.py"
+    ];
   };
 
   meta = {

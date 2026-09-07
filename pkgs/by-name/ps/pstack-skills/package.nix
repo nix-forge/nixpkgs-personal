@@ -57,7 +57,10 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
     runHook postInstallCheck
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/ps/pstack-skills/update.py"
+  ];
 
   meta = {
     description = "pstack Agent Skills catalog";

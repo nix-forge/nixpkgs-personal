@@ -191,7 +191,10 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         runHook postInstallCheck
       '';
 
-      passthru.updateScript = [ ./update.py ];
+      passthru.updateScript = [
+        "python3"
+        "pkgs/by-name/vo/vorssaint/update.py"
+      ];
 
       meta = {
         description = "Modular macOS menu bar toolkit";

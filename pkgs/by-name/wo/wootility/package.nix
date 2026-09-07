@@ -36,7 +36,19 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s "$out/Applications/Wootility.app/Contents/Info.plist"
+    test -x "$out/Applications/Wootility.app/Contents/MacOS/Wootility"
+    test -x "$out/bin/wootility"
+    runHook postInstallCheck
+  '';
+
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/wo/wootility/update.py"
+  ];
 
   meta = {
     description = "Customization and management software for Wooting keyboards";

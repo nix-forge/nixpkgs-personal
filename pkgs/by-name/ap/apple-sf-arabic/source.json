@@ -1,0 +1,39 @@
+{
+  "name": "apple-sf-arabic",
+  "kind": "dmg",
+  "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Arabic.dmg",
+  "hash": "sha256-J2DGLVArdwEsSVF8LqOS7C1MZH/gYJhckn30jRBRl7k=",
+  "files": [
+    {
+      "path": "payload-0/Library/Fonts/SF-Arabic-Rounded.ttf",
+      "sha256": "7695166f05bb314b02b2c47b969d568ee82069306495bb67db998862cfa924eb",
+      "faces": [
+        "SFArabicRounded-Black",
+        "SFArabicRounded-Bold",
+        "SFArabicRounded-Heavy",
+        "SFArabicRounded-Light",
+        "SFArabicRounded-Medium",
+        "SFArabicRounded-Regular",
+        "SFArabicRounded-Semibold",
+        "SFArabicRounded-Thin",
+        "SFArabicRounded-Ultralight"
+      ]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Arabic.ttf",
+      "sha256": "6d9944322cd9dfa1c1b9e4ffa1e725387022eac36fa1adc8d39863b01df2691d",
+      "faces": [
+        "SFArabic-Black",
+        "SFArabic-Bold",
+        "SFArabic-Heavy",
+        "SFArabic-Light",
+        "SFArabic-Medium",
+        "SFArabic-Regular",
+        "SFArabic-Semibold",
+        "SFArabic-Thin",
+        "SFArabic-Ultralight"
+      ]
+    }
+  ],
+  "version": "6.0.1.1726709071"
+}

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Update a pinned Agent Skills repository hosted on GitHub."""
 
 from __future__ import annotations
@@ -18,8 +17,7 @@ from typing import TYPE_CHECKING, NoReturn
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from scripts.update_support import HTTPS_CONTEXT, github_api_headers
+from update_support import HTTPS_CONTEXT, github_api_headers
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

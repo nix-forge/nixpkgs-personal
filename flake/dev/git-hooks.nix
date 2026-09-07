@@ -14,6 +14,13 @@
           websocket-client
         ]
       );
+      evaluationCheck = pkgs.writeShellScript "package-evaluation-check" ''
+        set -euo pipefail
+        # A fresh filtered source needs materialization before a read-only check.
+        nix store add-path flake/dev >/dev/null
+        nix eval --option allow-import-from-derivation false --json .#checks --apply 'builtins.mapAttrs (_: checks: builtins.mapAttrs (_: check: check.drvPath) checks)' >/dev/null
+        nix flake check --all-systems --no-build --option allow-import-from-derivation false
+      '';
       pythonCompile = pkgs.writeShellScript "package-python-compile" ''
         set -euo pipefail
         cache="$(${lib.getExe' pkgs.coreutils "mktemp"} -d)"
@@ -218,7 +225,7 @@
               enable = true;
               # Use the Nix installation that supplies the daemon and its settings.
               # Injecting nixpkgs' CLI rejects Determinate's schemas/settings.
-              entry = "nix flake check --no-build --option allow-import-from-derivation false";
+              entry = toString evaluationCheck;
               language = "system";
               always_run = true;
               pass_filenames = false;

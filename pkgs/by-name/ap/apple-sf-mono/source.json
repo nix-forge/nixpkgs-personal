@@ -1,0 +1,69 @@
+{
+  "name": "apple-sf-mono",
+  "kind": "dmg",
+  "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Mono.dmg",
+  "hash": "sha256-bUoLeOOqzQb5E/ZCzq0cfbSvNO1IhW1xcaLgtV2aeUU=",
+  "files": [
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-Bold.otf",
+      "sha256": "88ba41467bea5c3f29273b6b2f630a95aa03589536de54ef41ac4db250d6a0a3",
+      "faces": ["SFMono-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-BoldItalic.otf",
+      "sha256": "e177ffe6d3a27f513b54fea41a6e76c6c3d4b31a15d982a84bdc1b41972c093c",
+      "faces": ["SFMono-BoldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-Heavy.otf",
+      "sha256": "12f70e641d64625f6ff06ee6e6189527d6931918aa6b17bce09c241e0a2c78e8",
+      "faces": ["SFMono-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-HeavyItalic.otf",
+      "sha256": "a514ed643a34711e8e5f745248dc2fb442b41874f88ba062e5338cc034fd832e",
+      "faces": ["SFMono-HeavyItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-Light.otf",
+      "sha256": "47e2469a7439209ae3611cc798779c21c9c98ca124022c8976f7d4aa82558431",
+      "faces": ["SFMono-Light"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-LightItalic.otf",
+      "sha256": "c3f6477be40037d59ae73c16dcc592768e09788cc9b7a31d53913aec92da82f7",
+      "faces": ["SFMono-LightItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-Medium.otf",
+      "sha256": "f1826e890cfa89da5a3d0908a0ae6f10656fafe177b4de34317d5a432ffa8e89",
+      "faces": ["SFMono-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-MediumItalic.otf",
+      "sha256": "3b022a1a297f1ac918e1c6fe08b60352e324e65de53549dac04bf0220772cc2e",
+      "faces": ["SFMono-MediumItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-Regular.otf",
+      "sha256": "d7186273849a922b3eafbbdd8289d1e708a2c7f7893ec90961d382353c872d49",
+      "faces": ["SFMono-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-RegularItalic.otf",
+      "sha256": "9fe5176e31a1ba9ba685ea3c3fab97f76c51574829bb06f2ab47c561a55dbecc",
+      "faces": ["SFMono-RegularItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-Semibold.otf",
+      "sha256": "ed5c7934c102d382ecee3406197ad3c74fbd1ba969d838698b0b74a80ea2021b",
+      "faces": ["SFMono-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Mono-SemiboldItalic.otf",
+      "sha256": "5cb2de9ddbdf41faba67d04c76f984db540d05069b41c0f2bb56d5921f82bc81",
+      "faces": ["SFMono-SemiboldItalic"]
+    }
+  ],
+  "version": "6.0.1.1726709071"
+}

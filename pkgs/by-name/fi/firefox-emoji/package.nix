@@ -79,7 +79,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     description = "Historical Firefox OS color emoji font in COLR/CPAL format";
     homepage = "https://github.com/mozilla/fxemoji";
     license = with lib.licenses; [
-      apache-20
+      asl20
       cc-by-40
     ];
     platforms = lib.platforms.all;

@@ -1,4 +1,4 @@
-"""Shared helpers for package updater scripts."""
+"""Local HTTPS helpers for this package updater."""
 
 from __future__ import annotations
 

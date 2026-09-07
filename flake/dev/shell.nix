@@ -16,6 +16,14 @@
             ++ [ package ]
             ++ (with pkgs; [
               actionlint
+              _7zz
+              fontconfig
+              (python3.withPackages (p: [
+                p.fonttools
+                p.lxml
+                p.pillow
+                p.uharfbuzz
+              ]))
               cargo
               cargo-deny
               cargo-machete
