@@ -1,0 +1,12 @@
+[Icon Theme]
+Name=Noctalia Apps Dark
+Comment=Dark ChatGPT, Zen and Visual Studio Code icons with Papirus-Dark fallback
+Inherits=Papirus-Dark,hicolor
+Directories=scalable/apps
+
+[scalable/apps]
+Size=64
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=Applications

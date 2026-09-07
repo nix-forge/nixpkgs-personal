@@ -9,6 +9,13 @@ ignore = ["line-too-long"]
 line-ending = "lf"
 preview = true
 
+[tool.ty.analysis]
+# uharfbuzz re-exports a Cython extension without .pyi files. Keep only this
+# native module opaque; font shaping is exercised by the native font checks.
+replace-imports-with-any = ["uharfbuzz"]
+# lxml.etree is also a compiled extension without shipped Python type stubs.
+allowed-unresolved-imports = ["lxml.etree"]
+
 [tool.ty.environment]
 python-platform = "all"
 

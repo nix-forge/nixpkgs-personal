@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      security-events: write
+      security-events: write # Upload analysis results to code scanning.
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +51,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      security-events: write
+      security-events: write # Upload analysis results to code scanning.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
-      actions: write
+      actions: write # Dispatch the trusted queue reconciler after validation.
     steps:
       - name: Notify the trusted queue reconciler
         env:

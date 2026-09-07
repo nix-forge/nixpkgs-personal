@@ -72,7 +72,9 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@021c8a1bd3570eb21f5c20a054812b0c4d9ca614 # v3.22.3
       - name: Materialize partition source
         run: nix store add-path flake/dev
-      - run: nix flake check --keep-going --show-trace --print-build-logs --no-build --system "${{ matrix.system }}"
+      - env:
+          TARGET_SYSTEM: ${{ matrix.system }}
+        run: nix flake check --keep-going --show-trace --print-build-logs --no-build --system "$TARGET_SYSTEM"
   build:
     name: Build (${{ matrix.system }})
     needs: [lint, flake]
@@ -96,9 +98,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: DeterminateSystems/determinate-nix-action@021c8a1bd3570eb21f5c20a054812b0c4d9ca614 # v3.22.3
+      - name: Check font import and update contracts
+        env:
+          SYSTEM: ${{ matrix.system }}
+        run: nix build --no-link --print-build-logs ".#checks.$SYSTEM.apple-font-tooling"
       - name: Build affected packages
         env:
-          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha
+            || github.event.before }}
           SYSTEM: ${{ matrix.system }}
         shell: bash
         run: |
@@ -152,7 +159,8 @@ jobs:
         run: nix develop .#swift-quality --command pkgs/by-name/oc/ocr-capture/Scripts/check-quality.sh
       - name: Xcode Swift 6 formatter compatibility
         run: >-
-          xcrun swift-format lint --configuration pkgs/by-name/oc/ocr-capture/.swift-format --parallel --strict --recursive pkgs/by-name/oc/ocr-capture/Sources pkgs/by-name/oc/ocr-capture/Tests
+          xcrun swift-format lint --configuration pkgs/by-name/oc/ocr-capture/.swift-format --parallel
+          --strict --recursive pkgs/by-name/oc/ocr-capture/Sources pkgs/by-name/oc/ocr-capture/Tests
   swift-sanitizers:
     name: Swift ${{ matrix.sanitizer }} sanitizer
     runs-on: macos-26
@@ -167,8 +175,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: >-
-          swift test --package-path pkgs/by-name/oc/ocr-capture --sanitize "${{ matrix.sanitizer }}"
+      - env:
+          SANITIZER: ${{ matrix.sanitizer }}
+        run: >-
+          swift test --package-path pkgs/by-name/oc/ocr-capture --sanitize "$SANITIZER"
   swift-compiler-audits:
     name: Swift compiler audit (${{ matrix.audit }})
     runs-on: macos-26
@@ -199,7 +209,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
-      actions: write
+      actions: write # Dispatch the trusted queue reconciler after validation.
     steps:
       - name: Notify the trusted queue reconciler
         env:

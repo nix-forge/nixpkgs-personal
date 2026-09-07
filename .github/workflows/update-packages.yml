@@ -9,14 +9,15 @@ concurrency:
 permissions: {}
 jobs:
   update:
+    name: update
     # Some updaters execute and validate native arm64 macOS release artifacts.
     # Keep this on the same runner class as the aarch64-darwin CI matrix.
     runs-on: macos-26
     timeout-minutes: 90
     permissions:
-      actions: write
-      contents: write
-      pull-requests: write
+      actions: write # Dispatch CI for the generated update branch.
+      contents: write # Push the package update branch.
+      pull-requests: write # Create or update pull requests and enable auto-merge.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -1,1 +1,8 @@
 files.extend-exclude = ["flake.lock", "flake/dev/flake.lock", ".git/**"]
+
+[default.extend-words]
+# The MPRIS signal name is fixed by its D-Bus interface.
+Seeked = "Seeked"
+Produkt = "Produkt" # Apple-distributed font family and its PostScript identifiers.
+constan = "constan" # Upstream Microsoft font filename, constan.ttf.
+wdth = "wdth"       # Registered OpenType width-axis tag in upstream font filenames.

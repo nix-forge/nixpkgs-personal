@@ -21,6 +21,8 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from font_manifest import extract, manifest
+
 from scripts.update_support import HTTPS_CONTEXT
 
 if TYPE_CHECKING:
@@ -320,6 +322,29 @@ def _main(argv: Sequence[str] | None = None) -> int:
     if args.dry_run:
         return 0
 
+    # Verify the new payload before updating either pin. Both files are reviewed
+    # together; an interrupted update fails the package version/inventory check.
+    fetched = subprocess.run(
+        [
+            _get_nix_binary(),
+            "store",
+            "prefetch-file",
+            "--json",
+            "--expected-hash",
+            upstream.iso_hash_sri,
+            upstream.iso_url,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    iso = Path(json.loads(fetched.stdout)["storePath"])
+    with tempfile.TemporaryDirectory(prefix="windows-font-update-") as directory:
+        payload = extract(iso, Path(directory))
+        inventory = manifest(payload, upstream.version)
+    _write_atomic(
+        package_file.with_name("manifest.json"), json.dumps(inventory, indent=2) + "\n"
+    )
     _write_atomic(package_file, updated)
     _stdout(f"{package_file}: updated")
     return 0
