@@ -170,6 +170,7 @@ jobs:
       - name: Compiler, lint, test, and dead-code checks
         env:
           OCR_CAPTURE_RUN_SANITIZERS: "0"
+          FINDER_FAVORITES_RUN_SANITIZERS: "0"
           PACKAGE: ${{ matrix.package }}
         run: nix develop --command "pkgs/by-name/$PACKAGE/Scripts/check-quality.sh"
       - name: Xcode Swift 6 formatter compatibility
