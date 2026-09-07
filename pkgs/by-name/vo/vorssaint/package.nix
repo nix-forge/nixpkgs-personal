@@ -33,6 +33,10 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
       # Swift 6 silently: skipping it both validates the upstream source and
       # prompts removal of the now-dead patch via the warning above.
       patches = lib.optionals needsSwift510CompatibilityPatch [ ./swift-5.10-concurrency.patch ];
+      patchFlags = [
+        "-p1"
+        "--fuzz=0"
+      ];
 
       nativeBuildInputs = [
         coreutils
@@ -60,17 +64,24 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         while IFS= read -r sourceFile; do
           appSources+=("$sourceFile")
         done < <(find Sources/Vorssaint -type f -name '*.swift' | sort)
-        swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 "''${appSources[@]}" \
+        swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
+          -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem "''${appSources[@]}" \
           -o "$buildDir/Vorssaint"
 
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
           Sources/Vorssaint/Services/FanControl/FanControlSupport.swift \
           Sources/Vorssaint/Services/FanControl/FanControlXPC.swift \
           Sources/Vorssaint/Services/SystemMonitor/SMCClient.swift \
+          Sources/Vorssaint/Services/Metrics/TemperatureSensorSelector.swift \
           Sources/Vorssaint/Services/FanControl/FanControlHardware.swift \
           Sources/FanControlHelper/main.swift \
           -o "$buildDir/com.vorssaint.utils.fan-control"
         "$buildDir/com.vorssaint.utils.fan-control" --selftest
+
+        swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
+          -emit-library -module-name VorssaintNowPlaying \
+          Sources/NowPlayingAdapter/NowPlayingAdapter.swift \
+          -o "$buildDir/libVorssaintNowPlaying.dylib"
 
         # The upstream icon generator uses AppKit, which is unavailable inside the
         # macOS build sandbox. Generate the same set of bundle assets from its
@@ -136,12 +147,14 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         resources="$contents/Resources"
         helperID="com.vorssaint.utils.fan-control"
 
-        mkdir -p "$contents"/{MacOS,Resources,Library/LaunchDaemons,Library/LaunchServices}
+        mkdir -p "$contents"/{MacOS,Resources,Frameworks,Library/LaunchDaemons,Library/LaunchServices}
         install -Dm755 "$buildDir/Vorssaint" "$contents/MacOS/Vorssaint"
         install -Dm755 "$buildDir/$helperID" "$contents/Library/LaunchServices/$helperID"
         install -Dm644 Resources/com.vorssaint.utils.fan-control.plist \
           "$contents/Library/LaunchDaemons/$helperID.plist"
         install -Dm644 Resources/Info.plist "$contents/Info.plist"
+        install -Dm755 "$buildDir/libVorssaintNowPlaying.dylib" "$contents/Frameworks/libVorssaintNowPlaying.dylib"
+        install -Dm644 Resources/now-playing.pl "$resources/now-playing.pl"
         install -Dm644 CHANGELOG.md "$resources/CHANGELOG.md"
         install -Dm644 "$buildDir/AppIcon.icns" "$resources/AppIcon.icns"
         install -Dm644 "$buildDir/MenuBarIcon.png" "$resources/MenuBarIcon.png"
@@ -169,6 +182,8 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         runHook preInstallCheck
 
         "$out/Applications/Vorssaint.app/Contents/Library/LaunchServices/com.vorssaint.utils.fan-control" --selftest
+        test -s "$out/Applications/Vorssaint.app/Contents/Frameworks/libVorssaintNowPlaying.dylib"
+        test -s "$out/Applications/Vorssaint.app/Contents/Resources/now-playing.pl"
         test -s "$out/Applications/Vorssaint.app/Contents/Resources/AppIcon.icns"
         test -s "$out/Applications/Vorssaint.app/Contents/Resources/MenuBarIcon.png"
         test -s "$out/Applications/Vorssaint.app/Contents/Resources/MenuBarIcon@2x.png"
