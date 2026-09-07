@@ -1,9 +1,12 @@
 name: CI
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      base_sha:
+        description: Base commit for affected package selection.
+        required: false
+        type: string
   merge_group:
     types: [checks_requested]
 concurrency:
@@ -39,6 +42,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Test merge queue reconciliation
+        run: python3 -m unittest discover -s .github/tests
       - uses: DeterminateSystems/determinate-nix-action@021c8a1bd3570eb21f5c20a054812b0c4d9ca614 # v3.22.3
       - name: Materialize partition source
         run: nix store add-path flake/dev
@@ -93,7 +98,7 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@021c8a1bd3570eb21f5c20a054812b0c4d9ca614 # v3.22.3
       - name: Build affected packages
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           SYSTEM: ${{ matrix.system }}
         shell: bash
         run: |
@@ -186,3 +191,26 @@ jobs:
         if: matrix.audit == 'legacy-backend'
         run: >-
           swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -D -Xswiftc OCR_CAPTURE_NIX_BUILD
+  queue-completion:
+    continue-on-error: true
+    name: Queue completion callback
+    if: always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/gh-readonly-queue/main/')
+    needs: [flake-lock, lint, flake, build, swift-quality, swift-sanitizers, swift-compiler-audits]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      actions: write
+    steps:
+      - name: Notify the trusted queue reconciler
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for attempt in 1 2 3; do
+            if gh workflow run reconcile-merge-queue.yml --ref main -f source_run_id="$GITHUB_RUN_ID"; then
+              exit 0
+            fi
+            echo "::warning::Queue completion notification attempt $attempt failed"
+            sleep 5
+          done
+          exit 1
