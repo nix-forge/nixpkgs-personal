@@ -191,3 +191,17 @@ jobs:
         if: matrix.audit == 'legacy-backend'
         run: >-
           swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -D -Xswiftc OCR_CAPTURE_NIX_BUILD
+  queue-completion:
+    name: Queue completion callback
+    if: always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/gh-readonly-queue/main/')
+    needs: [flake-lock, lint, flake, build, swift-quality, swift-sanitizers, swift-compiler-audits]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      actions: write
+    steps:
+      - name: Notify the trusted queue reconciler
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run reconcile-merge-queue.yml --ref main -f source_run_id="$GITHUB_RUN_ID"
