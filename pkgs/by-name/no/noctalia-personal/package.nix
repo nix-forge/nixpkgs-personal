@@ -6,9 +6,11 @@ let
     repo = "noctalia";
     inherit (source) rev hash;
   };
-  upstream = callPackage "${src}/nix/package.nix" { };
+  upstream = callPackage ./upstream-package.nix {
+    inherit src;
+    inherit (source) version;
+  };
 in
-assert upstream.version == source.version;
 upstream.overrideAttrs (old: {
   pname = "noctalia-personal";
   patches = (old.patches or [ ]) ++ [
@@ -16,6 +18,8 @@ upstream.overrideAttrs (old: {
     ./media-player-selector.patch
   ];
   postPatch = (old.postPatch or "") + ''
+    # Reject a stale version pin after source updates, without importing the source.
+    grep -Fq "version: '${source.version}'" meson.build
     cp ${./bar_icon_policy.h} src/shell/bar/widgets/bar_icon_policy.h
   '';
   doCheck = true;

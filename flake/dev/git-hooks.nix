@@ -218,7 +218,7 @@
               enable = true;
               # Use the Nix installation that supplies the daemon and its settings.
               # Injecting nixpkgs' CLI rejects Determinate's schemas/settings.
-              entry = "nix flake check --no-build";
+              entry = "nix flake check --no-build --option allow-import-from-derivation false";
               language = "system";
               always_run = true;
               pass_filenames = false;

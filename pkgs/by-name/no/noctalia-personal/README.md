@@ -45,3 +45,8 @@ The build checks symbolic precedence, lowercase matching, missing icons,
 explicit paths, opt-out behavior, and safe fallback for non-symbolic artwork.
 When updating `source.nix`, review the three widget integrations and check
 palette changes, focus changes and status icons in a running Wayland session.
+
+The local `upstream-package.nix` retains the build recipe from the pinned
+upstream revision, with source and version passed as arguments. This avoids
+importing a build output during flake evaluation on fresh CI runners. Update
+the recipe alongside the source pin; the build verifies the Meson version.

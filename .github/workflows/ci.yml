@@ -74,7 +74,8 @@ jobs:
         run: nix store add-path flake/dev
       - env:
           TARGET_SYSTEM: ${{ matrix.system }}
-        run: nix flake check --keep-going --show-trace --print-build-logs --no-build --system "$TARGET_SYSTEM"
+        run: nix flake check --keep-going --show-trace --print-build-logs --no-build --option allow-import-from-derivation
+          false --system "$TARGET_SYSTEM"
   build:
     name: Build (${{ matrix.system }})
     needs: [lint, flake]
