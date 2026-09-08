@@ -19,6 +19,7 @@ def source_info(reference: str) -> dict[str, str]:
     """Fetch a source tree before entering restricted evaluation."""
     result = subprocess.run(
         ["nix", "flake", "prefetch", "--json", reference],
+        timeout=180,
         check=True,
         capture_output=True,
         text=True,
@@ -43,6 +44,7 @@ def main() -> None:
     metadata = json.loads(
         subprocess.run(
             ["nix", "flake", "metadata", "--json", "--no-write-lock-file", reference],
+            timeout=180,
             check=True,
             capture_output=True,
             text=True,
