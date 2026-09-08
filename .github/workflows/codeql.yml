@@ -40,7 +40,8 @@ jobs:
   analyze-swift:
     name: Analyze (swift)
     runs-on: macos-26
-    timeout-minutes: 30
+    # Successful instrumented Swift builds took 24-28 minutes in recent runs.
+    timeout-minutes: 45
     permissions:
       contents: read
       security-events: write # Upload code scanning results.
