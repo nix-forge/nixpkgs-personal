@@ -41,7 +41,8 @@ and workflow security lint passed.
 The NUR integration is part of
 [combined PR #46](https://github.com/nix-forge/nixpkgs-personal/pull/46).
 The overlapping CI-only PR #47 was closed after its changes were incorporated.
-PR #46 is the authoritative integration branch.
+PR #46 merged at `327a24558aec56486e2e82d8ee494a983f133bd2` after
+all PR and protected merge-queue checks passed, including three native builds.
 
 It preserves the native font checks and build limits, adds font provenance,
 corrects Firefox Emoji's Apache 2.0 Nixpkgs license identifier and retains
@@ -50,10 +51,22 @@ Nixpkgs input. All 86 package/platform derivation paths match the package-only
 revision before these metadata and notice fixes.
 
 CI avoids recompiling identical derivations while retaining explicit contracts
-and conservatively rebuilding when comparison is unavailable. Six scenarios using
-real Nix evaluation verified the build-selection behavior.
+and conservatively rebuilding when comparison is unavailable. Follow-up
+[PR #48](https://github.com/nix-forge/nixpkgs-personal/pull/48) adds ten real Git/Nix
+regression scenarios, including missing history and failed diffs. It also removes
+downloaded executable invocation from the privileged remindctl updater. Five
+archive-inspection tests cover that change, with native version verification
+retained in the package install check.
 
-The package changes must pass both PR checks and the protected merge queue before publication is complete.
+PR #48 records exact Nixpkgs revisions and NAR hashes, verifies the locked hash,
+and provides readable NUR summaries with source links. Its local locked and
+unstable checks each pass all 86 evaluations and return 13 restricted-index entries.
+A negative check rejects a mismatched lockfile hash. Fresh hosted PR and queue
+validation of this follow-up remain pending.
+
+The newer package reorganization must pass both PR checks and the protected merge
+queue before publication is complete.
+
 No upstream NUR pull request has been submitted and no binary-cache publication
 has been enabled.
 
