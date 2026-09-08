@@ -9,8 +9,8 @@ concurrency:
 permissions: {}
 jobs:
   update:
-    # Some updaters execute and validate native arm64 macOS release artifacts.
-    # Keep this on the same runner class as the aarch64-darwin CI matrix.
+    # Updaters inspect macOS release archives with native extraction tools.
+    # Upstream executables are checked only by the read-only package build CI.
     runs-on: macos-26
     timeout-minutes: 90
     permissions:
@@ -22,7 +22,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+        uses: nix-forge/ci/actions/setup-nix@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
         with:
           cache: 'false'
           cache-scope: update-packages-update
