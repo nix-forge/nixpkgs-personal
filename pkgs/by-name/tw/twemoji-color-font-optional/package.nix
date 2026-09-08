@@ -3,6 +3,7 @@ twemoji-color-font.overrideAttrs (old: {
   strictDeps = true;
   pname = "twemoji-color-font-optional";
   meta = old.meta // {
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     description = "Twitter color emoji font without default Fontconfig substitutions";
     platforms = lib.platforms.unix;
   };

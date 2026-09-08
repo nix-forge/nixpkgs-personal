@@ -76,6 +76,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   passthru.upstreamRevision = source.revision;
 
   meta = {
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     description = "Historical Firefox OS color emoji font in COLR/CPAL format";
     homepage = "https://github.com/mozilla/fxemoji";
     license = with lib.licenses; [

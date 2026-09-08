@@ -79,6 +79,7 @@ stdenvNoCC.mkDerivation {
     });
   };
   meta = {
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     description = "Apple Color Emoji converted to Linux-compatible color bitmap tables";
     homepage = "https://github.com/samuelngs/apple-emoji-ttf";
     license = lib.licenses.unfree;

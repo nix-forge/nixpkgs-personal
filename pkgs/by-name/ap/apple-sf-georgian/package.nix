@@ -52,6 +52,7 @@ stdenvNoCC.mkDerivation {
   # unpack.py verifies every payload hash and face before and after installation.
   passthru.sourceManifest = source;
   meta = {
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     description = "Apple developer fonts from ${source.name}";
     homepage = "https://developer.apple.com/fonts/";
     license = lib.licenses.unfree;

@@ -1,8 +1,9 @@
-{ mplus-outline-fonts }:
+{ lib, mplus-outline-fonts }:
 mplus-outline-fonts.githubRelease.overrideAttrs (old: {
   strictDeps = true;
   pname = "mplus-outline-fonts-compatible";
   meta = old.meta // {
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     description = "M PLUS outline fonts without files duplicated by Google Fonts";
   };
   doInstallCheck = true;
