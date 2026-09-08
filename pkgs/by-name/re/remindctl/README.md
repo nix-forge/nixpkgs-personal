@@ -14,7 +14,9 @@ Nixpkgs; the package does not require another personal package.
 
 Run `python3 pkgs/by-name/re/remindctl/update.py --dry-run` from the repository root
 to preview a source update. The updater also works from a copied package
-directory and locates its metadata relative to itself.
+directory and locates its metadata relative to itself. Archive layout, arm64
+Mach-O support and source hashes are checked without executing the download.
+The native Nix install check verifies the binary reports the pinned version.
 
 The package expression records platform support, licensing, and build checks.
 Repository CI evaluates every supported platform and builds affected packages

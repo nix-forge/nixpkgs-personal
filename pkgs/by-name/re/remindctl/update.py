@@ -10,10 +10,8 @@ import difflib
 import hashlib
 import json
 import os
-import platform
 import re
 import struct
-import subprocess
 import sys
 import tempfile
 import zipfile
@@ -101,21 +99,6 @@ def _fetch_bytes(url: str, *, label: str, timeout: int = 30) -> bytes:
             return response.read()
     except URLError as exc:
         _fail(f"failed to fetch {label} from {url}: {exc}")
-
-
-def _run_checked(
-    args: list[str], *, error_message: str
-) -> subprocess.CompletedProcess[str]:
-    completed = subprocess.run(
-        args,
-        capture_output=True,
-        check=False,
-        text=True,
-    )
-    if completed.returncode != 0:
-        detail = completed.stderr.strip() or completed.stdout.strip() or "(no output)"
-        _fail(f"{error_message}:\n{detail}")
-    return completed
 
 
 def _extract_asset_url(assets: object) -> str:
@@ -274,10 +257,9 @@ def _hash_bytes_sha256_sri(content: bytes) -> str:
 
 
 def _validate_archive(version: str, url: str) -> str:
-    if sys.platform != "darwin" or platform.machine() != "arm64":
-        _fail("remindctl release validation requires an arm64 Darwin host")
-
-    with tempfile.TemporaryDirectory(prefix="remindctl-release-") as temp_dir:
+    with tempfile.TemporaryDirectory(
+        prefix=f"remindctl-{version}-release-"
+    ) as temp_dir:
         temp_root = Path(temp_dir)
         archive_path = temp_root / EXPECTED_ASSET_NAME
         binary_path = temp_root / "remindctl"
@@ -295,18 +277,8 @@ def _validate_archive(version: str, url: str) -> str:
             _fail(f"failed to read remindctl release archive: {exc}")
 
         _validate_macho_contains_arm64(binary_path)
-        binary_path.chmod(0o755)
-        completed = _run_checked(
-            [str(binary_path), "--version"],
-            error_message="failed to run remindctl release binary",
-        )
-        reported_version = completed.stdout.strip()
-        if reported_version != version:
-            _fail(
-                "remindctl release binary version does not match release tag: "
-                f"{reported_version!r} != {version!r}",
-            )
-
+        # Runtime version verification belongs to the package install check.
+        # Updaters may hold repository credentials and must not execute releases.
         return _hash_file_sha256_sri(archive_path)
 
 
