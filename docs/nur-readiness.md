@@ -38,14 +38,25 @@ and workflow security lint passed.
 
 ## Publication boundary
 
-[PR #47](https://github.com/nix-forge/nixpkgs-personal/pull/47) adds the reusable CI,
-entry point, evaluator, documentation and scheduled unstable checks to the existing
-published package tree. That tree has 35 supported package/platform combinations;
-both NUR CI jobs passed. Its native package build and Swift checks remain intact.
+The NUR integration is part of
+[combined PR #46](https://github.com/nix-forge/nixpkgs-personal/pull/46).
+The overlapping CI-only PR #47 was closed after its changes were incorporated.
+PR #46 is the authoritative integration branch.
 
-The expanded collection and provenance edits are included in the package follow-up
-review. They are separate from PR #47. Before registering the expanded collection,
-merge the intended package changes and pass the existing native CI builds on that
-revision. Complete the upstream NUR submission checklist
-against that published tree. No upstream NUR pull request has been submitted and
-no binary-cache publication has been enabled.
+It preserves the native font checks and build limits, adds font provenance,
+corrects Firefox Emoji's Apache 2.0 Nixpkgs license identifier and retains
+Noctalia's vendored MIT notice. The combined tree passes 86 evaluations for each
+Nixpkgs input. All 86 package/platform derivation paths match the package-only
+revision before these metadata and notice fixes.
+
+CI avoids recompiling identical derivations while retaining explicit contracts
+and conservatively rebuilding when comparison is unavailable. Six scenarios using
+real Nix evaluation verified the build-selection behavior.
+
+The package changes must pass both PR checks and the protected merge queue before publication is complete.
+No upstream NUR pull request has been submitted and no binary-cache publication
+has been enabled.
+
+The package reorganization and updater refactors belong to the follow-up review.
+That review builds on the package and NUR integration in #46. Complete the
+upstream NUR submission checklist against the final merged tree before registering.
