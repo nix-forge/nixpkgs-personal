@@ -117,3 +117,8 @@ The package includes a catalog/DMG updater, verified payload inventories, and
 an archive exporter/importer for fonts from a known Mac build. See the
 [Apple font package guide](pkgs/by-name/ap/apple-fonts/README.md) for usage,
 source retention limits, and licensing details.
+
+## NUR preparation
+
+The root `default.nix` supports NUR and non-flake consumers with caller-supplied
+Nixpkgs. Registration is pending. See [NUR usage, compatibility and submission](docs/nur.md).

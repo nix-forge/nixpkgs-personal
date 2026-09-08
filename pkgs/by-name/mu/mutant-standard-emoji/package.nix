@@ -76,6 +76,8 @@ let
     installCheckPhase = checkFont "emoji";
 
     meta = {
+
+      sourceProvenance = [ lib.sourceTypes.fromSource ];
       description = "Mutant Standard emoji artwork compiled as a scalable COLRv1 font";
       homepage = "https://mutant.tech";
       license = lib.licenses.cc-by-nc-sa-40;

@@ -9,20 +9,23 @@ concurrency:
 permissions: {}
 jobs:
   update:
-    name: update
     # Some updaters execute and validate native arm64 macOS release artifacts.
     # Keep this on the same runner class as the aarch64-darwin CI matrix.
     runs-on: macos-26
     timeout-minutes: 90
     permissions:
-      actions: write # Dispatch CI for the generated update branch.
-      contents: write # Push the package update branch.
-      pull-requests: write # Create or update pull requests and enable auto-merge.
+      actions: write # Dispatch trusted queue validation.
+      contents: write # Update trusted repository automation.
+      pull-requests: write # Update pull request metadata.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: DeterminateSystems/determinate-nix-action@021c8a1bd3570eb21f5c20a054812b0c4d9ca614 # v3.22.3
+      - name: Set up Nix
+        uses: nix-forge/ci/actions/setup-nix@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+        with:
+          cache: 'false'
+          cache-scope: update-packages-update
       - name: Configure GitHub CLI authentication
         env:
           GH_TOKEN: ${{ github.token }}
@@ -74,3 +77,4 @@ jobs:
           # GitHub's merge queue handles branch deletion itself; gh rejects
           # --delete-branch when the target branch uses a merge queue.
           gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --squash
+    name: update

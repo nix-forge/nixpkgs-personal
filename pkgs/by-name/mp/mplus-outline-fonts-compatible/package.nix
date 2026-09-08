@@ -1,6 +1,9 @@
-{ mplus-outline-fonts }:
+{ lib, mplus-outline-fonts }:
 mplus-outline-fonts.githubRelease.overrideAttrs (old: {
   pname = "mplus-outline-fonts-compatible";
+  meta = old.meta // {
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
+  };
   # Google Fonts owns these identical filenames; retain the standalone styles.
   postInstall = (old.postInstall or "") + ''
     rm \

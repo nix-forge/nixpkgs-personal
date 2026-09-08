@@ -65,6 +65,7 @@ let
         description = "Apple-distributed fonts from ${entry.name}";
         homepage = "https://developer.apple.com/fonts/";
         license = lib.licenses.unfree;
+        sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
         platforms = lib.platforms.unix;
       };
     };
@@ -137,6 +138,7 @@ symlinkJoin {
     description = "Selected macOS Font8 catalog assets with pinned sources";
     homepage = "https://support.apple.com/en-ie/122869";
     license = lib.licenses.unfree;
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     platforms = lib.platforms.unix;
   };
 }

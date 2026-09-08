@@ -80,6 +80,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   passthru.upstreamRevision = source.revision;
 
   meta = {
+
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     description = "Legacy EmojiOne 2 color emoji font in SVG OpenType format";
     homepage = "https://github.com/joypixels/emojione";
     license = with lib.licenses; [
