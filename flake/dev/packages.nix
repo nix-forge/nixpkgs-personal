@@ -1,4 +1,4 @@
-{ inputs, ... }: {
+{ packageNixpkgs, packageOverlay, ... }: {
   perSystem = { pkgs, system, ... }: {
     checks.package-unit-tests =
       pkgs.runCommand "package-unit-tests"
@@ -18,7 +18,8 @@
     checks.package-independence =
       let
         report = import ../../tests/package-contract.nix {
-          inherit (inputs) nixpkgs;
+          nixpkgs = packageNixpkgs;
+          overlay = packageOverlay;
           inherit system;
         };
       in
@@ -27,6 +28,7 @@
         pkgs.runCommand "package-independence"
           {
             nativeBuildInputs = [ pkgs.python3 ];
+            # Record paths without making every package a build dependency of this check.
             report = builtins.unsafeDiscardStringContext (builtins.toJSON report);
             passAsFile = [ "report" ];
           }

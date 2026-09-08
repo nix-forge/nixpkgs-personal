@@ -11,8 +11,18 @@ by upstream Nixpkgs. Keep its source pins, patches, helper modules, tests and
 updater in that directory. Do not import sibling packages, repository tooling,
 personal configuration modules, flake inputs, or a private Nixpkgs package set.
 
-`pkgs/default.nix` registers platform support and supplies the upstream scope.
-It is the only package registry. A public output must not be an alias that
+`pkgs/default.nix` discovers package directories and supplies the upstream scope.
+Declare compatibility in each package's `meta.platforms` and, when needed,
+`meta.badPlatforms`. Keep that metadata readable even on unsupported systems;
+avoid a top-level platform assertion or throw that prevents reading it.
+The registry remains lazy and includes all packages. The `packagesFor` helper
+in `flake.nix` selects supported packages with `lib.meta.availableOn`. Flake
+outputs use that set directly; the overlay uses its names, then instantiates
+packages against the incoming scope. This avoids recursive metadata evaluation
+and preserves upstream packages when a personal override is unsupported.
+Adding a package requires no registry edit or separate platform list.
+
+A public output must not be an alias that
 requires another package directory. Internal build stages and compatibility
 passthru attributes are allowed. Existing `apple-fonts.developerFonts` passthru
 attributes remain available, while public developer-font outputs are independent.
@@ -74,7 +84,9 @@ and inventory review. A package without an updater must document that choice.
 
 Run `just check`, `just lint`, and `just test`. The contract check evaluates
 copied package directories with all personal dependency names poisoned, forces
-metadata and derivation paths, and checks registry coverage. The layout check
+metadata on all systems and derivation paths on supported systems, and checks
+registry coverage. It also evaluates the overlay and checks that its names
+match supported packages, preventing recursion and unsupported overrides. The layout check
 rejects escaping symlinks and runs every updater's help from a temporary copy.
 Python test modules run in separate processes to avoid collisions between local
 module names such as `update` and `font_support`.

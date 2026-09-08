@@ -25,6 +25,26 @@ Our stronger project rule is that a package can be copied out with its own direc
 
 Keep repository-wide CI, formatting, discovery, and batch-update orchestration outside package directories. These tools may invoke packages; packages must not import them. Small duplicated support files are an acceptable cost of independent copying. Keep duplicates narrow and use repository checks to detect unintended divergence.
 
+Use `lib.packagesFromDirectoryRecursive` with an upstream-only `callPackage`
+to discover the package directories, then flatten the two-letter prefix groups.
+Omit `newScope`, which would let discovered packages resolve each other as
+dependencies. The helper stops at a directory's `package.nix`, keeping internal
+Nix files private. [Nixpkgs directory discovery implementation](https://github.com/NixOS/nixpkgs/blob/master/lib/filesystem.nix)
+
+Keep the registry lazy, as in Nixpkgs. Declare supported platforms
+inside each package and select flake `packages.<system>` with
+`lib.meta.availableOn`, which respects both `meta.platforms` and
+`meta.badPlatforms`. Metadata does not automatically filter flake outputs.
+The overlay uses the same selection to choose names, then instantiates those
+packages against its incoming scope. Reading platform metadata from those
+overlay values would force dependencies while Nixpkgs is still constructing its
+recursive package set. Selecting names against the flake's plain Nixpkgs input
+avoids that cycle and keeps unsupported overrides from replacing upstream
+packages, such as Steam on Linux. Packages must let callers read platform
+metadata without first throwing on an unsupported host. OS-specific build
+recipes may still use a conditional inside the package.
+[Nixpkgs platform predicate](https://github.com/NixOS/nixpkgs/blob/master/lib/meta.nix)
+
 ## Dependency injection and overlays
 
 List dependencies as function arguments and instantiate with `callPackage`. This exposes dependencies and preserves `.override` without importing Nixpkgs or a flake from inside a package. [nix.dev callPackage tutorial](https://nix.dev/tutorials/callpackage.html)

@@ -30,9 +30,9 @@ assert lib.assertMsg (unsupportedSpotxArgs == [ ]) ''
   spotify-spotx only accepts non-interactive, build-safe SpotX arguments.
   Unsupported arguments: ${lib.concatStringsSep ", " unsupportedSpotxArgs}
 '';
-if stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64 then
+# Select the build recipe here; each adapter declares its supported architectures
+# in meta.platforms. Keep metadata readable on unsupported hosts for discovery.
+if stdenv.hostPlatform.isDarwin then
   callPackage ./darwin.nix adapterArgs
-else if stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isx86_64 then
-  callPackage ./linux.nix adapterArgs
 else
-  throw "spotify-spotx does not support ${stdenv.hostPlatform.system}"
+  callPackage ./linux.nix adapterArgs

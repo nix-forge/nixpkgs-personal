@@ -16,6 +16,10 @@ contract checked by CI.
   package directories and manifests, with explicit manual update policies.
 - An inherited overlay `callPackage` could resolve through the final package
   scope. Direct and nested calls now use the supplied upstream scope.
+- The registry duplicated platform metadata in manual package groups.
+  Directory discovery is now automatic. Flake outputs and overlay names use
+  one metadata filter, and unsupported overrides leave upstream packages intact.
+  Spotify's adapter selection now permits reading metadata on unsupported hosts.
 - Firefox Emoji used the nonexistent `apache-20` license attribute. It now uses
   Nixpkgs' `asl20` identifier. The Twemoji wrapper now declares platforms and a
   description of its changed behavior.
@@ -30,6 +34,8 @@ contract checked by CI.
   now set `strictDeps`; the CEF helper uses an explicit local source set.
 - Bibata's final unqualified `wait` could hide worker failures. Every worker PID
   is now checked, including the final partial batch.
+- Package independence checks use the package Nixpkgs pin explicitly, even
+  when the development partition selects a different pin for its tools.
 - CI did not enforce package independence, omitted some package Python tests,
   and ran its dedicated Swift quality/sanitizer jobs for only OCR Capture.
   Those checks now cover the package collection and both native Swift utilities.
@@ -89,12 +95,17 @@ claim macOS builds or GUI tests were run from the Linux review host.
 
 - All 39 package directories pass the independence contract on their supported
   flake systems: 27 x86_64 Linux, 25 ARM64 Linux and 34 ARM64 macOS evaluations.
+- Platform metadata is readable for all 39 packages on all three flake systems.
+  Automatic discovery preserves all 86 public and 86 supported overlay
+  derivations from the manual registry. Upstream Linux Steam, LibreOffice and
+  Bitwarden remain unchanged when their personal overrides are unsupported.
 - Evaluation also passes with import-from-derivation disabled.
 - All 19 package updaters accept `--help` from isolated temporary copies.
 - Negative controls reject a personal dependency and an outside-directory import.
 - All 29 Python unit tests pass across four package suites.
 - Ruff, type checking, Nix static checks and the configured formatter checks pass.
-- Native x86_64 builds have completed for 25 outputs; final Noctalia and Mutant
-  Standard builds are being verified separately. Native
-macOS and ARM64 Linux builds run in the repository's CI matrix; this review runs
-on the `desktop` x86_64 Linux host. No system activation is part of this change.
+- All 27 native x86_64 Linux package outputs build successfully, including
+  Noctalia with its C++ policy test and Mutant Standard with its complete
+  encoding and shaping checks. Native macOS and ARM64 Linux builds run in the
+  repository's CI matrix; this review runs on the `desktop` x86_64 Linux host.
+  No system activation is part of this change.

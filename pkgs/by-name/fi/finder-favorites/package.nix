@@ -157,7 +157,7 @@ stdenv.mkDerivation {
 
   meta = {
     description = "Transactional declarative manager for macOS Finder Favorites";
-    homepage = "https://github.com/ianmh/nixpkgs-personal";
+    homepage = "https://github.com/nix-forge/nixpkgs-personal";
     license = lib.licenses.mit;
     mainProgram = "finder-favorites";
     platforms = [ "aarch64-darwin" ];
