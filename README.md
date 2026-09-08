@@ -34,6 +34,12 @@ provide a public binary cache.
 
 ## Development and updates
 
+The `pre-commit` flake check runs portable hooks inside the Nix sandbox. Xcode
+formatting, SourceKit linting and native Swift quality suites remain in local
+Git hooks and required macOS CI jobs. Their definitions are grouped in
+`flake/dev/git-hooks.nix`, so adding a host-dependent hook does not require a
+second exclusion list. Portable hooks use the same commands in both environments.
+
 Run `just check`, `just lint`, and `just update-packages`. Update scripts only
 change pinned source metadata and are checked by CI before automated merge. New
 packages follow the nixpkgs-style `pkgs/by-name/<prefix>/<name>` layout and must
