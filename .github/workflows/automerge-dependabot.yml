@@ -12,4 +12,4 @@ jobs:
     permissions:
       contents: write # Update trusted repository automation.
       pull-requests: write # Update pull request metadata.
-    uses: nix-forge/ci/.github/workflows/automerge.yml@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+    uses: nix-forge/ci/.github/workflows/automerge.yml@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
