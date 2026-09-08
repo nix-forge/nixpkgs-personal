@@ -40,6 +40,14 @@ Git hooks and required macOS CI jobs. Their definitions are grouped in
 `flake/dev/git-hooks.nix`, so adding a host-dependent hook does not require a
 second exclusion list. Portable hooks use the same commands in both environments.
 
+CI builds `lintChecks` once in the required Linux lint job. Native jobs discover
+`ciChecks`, which excludes that lint owner's inventory. The ordinary `checks`
+output retains all checks for local validation. New native checks enter CI by
+default; additions to the lint group run in its existing required job.
+
+The lint group is reserved for portable tooling. Platform-dependent tests belong
+in native checks or a required native job, so moving lint does not hide them.
+
 Run `just check`, `just lint`, and `just update-packages`. Update scripts only
 change pinned source metadata and are checked by CI before automated merge. New
 packages follow the nixpkgs-style `pkgs/by-name/<prefix>/<name>` layout and must

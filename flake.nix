@@ -42,7 +42,10 @@
       _module.args.packageNixpkgs = nixpkgs;
       _module.args.packageOverlay = personalOverlay;
 
-      imports = [ ./flake/partitions.nix ];
+      imports = [
+        ./flake/partitions.nix
+        ./flake/ci.nix
+      ];
 
       flake = {
         overlays.default = personalOverlay;
