@@ -9,6 +9,7 @@ concurrency:
 permissions: {}
 jobs:
   update:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     # Updaters inspect macOS release archives with native extraction tools.
     # Upstream executables are checked only by the read-only package build CI.
     runs-on: macos-26
@@ -22,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
+        uses: nix-forge/ci/actions/setup-nix@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
         with:
           cache: 'false'
           cache-scope: update-packages-update
@@ -34,7 +35,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: nix develop --command python scripts/update-packages.py --all --keep-going
-      - name: Create or update the auto-merge pull request
+      - name: Create or update the package pull request
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -46,6 +47,7 @@ jobs:
             exit 0
           fi
 
+          base_sha=$(git rev-parse HEAD)
           branch="automation/package-updates"
           git fetch origin "$branch" || true
           git switch --force-create "$branch"
@@ -65,16 +67,14 @@ jobs:
               --body "Automated package source updates.")
           fi
 
-          # Pull requests created with GITHUB_TOKEN require workflow approval.
-          # Explicit workflow_dispatch events are exempt and publish the same
-          # required checks against the generated update commit.
-          gh workflow run ci.yml --repo "$REPOSITORY" --ref "$branch"
+          # GITHUB_TOKEN does not trigger ordinary PR workflows. Explicit
+          # dispatches publish required checks against the update commit.
+          gh workflow run ci.yml --repo "$REPOSITORY" --ref "$branch" -f base_sha="$base_sha"
           gh workflow run codeql.yml --repo "$REPOSITORY" --ref "$branch"
           gh workflow run dependency-review.yml --repo "$REPOSITORY" --ref "$branch" \
             -f base_ref=main \
             -f head_ref="$branch"
 
-          # GitHub's merge queue handles branch deletion itself; gh rejects
-          # --delete-branch when the target branch uses a merge queue.
-          gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --squash
+          # Validation completion triggers the shared reconciler. It alone
+          # admits eligible updates, leaving automation changes for review.
     name: update

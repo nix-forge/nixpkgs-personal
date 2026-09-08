@@ -10,7 +10,7 @@ on:
 permissions: {}
 concurrency:
   group: codeql-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   analyze-python:
     name: Analyze (${{ matrix.language }})
@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
       security-events: write # Upload code scanning results.
-    uses: nix-forge/ci/.github/workflows/codeql.yml@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
+    uses: nix-forge/ci/.github/workflows/codeql.yml@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
     with:
       languages: ${{ matrix.language }}
   analyze:
@@ -40,7 +40,8 @@ jobs:
   analyze-swift:
     name: Analyze (swift)
     runs-on: macos-26
-    timeout-minutes: 30
+    # Successful instrumented Swift builds took 24-28 minutes in recent runs.
+    timeout-minutes: 45
     permissions:
       contents: read
       security-events: write # Upload code scanning results.
@@ -70,4 +71,4 @@ jobs:
       actions: write # Dispatch trusted queue validation.
     steps:
       - name: Notify trusted queue reconciler
-        uses: nix-forge/ci/actions/queue-completion@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
+        uses: nix-forge/ci/actions/queue-completion@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
