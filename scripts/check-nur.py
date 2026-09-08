@@ -146,6 +146,7 @@ def main() -> None:
     )
     platforms = json.loads(result.stdout)
     summary = {
+        "repository_revision": os.environ.get("GITHUB_SHA"),
         "nixpkgs_reference": reference,
         "nixpkgs_resolved_reference": resolved_reference,
         "nixpkgs_revision": metadata["locked"]["rev"],
