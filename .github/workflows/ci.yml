@@ -42,6 +42,8 @@ jobs:
           cache-scope: ci-lint
       - name: Test build selection and source fetch retries
         run: python3 -m unittest discover -s .github/tests
+      - name: Test safe release archive inspection
+        run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
       - name: Materialize partition source
         run: nix store add-path flake/dev
       - run: nix develop --command prek run --all-files
