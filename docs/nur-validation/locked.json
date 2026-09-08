@@ -1,0 +1,12 @@
+{
+  "nixpkgs_reference": "github:NixOS/nixpkgs/3ed67ec0a4d3c7ab4ae1f04f8ee8df07bfa506a2",
+  "nixpkgs_store_path": "/nix/store/c4ymw711a6r51sgvazgk9kvy1r6cxqhy-source",
+  "nur_revision": "6e73a28249bbd53525bc1a7b385fcf3413c4e056",
+  "indexed_packages": 13,
+  "supported_evaluations": {
+    "aarch64-darwin": 34,
+    "aarch64-linux": 25,
+    "x86_64-linux": 27
+  },
+  "builds_performed": false
+}

@@ -1,6 +1,6 @@
 # NUR assessment
 
-Reviewed 2026-09-07. This is a proposal, not a registration or a claim that NUR compatibility has been implemented. Primary-source inspection used NUR commit `1939820a52d6c797f0d64df036eaef18732193a7` and template commit `b885a769f27b0d6dfa815c4497c3694a7412904f`.
+Initial assessment: 2026-09-07. Implementation followed this assessment; see [NUR readiness](nur-readiness.md) for the current validation and publication status. NUR registration remains pending. Primary-source inspection used NUR commit `1939820a52d6c797f0d64df036eaef18732193a7` and template commit `b885a769f27b0d6dfa815c4497c3694a7412904f`.
 
 My recommendation is to add NUR as an optional distribution route after addressing the compatibility and metadata details below. Keep the direct flake as the primary development and consumption interface. This collection's personal variants, older fonts, and platform-specific applications are a reasonable fit for a user-maintained collection. NUR membership does not require turning them into dependencies of one another.
 
