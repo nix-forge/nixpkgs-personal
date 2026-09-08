@@ -145,8 +145,10 @@ def main() -> None:
         timeout=180,
     )
     platforms = json.loads(result.stdout)
+    counts = {system: len(packages) for system, packages in platforms.items()}
+    revision = os.environ.get("GITHUB_SHA")
     summary = {
-        "repository_revision": os.environ.get("GITHUB_SHA"),
+        "repository_revision": revision,
         "nixpkgs_reference": reference,
         "nixpkgs_resolved_reference": resolved_reference,
         "nixpkgs_revision": metadata["locked"]["rev"],
@@ -154,9 +156,7 @@ def main() -> None:
         "nixpkgs_store_path": str(nixpkgs),
         "nur_revision": NUR_REVISION,
         "indexed_packages": count,
-        "supported_evaluations": {
-            system: len(packages) for system, packages in platforms.items()
-        },
+        "supported_evaluations": counts,
         "builds_performed": False,
     }
     (args.output / "platforms.json").write_text(json.dumps(platforms, indent=2) + "\n")
@@ -165,9 +165,31 @@ def main() -> None:
     if "GITHUB_STEP_SUMMARY" in os.environ:
         with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as output:
             output.write(
-                "### NUR compatibility\n\n```json\n"
-                + json.dumps(summary, indent=2)
-                + "\n```\n"
+                "### NUR compatibility\n\n"
+                f"{sum(counts.values())} package/platform evaluations passed "
+                f"against {args.nixpkgs} Nixpkgs.\n\n"
+                "| System | Evaluations |\n| --- | ---: |\n"
+            )
+            for system, evaluated in counts.items():
+                output.write(f"| `{system}` | {evaluated} |\n")
+            output.write(f"| Total | {sum(counts.values())} |\n\n")
+            source = metadata["locked"]
+            output.write(
+                f"Restricted index entries: {count}.\n\n"
+                f"Nixpkgs: [`{source['rev'][:12]}`]"
+                f"(https://github.com/{source['owner']}/{source['repo']}/commit/{source['rev']}). "
+                f"NUR evaluator: [`{NUR_REVISION[:12]}`]"
+                f"(https://github.com/nix-community/NUR/commit/{NUR_REVISION}).\n\n"
+            )
+            repository = os.environ.get("GITHUB_REPOSITORY")
+            if repository and revision:
+                output.write(
+                    f"Evaluated checkout: [`{revision[:12]}`]"
+                    f"(https://github.com/{repository}/tree/{revision}).\n\n"
+                )
+            output.write(
+                "Full source hashes and package details are in `summary.json` "
+                "and `platforms.json`. Native package builds are separate checks.\n"
             )
 
 
