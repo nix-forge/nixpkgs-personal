@@ -134,7 +134,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [oc/ocr-capture, fi/finder-favorites]
+        include:
+          - package: oc/ocr-capture
+            shell: swift-quality
+          - package: fi/finder-favorites
+            shell: finder-favorites-quality
     permissions:
       contents: read
     steps:
@@ -153,7 +157,8 @@ jobs:
           OCR_CAPTURE_RUN_SANITIZERS: "0"
           FINDER_FAVORITES_RUN_SANITIZERS: "0"
           PACKAGE: ${{ matrix.package }}
-        run: nix develop --command "pkgs/by-name/$PACKAGE/Scripts/check-quality.sh"
+          QUALITY_SHELL: ${{ matrix.shell }}
+        run: nix develop ".#$QUALITY_SHELL" --command "pkgs/by-name/$PACKAGE/Scripts/check-quality.sh"
       - name: Xcode Swift 6 formatter compatibility
         env:
           PACKAGE: ${{ matrix.package }}

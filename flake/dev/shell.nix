@@ -72,6 +72,9 @@
             pkgs.swiftlint
           ];
         };
+        finder-favorites-quality = pkgs.mkShellNoCC {
+          packages = config.pre-commit.settings.hooks.finder-favorites-quality.extraPackages;
+        };
       };
     };
 }
