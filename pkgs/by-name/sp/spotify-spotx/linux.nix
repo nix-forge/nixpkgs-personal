@@ -20,6 +20,7 @@ assert lib.assertMsg (lib.versionAtLeast source.version spotify.version) ''
   Update spotify-spotx before updating Spotify.
 '';
 spotify.overrideAttrs (old: {
+  strictDeps = true;
   pname = "spotify-spotx";
 
   nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
@@ -62,7 +63,10 @@ spotify.overrideAttrs (old: {
     spotxVersion = source.version;
     spotifyVersion = spotify.version;
     unpatchedSpotify = spotify;
-    updateScript = [ ./update.py ];
+    updateScript = [
+      "python3"
+      "pkgs/by-name/sp/spotify-spotx/update.py"
+    ];
   };
 
   meta = (old.meta or { }) // {

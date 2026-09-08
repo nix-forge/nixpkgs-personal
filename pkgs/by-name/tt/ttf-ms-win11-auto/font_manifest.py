@@ -3,12 +3,9 @@
 import argparse
 import json
 import subprocess
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ap/apple-fonts"))
-# The CLI adds the sibling apple-fonts directory to sys.path at runtime.
-from font_support import inventory  # ty: ignore[unresolved-import]
+from font_support import inventory
 
 
 def extract(iso: Path, work: Path) -> Path:

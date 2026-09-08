@@ -20,10 +20,10 @@ let
     derivationArgs.allowSubstitutes = false;
   };
   inspector = lib.fileset.toSource {
-    root = ../..;
+    root = ./.;
     fileset = lib.fileset.unions [
       ./font_manifest.py
-      ../../ap/apple-fonts/font_support.py
+      ./font_support.py
     ];
   };
 in
@@ -38,13 +38,15 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     fontconfig
   ];
   dontUnpack = true;
+  dontConfigure = true;
+  dontBuild = true;
   strictDeps = true;
 
   installPhase = ''
     runHook preInstall
 
     export XDG_CACHE_HOME="$TMPDIR/font-cache"
-    export FONTCONFIG_FILE=${../../ap/apple-fonts/fonts.conf}
+    export FONTCONFIG_FILE=${./fonts.conf}
     workdir="$TMPDIR/font-extraction"
     isodir="$workdir/iso"
     extracteddir="$workdir/extracted"
@@ -71,7 +73,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       exit 1
     fi
 
-    python3 ${inspector}/tt/ttf-ms-win11-auto/font_manifest.py "$extracteddir" ${./manifest.json}
+    python3 ${inspector}/font_manifest.py "$extracteddir" ${./manifest.json}
 
     install -d "$out/share/fonts/truetype"
     for fontPath in "''${fontPaths[@]}"; do
@@ -82,7 +84,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     install -d "$out/share/licenses/${finalAttrs.pname}"
     install -m444 "$extracteddir/license.rtf" "$out/share/licenses/${finalAttrs.pname}/license.rtf"
 
-    python3 ${inspector}/tt/ttf-ms-win11-auto/font_manifest.py "$out/share/fonts/truetype" ${./manifest.json}
+    python3 ${inspector}/font_manifest.py "$out/share/fonts/truetype" ${./manifest.json}
     install -Dm444 ${./manifest.json} "$out/share/doc/${finalAttrs.pname}/manifest.json"
     install -Dm444 ${./README.md} "$out/share/doc/${finalAttrs.pname}/README.md"
     rm -rf "$workdir"

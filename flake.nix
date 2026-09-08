@@ -15,10 +15,32 @@
         "aarch64-linux"
         "aarch64-darwin"
       ];
-      personalOverlay = _final: prev: import ./pkgs { pkgs = prev; };
+      packagesFor =
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+          };
+        in
+        pkgs.lib.filterAttrs (_: package: pkgs.lib.meta.availableOn pkgs.stdenv.hostPlatform package) (
+          import ./pkgs { inherit pkgs; }
+        );
+      # Discover supported names outside the overlay fixed point. Filtering the
+      # prev-based package values would force dependencies before the set exists.
+      # Unsupported overrides must leave upstream packages (e.g. Linux Steam) intact.
+      personalOverlay =
+        _final: prev:
+        builtins.intersectAttrs (packagesFor prev.stdenv.hostPlatform.system) (
+          import ./pkgs { pkgs = prev; }
+        );
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = supportedSystems;
+      # Development partitions may replace inputs.nixpkgs for tooling. Package
+      # contracts must use the same pin as the public package outputs.
+      _module.args.packageNixpkgs = nixpkgs;
+      _module.args.packageOverlay = personalOverlay;
 
       imports = [ ./flake/partitions.nix ];
 
@@ -39,11 +61,7 @@
       perSystem =
         { pkgs, system, ... }:
         let
-          packagePkgs = import nixpkgs {
-            inherit system;
-            config.allowUnfree = true;
-          };
-          packages = import ./pkgs { pkgs = packagePkgs; };
+          packages = packagesFor system;
           update = pkgs.replaceVarsWith {
             name = "update-packages";
             src = ./scripts/update-packages.sh;

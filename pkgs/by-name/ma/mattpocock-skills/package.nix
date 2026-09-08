@@ -57,7 +57,10 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
     runHook postInstallCheck
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/ma/mattpocock-skills/update.py"
+  ];
 
   meta = {
     description = "Matt Pocock's Agent Skills catalog";

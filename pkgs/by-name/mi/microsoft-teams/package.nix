@@ -24,6 +24,8 @@ stdenvNoCC.mkDerivation {
   ];
 
   strictDeps = true;
+  # Preserve the vendor signature on the prebuilt application bundle.
+  dontFixup = true;
 
   unpackPhase = ''
     runHook preUnpack
@@ -47,7 +49,19 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s "$out/Applications/Microsoft Teams.app/Contents/Info.plist"
+    test -x "$out/Applications/Microsoft Teams.app/Contents/MacOS/MSTeams"
+    test -x "$out/bin/teams"
+    runHook postInstallCheck
+  '';
+
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/mi/microsoft-teams/update.py"
+  ];
 
   meta = {
     description = "Microsoft Teams";

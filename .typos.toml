@@ -6,3 +6,6 @@ Seeked = "Seeked"
 Produkt = "Produkt" # Apple-distributed font family and its PostScript identifiers.
 constan = "constan" # Upstream Microsoft font filename, constan.ttf.
 wdth = "wdth"       # Registered OpenType width-axis tag in upstream font filenames.
+
+[default.extend-identifiers]
+Seeked = "Seeked" # MPRIS signal name; preserve its protocol spelling.

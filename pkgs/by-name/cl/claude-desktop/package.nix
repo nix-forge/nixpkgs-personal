@@ -18,6 +18,10 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [ unzip ];
   sourceRoot = ".";
   strictDeps = true;
+  # Preserve the vendor signature on the prebuilt application bundle.
+  dontFixup = true;
+  dontBuild = true;
+  dontConfigure = true;
 
   installPhase = ''
     runHook preInstall
@@ -29,7 +33,19 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s "$out/Applications/Claude.app/Contents/Info.plist"
+    test -x "$out/Applications/Claude.app/Contents/MacOS/Claude"
+    test -x "$out/bin/claude-desktop"
+    runHook postInstallCheck
+  '';
+
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/cl/claude-desktop/update.py"
+  ];
 
   meta = {
     description = "Anthropic's official Claude AI desktop app";

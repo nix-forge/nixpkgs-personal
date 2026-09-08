@@ -46,7 +46,18 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s "$out/Applications/LinearMouse.app/Contents/Info.plist"
+    test -x "$out/Applications/LinearMouse.app/Contents/MacOS/LinearMouse"
+    runHook postInstallCheck
+  '';
+
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/li/linearmouse/update.py"
+  ];
 
   meta = {
     description = "Customizable mouse and trackpad utility for macOS";

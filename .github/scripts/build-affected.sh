@@ -10,8 +10,8 @@ else
   echo '::notice::Base history unavailable; rebuilding all current packages.'
 fi
 
-all_packages=$(nix eval --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
-if [[ $base_available == false ]] || grep -qE '^(flake\.nix|flake\.lock|pkgs/default\.nix)$' <<<"$changed_files"; then
+all_packages=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
+if [[ $base_available == false ]] || grep -qE '^((flake\.nix|flake\.lock|pkgs/default\.nix)$|flake/|tests/|\.github/(scripts|tests|workflows)/)' <<<"$changed_files"; then
   targets="$all_packages"
 elif grep -q '^pkgs/by-name/' <<<"$changed_files"; then
   targets=$(sed -nE 's#^pkgs/by-name/[^/]+/([^/]+)/.*#\1#p' <<<"$changed_files" | sort -u)
@@ -47,7 +47,7 @@ while IFS= read -r package; do
     echo "$package: unchanged derivation; no rebuild needed."
   else
     bash .github/scripts/build-with-fetch-retry.sh \
-      nix build ".#$package" --keep-going --show-trace --print-build-logs
+      nix build ".#$package" --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
   fi
   # Additional contracts run even when the package output is unchanged.
   if [[ $package == openai-codex-desktop ]]; then

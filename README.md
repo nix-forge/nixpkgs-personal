@@ -18,10 +18,14 @@ inputs.nixpkgs-personal = {
 Packages are available as `inputs.nixpkgs-personal.packages.${system}`. To add
 them to `pkgs`, use `inputs.nixpkgs-personal.overlays.default`.
 
-| Platform                        | Supported outputs                 |
-| ------------------------------- | --------------------------------- |
-| `x86_64-linux`, `aarch64-linux` | ChatGPT/Codex Desktop, agent skills, cursors, and Windows 11 fonts |
-| `aarch64-darwin`                | All packages                      |
+| Platform | Package coverage |
+| --- | --- |
+| `x86_64-linux` | Fonts, skills, Linux desktop packages, cursors, Spotify and CEF helper |
+| `aarch64-linux` | Fonts, skills, Codex Desktop, Noctalia and cursors |
+| `aarch64-darwin` | Fonts, skills and macOS applications |
+
+Use `nix eval --json .#packages --apply 'builtins.mapAttrs (_: builtins.attrNames)'`
+for the exact platform inventory. Linux-only packages are not exported on macOS.
 
 `x86_64-darwin` is intentionally unsupported because nixpkgs unstable has
 dropped that platform. Several packages are proprietary or subject to upstream
@@ -36,10 +40,23 @@ packages follow the nixpkgs-style `pkgs/by-name/<prefix>/<name>` layout and must
 declare accurate metadata, platform support, tests where feasible, and an
 updater when upstream can be safely discovered.
 
-The WireGuard roaming controller runs rustfmt, Rust compiler checks, strict
-Clippy, tests, rustdoc, cargo-machete, and cargo-deny during its Nix build. The
-development shell supplies the same Rust tools. CI also checks current RustSec
-advisories and scans the Rust source with CodeQL.
+All 39 public packages have their own directory and can be instantiated with
+upstream Nixpkgs using `pkgs.callPackage ./package.nix { }`. Package build files,
+helpers, tests, and updaters stay within that directory. Upstream Nixpkgs
+libraries and tools remain normal dependencies.
+
+The overlay resolves direct and nested `callPackage` arguments against its
+incoming upstream scope. It does not inject this collection's outputs into
+another personal package. Explicit `.override` remains available.
+
+Run `just test` for package independence and Python tests. CI also evaluates all
+three systems and builds affected packages on matching runners. The independence
+check copies each package directory into the store and rejects dependencies on
+any public personal package. Updater import checks run outside the checkout.
+
+See the [package standard](docs/package-standard.md),
+[research and language decisions](docs/package-design-research.md), and
+[package audit](docs/package-audit.md).
 
 ## Dark application icons
 
@@ -106,11 +123,12 @@ nix build .#mutant-standard-emoji
 
 `apple-fonts` provides a pinned selection of macOS Font8 catalog assets.
 The separate `apple-color-emoji` package provides a versioned, SHA-256-pinned
-Linux conversion with the same verified manifest installer. It is an optional
+Linux conversion with its own source verification and installer. It is an optional
 family and installs no Fontconfig overrides. See its
 [source and compatibility notes](pkgs/by-name/ap/apple-color-emoji/README.md).
 Individual assets are available through `apple-fonts.assets`. Eight separate
 `apple-sf-*` and `apple-new-york` packages provide Apple's developer fonts.
+The developer fonts each have an independent package directory and source manifest.
 These packages are unfree and opt-in; they do not change font defaults.
 
 The package includes a catalog/DMG updater, verified payload inventories, and

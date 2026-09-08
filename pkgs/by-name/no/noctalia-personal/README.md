@@ -46,7 +46,12 @@ explicit paths, opt-out behavior, and safe fallback for non-symbolic artwork.
 When updating `source.nix`, review the three widget integrations and check
 palette changes, focus changes and status icons in a running Wayland session.
 
-The local `upstream-package.nix` retains the build recipe from the pinned
-upstream revision, with source and version passed as arguments. This avoids
-importing a build output during flake evaluation on fresh CI runners. Update
-the recipe alongside the source pin; the build verifies the Meson version.
+## Build expression
+
+`upstream.nix` records upstream's package expression at the revision in
+`source.nix`, with source and version supplied as arguments. Evaluation does
+not need to fetch upstream files to discover the build definition. Review
+this expression alongside source updates. The local override places the linked
+`jemalloc` library in target inputs so strict dependency checking works.
+
+The build verifies that the Meson version matches the pinned package version.

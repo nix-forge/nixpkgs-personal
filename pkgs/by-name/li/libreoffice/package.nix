@@ -17,6 +17,10 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [ undmg ];
   sourceRoot = appName;
   strictDeps = true;
+  # Preserve the vendor signature on the prebuilt application bundle.
+  dontFixup = true;
+  dontBuild = true;
+  dontConfigure = true;
 
   installPhase = ''
     runHook preInstall
@@ -29,7 +33,19 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s "$out/Applications/LibreOffice.app/Contents/Info.plist"
+    test -x "$out/Applications/LibreOffice.app/Contents/MacOS/soffice"
+    test -x "$out/bin/libreoffice"
+    runHook postInstallCheck
+  '';
+
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/li/libreoffice/update.py"
+  ];
 
   meta = {
     description = "Comprehensive, professional-quality productivity suite";

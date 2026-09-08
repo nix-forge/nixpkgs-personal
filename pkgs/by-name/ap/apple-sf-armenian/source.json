@@ -1,0 +1,39 @@
+{
+  "name": "apple-sf-armenian",
+  "kind": "dmg",
+  "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Armenian.dmg",
+  "hash": "sha256-/9cVrpPXwhW+P0NLhGJBhHebtQsrs9Zrj9QogMZfra0=",
+  "files": [
+    {
+      "path": "payload-0/Library/Fonts/SF-Armenian-Rounded.ttf",
+      "sha256": "de9320ef82456245c2389f707c281346b690e3bdee99bdafca1a9ab24b6f8109",
+      "faces": [
+        "SFArmenianRounded-Black",
+        "SFArmenianRounded-Bold",
+        "SFArmenianRounded-Heavy",
+        "SFArmenianRounded-Light",
+        "SFArmenianRounded-Medium",
+        "SFArmenianRounded-Regular",
+        "SFArmenianRounded-Semibold",
+        "SFArmenianRounded-Thin",
+        "SFArmenianRounded-Ultralight"
+      ]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Armenian.ttf",
+      "sha256": "1009cae526f9896136ec35bb3a1ad529c85af67fb8af26b5c797ff8190886d15",
+      "faces": [
+        "SFArmenian-Black",
+        "SFArmenian-Bold",
+        "SFArmenian-Heavy",
+        "SFArmenian-Light",
+        "SFArmenian-Medium",
+        "SFArmenian-Regular",
+        "SFArmenian-Semibold",
+        "SFArmenian-Thin",
+        "SFArmenian-Ultralight"
+      ]
+    }
+  ],
+  "version": "6.0.1.1726709071"
+}

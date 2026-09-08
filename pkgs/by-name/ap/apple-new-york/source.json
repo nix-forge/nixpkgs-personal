@@ -1,0 +1,273 @@
+{
+  "name": "apple-new-york",
+  "kind": "dmg",
+  "url": "https://devimages-cdn.apple.com/design/resources/download/NY.dmg",
+  "hash": "sha256-HC7ttFJswPMm+Lfql49aQzdWR2osjFYHJTdgjtuI+PQ=",
+  "files": [
+    {
+      "path": "payload-0/Library/Fonts/NewYork.ttf",
+      "sha256": "436cd9d9a9e7bf27b2240ed13f804725654ee5de1d5d936cad68eaa013c49744",
+      "faces": [
+        "NewYork-Black",
+        "NewYork-Bold",
+        "NewYork-Heavy",
+        "NewYork-Medium",
+        "NewYork-Regular",
+        "NewYork-Semibold"
+      ]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-Black.otf",
+      "sha256": "8d682e8492c05e08e674422d94294449b8ae487ef2d3fa7d36ce397976fa0c78",
+      "faces": ["NewYorkExtraLarge-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-BlackItalic.otf",
+      "sha256": "df3dbceaefdca3fb1188d40802d02c72987e888395f892bd393ce94f3fe52554",
+      "faces": ["NewYorkExtraLarge-BlackItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-Bold.otf",
+      "sha256": "3cc2a4c2db2acffe72603e212ac1ff3594e57d6a7c1c6973393c7d7bc420c33d",
+      "faces": ["NewYorkExtraLarge-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-BoldItalic.otf",
+      "sha256": "518373e5ec2a1dd728c5fc41021d74daf5409cfad61f87b78049b5c08e844048",
+      "faces": ["NewYorkExtraLarge-BoldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-Heavy.otf",
+      "sha256": "927f182cd3d14fe27c359808a76e418ad54d05166a46bae7348421cf4aba71e8",
+      "faces": ["NewYorkExtraLarge-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-HeavyItalic.otf",
+      "sha256": "90e51af822321872f29268f84a5750ae7e7b4ee1b20eeb477d388effb7da4623",
+      "faces": ["NewYorkExtraLarge-HeavyItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-Medium.otf",
+      "sha256": "712a8c084d713287885ccd77fbe2f1c3cb7ee5b2a4aec91e5a4ec1acd4bea04c",
+      "faces": ["NewYorkExtraLarge-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-MediumItalic.otf",
+      "sha256": "c1fce9875d0f848e2f0852fd534b99824db74056249e5be5fc80c5486257d27a",
+      "faces": ["NewYorkExtraLarge-MediumItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-Regular.otf",
+      "sha256": "94a213d39f6c52e282352a2b70fffefd7bc893bbde31d41d886f07cbe2fa62d7",
+      "faces": ["NewYorkExtraLarge-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-RegularItalic.otf",
+      "sha256": "dc66fb94736f5734f87fb9cadc73f8dc3e7f71bfeea787480422856b19a19c67",
+      "faces": ["NewYorkExtraLarge-RegularItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-Semibold.otf",
+      "sha256": "fb1f92e38fbc367265f1b377b28b601d9e9398e562b7f32c8d08a226845978ca",
+      "faces": ["NewYorkExtraLarge-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkExtraLarge-SemiboldItalic.otf",
+      "sha256": "d64f56706a0d97d0ee5fdd32317b45229e5cbfdb046f2d19d8499e614a028c8b",
+      "faces": ["NewYorkExtraLarge-SemiboldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkItalic.ttf",
+      "sha256": "adc356b12b9fd90480ec46f12eaf09d460596ca3d33342c32749f1a6c0a164fa",
+      "faces": [
+        "NewYork-BlackItalic",
+        "NewYork-BoldItalic",
+        "NewYork-HeavyItalic",
+        "NewYork-MediumItalic",
+        "NewYork-RegularItalic",
+        "NewYork-SemiboldItalic"
+      ]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-Black.otf",
+      "sha256": "08495521668617272c525a102cf19b561a4c8347836309644a38e99cb421ea09",
+      "faces": ["NewYorkLarge-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-BlackItalic.otf",
+      "sha256": "7123c5ae22210bc407db5002a91727efb29b69ed6542d1f8effb9576541e500b",
+      "faces": ["NewYorkLarge-BlackItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-Bold.otf",
+      "sha256": "b51ff4c9ebee45a6aaf062c1929eeda54a6bb2935f6c960bb9838b90047442b8",
+      "faces": ["NewYorkLarge-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-BoldItalic.otf",
+      "sha256": "dffe0e87ba78ed6fdce21d34b20ddda5c2b5b8ae03af408cf630644eaeedc9be",
+      "faces": ["NewYorkLarge-BoldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-Heavy.otf",
+      "sha256": "6def51c576cd04c2c02c386ab84220baf6189f6c7102613d0a2ab22b4b4020b6",
+      "faces": ["NewYorkLarge-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-HeavyItalic.otf",
+      "sha256": "ede8f5c94d3bb47a9b2832e146f5ed37b169643a9bdf866d74d7f2f480147aa4",
+      "faces": ["NewYorkLarge-HeavyItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-Medium.otf",
+      "sha256": "b340328ac4e4fca6129c181036b1d099aeb2a001edaf64776f4b644fd3488c83",
+      "faces": ["NewYorkLarge-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-MediumItalic.otf",
+      "sha256": "3c7f7c8721147408c3bd3e25e2c5a6e3500279a1b7a27f7ba51358e63d93379b",
+      "faces": ["NewYorkLarge-MediumItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-Regular.otf",
+      "sha256": "c11f6880ef65d1a0cea134fabc988a370b6fe2f1efbc76b006b77f5c06fcc482",
+      "faces": ["NewYorkLarge-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-RegularItalic.otf",
+      "sha256": "5635861f0ec5191443b60f57bf1cdc0d14b58dbb117e253d4f5c06001b7bbe61",
+      "faces": ["NewYorkLarge-RegularItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-Semibold.otf",
+      "sha256": "7ade728bbf495d07b0aad8abdbf2500d2e1c24257a11fa00b208c15e54f433f0",
+      "faces": ["NewYorkLarge-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkLarge-SemiboldItalic.otf",
+      "sha256": "00255154fe89c80870265fa64ac752958cb0be8a6cf48587e445bbd1fd64dac7",
+      "faces": ["NewYorkLarge-SemiboldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-Black.otf",
+      "sha256": "8a8c7c241adfa380902b508bca752d77499949df0e6b548c005e96792b956178",
+      "faces": ["NewYorkMedium-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-BlackItalic.otf",
+      "sha256": "f6bb6d9b8e9295c07b5937903d994cc2ecdc3cc25a433812475c427b430c78dc",
+      "faces": ["NewYorkMedium-BlackItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-Bold.otf",
+      "sha256": "b22d5e1db216df365b51d41b52dbf00255e3f289aadcce537ea5afb3248a0801",
+      "faces": ["NewYorkMedium-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-BoldItalic.otf",
+      "sha256": "94777aced5cb76e1f035f83bb557e5279bf6f19375e189d3f810f56daf9095cf",
+      "faces": ["NewYorkMedium-BoldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-Heavy.otf",
+      "sha256": "178ae07e7dbe3a23748be77408ea3d1bd3bc95d6bcc6d721b1b4b38c709dc3ac",
+      "faces": ["NewYorkMedium-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-HeavyItalic.otf",
+      "sha256": "041ba8f4d6d1a6ecadef73e93ad31d51871ec2076bf78febf1c4821068f25672",
+      "faces": ["NewYorkMedium-HeavyItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-Medium.otf",
+      "sha256": "f737e61b92cc93888ac0e17e4a66d96a812654929c605bf40b4d2281d6598bdc",
+      "faces": ["NewYorkMedium-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-MediumItalic.otf",
+      "sha256": "260f19654aff7963e498425b83a4312bf764294214a20f4b1e0feb4c1513f486",
+      "faces": ["NewYorkMedium-MediumItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-Regular.otf",
+      "sha256": "584c56c59ff719c54a58003a5f10e9ba7e181654ce2596788e97e234fc3f8c0f",
+      "faces": ["NewYorkMedium-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-RegularItalic.otf",
+      "sha256": "bdcce084bc56f263695a67b4d3147d9836f1e72710debeac18492333267a0a96",
+      "faces": ["NewYorkMedium-RegularItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-Semibold.otf",
+      "sha256": "e2cd539c1a5c5c1b9cd2b1cda85bd8fe23dfeab59cd2bc50e09544a42a5a772e",
+      "faces": ["NewYorkMedium-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkMedium-SemiboldItalic.otf",
+      "sha256": "7d733a1f27465447fd0a6cc6c063ecdd697a97ddfd807dd5c9b8ce401a083a00",
+      "faces": ["NewYorkMedium-SemiboldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-Black.otf",
+      "sha256": "f30f50f7729e3660cf203f895a37a75782f4093032ecdac1c1c2da59ee818c59",
+      "faces": ["NewYorkSmall-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-BlackItalic.otf",
+      "sha256": "93213336de386ab395bffeae67e1e2b951774f4cf8d8bf36de84981e3a6d838f",
+      "faces": ["NewYorkSmall-BlackItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-Bold.otf",
+      "sha256": "54b6d77f5182e855ff79cb8630224af491dd60c0d4de5e853f8e19c2668a8d03",
+      "faces": ["NewYorkSmall-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-BoldItalic.otf",
+      "sha256": "ddf0aab7fd78a77a56332e52bce16c8f006f10bb0d0068ce4b6828e21369cbdc",
+      "faces": ["NewYorkSmall-BoldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-Heavy.otf",
+      "sha256": "4cf42c90d3921a65c2b2c0376764c0a75113eb75837de8f84e39997023909d36",
+      "faces": ["NewYorkSmall-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-HeavyItalic.otf",
+      "sha256": "4fec804ae9a0350546fdaeee576b9805322d748fa230371b6f89a494b730a53d",
+      "faces": ["NewYorkSmall-HeavyItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-Medium.otf",
+      "sha256": "d672d4640ff41f93880f350c8628cab37cb66f61ea3c6599cd728aed4a21d57b",
+      "faces": ["NewYorkSmall-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-MediumItalic.otf",
+      "sha256": "f05c22a56b5193d41d3263fd02398422131ea31a395142098237e9dd7e24cff8",
+      "faces": ["NewYorkSmall-MediumItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-Regular.otf",
+      "sha256": "a9b79c2ad2d28ba44ac82a179b8c6d544e28bb9489361c1eaf70f5b5dc4e6ea5",
+      "faces": ["NewYorkSmall-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-RegularItalic.otf",
+      "sha256": "ae020b3180c45a6161365fdf7daf4ea6aaf0e5b06a1abc46453b0fc891337746",
+      "faces": ["NewYorkSmall-RegularItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-Semibold.otf",
+      "sha256": "0e14197f3d2dcfdc07639bab3db6afd6ebc4b103e468157b75917dc700eab1f9",
+      "faces": ["NewYorkSmall-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/NewYorkSmall-SemiboldItalic.otf",
+      "sha256": "29a59238509a2a0e659fd913930f5e276fa7d7a66468bc2db0edf5aa12abbfc2",
+      "faces": ["NewYorkSmall-SemiboldItalic"]
+    }
+  ],
+  "version": "6.0.1.1726709071"
+}

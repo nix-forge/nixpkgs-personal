@@ -55,7 +55,10 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
     runHook postInstallCheck
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/an/anthropic-skills/update.py"
+  ];
 
   meta = {
     description = "Anthropic Agent Skills catalog";

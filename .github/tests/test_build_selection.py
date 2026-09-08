@@ -64,6 +64,10 @@ class BuildSelectionTests(unittest.TestCase):
         cases = [
             "metadata",
             "runtime-change",
+            "registry-change",
+            "infrastructure-script",
+            "infrastructure-test",
+            "infrastructure-workflow",
             "new-package",
             "base-eval-failure",
             "no-base",
@@ -100,6 +104,15 @@ class BuildSelectionTests(unittest.TestCase):
                     empty=case == "new-package",
                     invalid=case == "base-eval-failure",
                 )
+                if case == "registry-change":
+                    registry = root / "flake/dev/packages.nix"
+                    package(registry, "other")
+                    entry = root / "flake.nix"
+                    entry.write_text(
+                        entry.read_text().replace(
+                            "./other.nix", "./flake/dev/packages.nix"
+                        )
+                    )
                 base = commit(root)
                 package(
                     source,
@@ -108,6 +121,22 @@ class BuildSelectionTests(unittest.TestCase):
                     description="after",
                 )
                 flake(root, name, invalid=case == "current-eval-failure")
+                if case == "registry-change":
+                    package(registry, "other", version="2")
+                    entry.write_text(
+                        entry.read_text().replace(
+                            "./other.nix", "./flake/dev/packages.nix"
+                        )
+                    )
+                infrastructure = {
+                    "infrastructure-script": ".github/scripts/fixture.sh",
+                    "infrastructure-test": ".github/tests/test_fixture.py",
+                    "infrastructure-workflow": ".github/workflows/fixture.yml",
+                }
+                if case in infrastructure:
+                    changed = root / infrastructure[case]
+                    changed.parent.mkdir(parents=True, exist_ok=True)
+                    changed.write_text("# Check infrastructure changed\n")
                 commit(root)
                 bindir = temp / "bin"
                 bindir.mkdir()
@@ -170,6 +199,13 @@ exec "$REAL_GIT" "$@"
                 if case == "metadata":
                     self.assertEqual(builds, [])
                     self.assertIn("unchanged derivation", result.stdout)
+                elif case.startswith("infrastructure-"):
+                    self.assertEqual(builds, [])
+                    self.assertIn("demo: unchanged derivation", result.stdout)
+                    self.assertIn("other: unchanged derivation", result.stdout)
+                elif case == "registry-change":
+                    self.assertEqual(len(builds), 1, builds)
+                    self.assertIn(".#other", builds[0])
                 elif case == "unchanged-contracts":
                     self.assertEqual(len(builds), 1, builds)
                     self.assertIn(

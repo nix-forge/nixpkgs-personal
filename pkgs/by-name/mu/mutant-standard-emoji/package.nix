@@ -37,6 +37,7 @@ let
       hash = source.artworkHash;
     };
 
+    strictDeps = true;
     nativeBuildInputs = [ python ];
     unpackPhase = ''
       runHook preUnpack
@@ -76,7 +77,6 @@ let
     installCheckPhase = checkFont "emoji";
 
     meta = {
-
       sourceProvenance = [ lib.sourceTypes.fromSource ];
       description = "Mutant Standard emoji artwork compiled as a scalable COLRv1 font";
       homepage = "https://mutant.tech";
@@ -87,6 +87,7 @@ let
 in
 stdenvNoCC.mkDerivation {
   inherit (compiledFont) pname version meta;
+  strictDeps = true;
   nativeBuildInputs = [ python ];
   dontUnpack = true;
   dontConfigure = true;

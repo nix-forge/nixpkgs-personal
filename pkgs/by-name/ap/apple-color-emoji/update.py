@@ -6,18 +6,13 @@ import base64
 import hashlib
 import json
 import re
-import sys
 import tempfile
 from pathlib import Path
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
-from scripts.update_support import HTTPS_CONTEXT
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apple-fonts"))
-# The CLI adds the sibling apple-fonts directory to sys.path at runtime.
-from font_support import faces  # ty: ignore[unresolved-import]
+from font_support import faces
+from update_support import HTTPS_CONTEXT
 
 API = "https://api.github.com/repos/samuelngs/apple-emoji-ttf"
 

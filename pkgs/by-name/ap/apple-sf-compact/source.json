@@ -1,0 +1,219 @@
+{
+  "name": "apple-sf-compact",
+  "kind": "dmg",
+  "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Compact.dmg",
+  "hash": "sha256-LIkAOWe+WaaGeqXeEgZjUtmmtEt4XPK5/4jvDXf/KPw=",
+  "files": [
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Black.otf",
+      "sha256": "1fd5ade36dbfed44e49d38068b6a506c25b4c920da5d372f3c7a0e879fc31201",
+      "faces": ["SFCompactDisplay-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Bold.otf",
+      "sha256": "fd702e81baf998869f0cbff345d646ac8d0e6def914a4bdf6a33ece1a5de5f99",
+      "faces": ["SFCompactDisplay-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Heavy.otf",
+      "sha256": "996bf014ef12ca2ec450968f60c2ff4c9710ed2300608e519191bf1a9672308b",
+      "faces": ["SFCompactDisplay-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Light.otf",
+      "sha256": "6ff1f7ba5f5eea624e19d6817094a31da9170de1ac49c4e8746acd9c28c00575",
+      "faces": ["SFCompactDisplay-Light"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Medium.otf",
+      "sha256": "5d20ec7fa29a1834d5c26a730a2bab5443394ebb8307a54e41e19e629559148d",
+      "faces": ["SFCompactDisplay-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Regular.otf",
+      "sha256": "e468fcc23b0907c76d92b27ff9311dd47660c46ac18f44708817f585f42facb7",
+      "faces": ["SFCompactDisplay-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Semibold.otf",
+      "sha256": "cc5d2b07fb920ea9e01cbb056d89d69b7708bcd86f5019f8a547b8a09602de29",
+      "faces": ["SFCompactDisplay-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Thin.otf",
+      "sha256": "7e4e51ccbc787e29e7014e7b2be314bb7d066ec49b53891d1da7b342ea2727a3",
+      "faces": ["SFCompactDisplay-Thin"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Display-Ultralight.otf",
+      "sha256": "c1e4e86ac48c39d6b6789856d5ea8f982ad89ea408d2f6769be41e2c018888af",
+      "faces": ["SFCompactDisplay-Ultralight"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Italic.ttf",
+      "sha256": "69d44b6b4590de02b6b4ce3d5ebbbad52ce0f24765a0d9edbe6ff2eeaa5a408d",
+      "faces": [
+        "SFCompact-BlackItalic",
+        "SFCompact-BoldItalic",
+        "SFCompact-HeavyItalic",
+        "SFCompact-LightItalic",
+        "SFCompact-MediumItalic",
+        "SFCompact-RegularItalic",
+        "SFCompact-SemiboldItalic",
+        "SFCompact-ThinItalic",
+        "SFCompact-UltralightItalic"
+      ]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Black.otf",
+      "sha256": "32685c67520ae859f650d4106c9ce1486f205435e0e035a8a78d5b18f30dfdcc",
+      "faces": ["SFCompactRounded-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Bold.otf",
+      "sha256": "269b90ddacc465567e52e3cf10adf46818452261aaf0e7c40ebcc77a34234d6f",
+      "faces": ["SFCompactRounded-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Heavy.otf",
+      "sha256": "56f01c1807eb357930aaf851e019063d6487ff7f74ceaef283e9d838ee9ddd26",
+      "faces": ["SFCompactRounded-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Light.otf",
+      "sha256": "29cc5c868e63bc0bffead2c4e9f7f874fc16ed6201efc920a0c22a528acc486e",
+      "faces": ["SFCompactRounded-Light"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Medium.otf",
+      "sha256": "6564fe997dadcbadfa098a464ca8177a058ddd76b8309c5789177fa76bd8ac92",
+      "faces": ["SFCompactRounded-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Regular.otf",
+      "sha256": "75997e5c7d8fa99965f903cebc0ed8c3140dd5f8a15257b6f33864ebf8c51bc0",
+      "faces": ["SFCompactRounded-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Semibold.otf",
+      "sha256": "b70e4350818f192c4387da11c5a7cc4112c792e8028660df0192cc74dd859d63",
+      "faces": ["SFCompactRounded-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Thin.otf",
+      "sha256": "414d7d69b266d5acaa778858ec62cba13f88fd06be2b3654e93296febb995d6f",
+      "faces": ["SFCompactRounded-Thin"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Ultralight.otf",
+      "sha256": "e059200d2122f183db479da12ad1ddc9296613567aac595ae77c17dfb290eb71",
+      "faces": ["SFCompactRounded-Ultralight"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Black.otf",
+      "sha256": "c5e9ae3fba59973db1e841cec7dded138d1f69b9230c0f07ca93ba2e09452bbe",
+      "faces": ["SFCompactText-Black"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-BlackItalic.otf",
+      "sha256": "12102d60622035518985d02eae090c27120cb6bba8d23c473475cde5c784d292",
+      "faces": ["SFCompactText-BlackItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Bold.otf",
+      "sha256": "9940da1813fea443363da99324051d86f08ae825873ec89683abac6cdfb72d7b",
+      "faces": ["SFCompactText-Bold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-BoldItalic.otf",
+      "sha256": "1a50b82bceabfe4e44c3ff758363a81b5236495fa4a8f059a39e0868b16500b1",
+      "faces": ["SFCompactText-BoldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Heavy.otf",
+      "sha256": "a3f36f4599ce2074e4ea04bf67a0488cc49a46885cd4ef90130af1b145b6bbbd",
+      "faces": ["SFCompactText-Heavy"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-HeavyItalic.otf",
+      "sha256": "052c8ba8980ff79cf410190100c08c42aff6cb5d19e73118db6e73fbf1faaa82",
+      "faces": ["SFCompactText-HeavyItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Light.otf",
+      "sha256": "d3f7b27d7fed42b4612e03f0afe77503d5c7895503f3efc01054e5a06fa17523",
+      "faces": ["SFCompactText-Light"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-LightItalic.otf",
+      "sha256": "b028dca6603363738c8b0355b41baa394c1e4569c3bc3b8e1b4b8709bd2bcfc0",
+      "faces": ["SFCompactText-LightItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Medium.otf",
+      "sha256": "d424438e5431c4acc546251daa59e1a569cc637ae33cdcd6d705e643f4fd954b",
+      "faces": ["SFCompactText-Medium"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-MediumItalic.otf",
+      "sha256": "6f02012ab8a6f93181034dde25d5d97bd8301119ecc23ec7737f5dc3a1ece657",
+      "faces": ["SFCompactText-MediumItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Regular.otf",
+      "sha256": "e045507c3364b5cec087e5e2e16f94bd2f491413d525d0fae06657f60b615b6d",
+      "faces": ["SFCompactText-Regular"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-RegularItalic.otf",
+      "sha256": "e7a821531c14fad025869b49938031bffe38bdd4095c30dd476f7dbf721b3448",
+      "faces": ["SFCompactText-Italic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Semibold.otf",
+      "sha256": "5648deeae44c081eb798072f5f0662148ecdc03e689dac737a5a14ff354c3bb5",
+      "faces": ["SFCompactText-Semibold"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-SemiboldItalic.otf",
+      "sha256": "da56caa205a2c35571fa4551ac94fa768279e423e2fd6615fd56124a809925fe",
+      "faces": ["SFCompactText-SemiboldItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Thin.otf",
+      "sha256": "e584d93b87e76db28c914fde866926c76e0641b21d005d2f555d61606dc26018",
+      "faces": ["SFCompactText-Thin"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-ThinItalic.otf",
+      "sha256": "fe6e85a508ab14967dec18a084c80978cc4b99f371a3b9755e0dcfaab43f5852",
+      "faces": ["SFCompactText-ThinItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-Ultralight.otf",
+      "sha256": "e5337f33e2527f281be8289044e5ccac449e82cd362b871a7f9328e09699ef11",
+      "faces": ["SFCompactText-Ultralight"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact-Text-UltralightItalic.otf",
+      "sha256": "90f9f5129dccf7b483a0603389dd70750bf6bccd65d05f9cac59c3f1a4e1b610",
+      "faces": ["SFCompactText-UltralightItalic"]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Compact.ttf",
+      "sha256": "d590236801e377d8dc45f2d5cf3f29d52e68f23103ef9679386e1483f55cf5f9",
+      "faces": [
+        "SFCompact-Black",
+        "SFCompact-Bold",
+        "SFCompact-Heavy",
+        "SFCompact-Light",
+        "SFCompact-Medium",
+        "SFCompact-Regular",
+        "SFCompact-Semibold",
+        "SFCompact-Thin",
+        "SFCompact-Ultralight"
+      ]
+    }
+  ],
+  "version": "8.0.1.1784315035"
+}

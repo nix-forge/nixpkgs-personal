@@ -75,10 +75,12 @@ jobs:
           cache-scope: ci-flake
       - name: Materialize partition source
         run: nix store add-path flake/dev
-      - run: nix flake check --keep-going --show-trace --print-build-logs --no-build --option allow-import-from-derivation
-          false --system "${TARGET_SYSTEM}"
-        env:
+      - env:
           TARGET_SYSTEM: ${{ matrix.system }}
+        run: |
+          nix eval --option allow-import-from-derivation false --json ".#checks.$TARGET_SYSTEM" \
+            --apply 'builtins.mapAttrs (_: check: check.drvPath)' > /dev/null
+          nix flake check --keep-going --show-trace --print-build-logs --no-build --option allow-import-from-derivation false --system "$TARGET_SYSTEM"
   build:
     name: Build (${{ matrix.system }})
     needs: [lint, flake]
@@ -107,6 +109,13 @@ jobs:
         with:
           cache: 'false'
           cache-scope: ci-build
+      - name: Materialize partition source
+        run: nix store add-path flake/dev
+      - name: Check package independence and local tests
+        env:
+          SYSTEM: ${{ matrix.system }}
+        run: >-
+          nix build --no-link --print-build-logs ".#checks.$SYSTEM.package-independence" ".#checks.$SYSTEM.package-unit-tests"
       - name: Check font import and update contracts
         env:
           SYSTEM: ${{ matrix.system }}
@@ -119,9 +128,17 @@ jobs:
         shell: bash
         run: bash .github/scripts/build-affected.sh
   swift-quality:
-    name: Swift quality (macOS 26)
+    name: Swift quality (${{ matrix.package }})
     runs-on: macos-26
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: oc/ocr-capture
+            shell: swift-quality
+          - package: fi/finder-favorites
+            shell: finder-favorites-quality
     permissions:
       contents: read
     steps:
@@ -138,13 +155,18 @@ jobs:
       - name: Compiler, lint, test, and dead-code checks
         env:
           OCR_CAPTURE_RUN_SANITIZERS: "0"
-        run: nix develop .#swift-quality --command pkgs/by-name/oc/ocr-capture/Scripts/check-quality.sh
+          FINDER_FAVORITES_RUN_SANITIZERS: "0"
+          PACKAGE: ${{ matrix.package }}
+          QUALITY_SHELL: ${{ matrix.shell }}
+        run: nix develop ".#$QUALITY_SHELL" --command "pkgs/by-name/$PACKAGE/Scripts/check-quality.sh"
       - name: Xcode Swift 6 formatter compatibility
+        env:
+          PACKAGE: ${{ matrix.package }}
         run: >-
-          xcrun swift-format lint --configuration pkgs/by-name/oc/ocr-capture/.swift-format --parallel
-          --strict --recursive pkgs/by-name/oc/ocr-capture/Sources pkgs/by-name/oc/ocr-capture/Tests
+          xcrun swift-format lint --configuration "pkgs/by-name/$PACKAGE/.swift-format" --parallel --strict
+          --recursive "pkgs/by-name/$PACKAGE/Sources" "pkgs/by-name/$PACKAGE/Tests"
   swift-sanitizers:
-    name: Swift ${{ matrix.sanitizer }} sanitizer
+    name: Swift ${{ matrix.sanitizer }} sanitizer (${{ matrix.package }})
     runs-on: macos-26
     timeout-minutes: 20
     permissions:
@@ -153,14 +175,16 @@ jobs:
       fail-fast: false
       matrix:
         sanitizer: [address, thread]
+        package: [oc/ocr-capture, fi/finder-favorites]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: >-
-          swift test --package-path pkgs/by-name/oc/ocr-capture --sanitize "${SANITIZER}"
-        env:
+      - env:
           SANITIZER: ${{ matrix.sanitizer }}
+          PACKAGE: ${{ matrix.package }}
+        run: >-
+          swift test --package-path "pkgs/by-name/$PACKAGE" --sanitize "$SANITIZER"
   swift-compiler-audits:
     name: Swift compiler audit (${{ matrix.audit }})
     runs-on: macos-26

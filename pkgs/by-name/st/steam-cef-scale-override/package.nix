@@ -4,7 +4,16 @@ stdenv.mkDerivation {
   pname = "steam-cef-scale-override";
   version = "1.0.0";
 
-  src = ./.;
+  src = lib.fileset.toSource {
+    root = ./.;
+    fileset = lib.fileset.unions [
+      ./steam-cef-scale-override.c
+      ./test-libcef.c
+      ./test-helper.c
+      ./LICENSE
+      ./README.md
+    ];
+  };
   strictDeps = true;
 
   dontConfigure = true;
@@ -105,9 +114,8 @@ stdenv.mkDerivation {
 
   meta = {
     description = "Process-scoped CEF scale override for Steam's desktop UI";
-    homepage = "https://github.com/ianmh/nixpkgs-personal";
+    homepage = "https://github.com/nix-forge/nixpkgs-personal";
     license = lib.licenses.mit;
-    maintainers = [ ];
     platforms = [ "x86_64-linux" ];
   };
 }

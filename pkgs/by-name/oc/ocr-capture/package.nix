@@ -186,7 +186,7 @@ stdenv.mkDerivation {
 
   meta = {
     description = "Native macOS region-screenshot OCR tool";
-    homepage = "https://github.com/ianmh/nixpkgs-personal";
+    homepage = "https://github.com/nix-forge/nixpkgs-personal";
     license = lib.licenses.mit;
     mainProgram = "hm-ocr-capture";
     platforms = [ "aarch64-darwin" ];

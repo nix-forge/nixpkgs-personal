@@ -77,19 +77,24 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
     # default one-vCPU Linux VM while retaining parallel generation on native
     # multi-core Linux builders.
     max_jobs="$(${coreutils}/bin/nproc)"
-    if [ -n "''${NIX_BUILD_CORES:-}" ] && [ "$NIX_BUILD_CORES" -lt "$max_jobs" ]; then
+    if [ -n "''${NIX_BUILD_CORES:-}" ] && [ "$NIX_BUILD_CORES" -gt 0 ] && [ "$NIX_BUILD_CORES" -lt "$max_jobs" ]; then
       max_jobs="$NIX_BUILD_CORES"
     fi
-    running=0
+    pids=()
     ${lib.concatMapStringsSep "\n" (theme: ''
       build_theme ${lib.escapeShellArg theme} &
-      running=$((running + 1))
-      if [ "$running" -ge "$max_jobs" ]; then
-        wait -n
-        running=$((running - 1))
+      pids+=("$!")
+      if [ "''${#pids[@]}" -ge "$max_jobs" ]; then
+        for pid in "''${pids[@]}"; do
+          wait "$pid"
+        done
+        pids=()
       fi
     '') themes}
-    wait
+    # Waiting without a PID can hide a failed worker's exit status.
+    for pid in "''${pids[@]}"; do
+      wait "$pid"
+    done
 
     runHook postBuild
   '';

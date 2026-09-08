@@ -1,7 +1,6 @@
-# Adapted from noctalia f96a407deb109c9db6f29db75e6fe487a5289e02/nix/package.nix.
-# Upstream MIT license: see UPSTREAM-LICENSE.
-# Keep the build recipe local so flake evaluation requires no derivation build.
-# Source and version are supplied by the hash-pinned package wrapper.
+# Adapted from noctalia nix/package.nix at the revision in source.nix.
+# See UPSTREAM-LICENSE for the MIT license.
+# Only source/version injection differs; review this file when updating upstream.
 {
   src,
   version,

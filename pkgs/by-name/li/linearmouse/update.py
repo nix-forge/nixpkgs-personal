@@ -20,8 +20,7 @@ from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
-from scripts.update_support import HTTPS_CONTEXT, github_api_headers
+from update_support import HTTPS_CONTEXT, github_api_headers
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

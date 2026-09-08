@@ -1,0 +1,39 @@
+{
+  "name": "apple-sf-georgian",
+  "kind": "dmg",
+  "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Georgian.dmg",
+  "hash": "sha256-wWsXmEcrJiMkRTMepRrIKZJgZ0/o+386NU7t61OQotI=",
+  "files": [
+    {
+      "path": "payload-0/Library/Fonts/SF-Georgian-Rounded.ttf",
+      "sha256": "906ba8ef75c84293e199c7b813edd52ae111ddf6df349618fe61e1e855aa7252",
+      "faces": [
+        "SFGeorgianRounded-Black",
+        "SFGeorgianRounded-Bold",
+        "SFGeorgianRounded-Heavy",
+        "SFGeorgianRounded-Light",
+        "SFGeorgianRounded-Medium",
+        "SFGeorgianRounded-Regular",
+        "SFGeorgianRounded-Semibold",
+        "SFGeorgianRounded-Thin",
+        "SFGeorgianRounded-Ultralight"
+      ]
+    },
+    {
+      "path": "payload-0/Library/Fonts/SF-Georgian.ttf",
+      "sha256": "ed6848936b62a8cd002e3deb57692344d40d936be0ff4e1a131736e68c6ec0da",
+      "faces": [
+        "SFGeorgian-Black",
+        "SFGeorgian-Bold",
+        "SFGeorgian-Heavy",
+        "SFGeorgian-Light",
+        "SFGeorgian-Medium",
+        "SFGeorgian-Regular",
+        "SFGeorgian-Semibold",
+        "SFGeorgian-Thin",
+        "SFGeorgian-Ultralight"
+      ]
+    }
+  ],
+  "version": "6.0.1.1726709071"
+}

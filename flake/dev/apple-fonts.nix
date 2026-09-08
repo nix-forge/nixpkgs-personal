@@ -26,7 +26,6 @@ _: {
                 ../../pkgs/by-name/ap/apple-fonts
                 ../../pkgs/by-name/ap/apple-color-emoji
                 ../../pkgs/by-name/tt/ttf-ms-win11-auto
-                ../../scripts/update_support.py
               ];
             }
           } source

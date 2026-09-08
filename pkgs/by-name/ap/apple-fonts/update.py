@@ -21,9 +21,7 @@ from pathlib import Path
 
 from font_support import inventory, sha256
 from unpack import unpack
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
-from scripts.update_support import HTTPS_CONTEXT
+from update_support import HTTPS_CONTEXT
 
 CATALOG = "https://mesu.apple.com/assets/macos/com_apple_MobileAsset_Font8/com_apple_MobileAsset_Font8.xml"
 DEVELOPER = [

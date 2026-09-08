@@ -73,7 +73,10 @@ let
   passthru = {
     inherit (source) appName;
     inherit sourceForSystem;
-    updateScript = [ ./update.py ];
+    updateScript = [
+      "python3"
+      "pkgs/by-name/op/openai-codex-desktop/update.py"
+    ];
   };
 in
 if stdenv.hostPlatform.isDarwin then

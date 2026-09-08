@@ -19,6 +19,8 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [ unzip ];
   sourceRoot = ".";
   strictDeps = true;
+  dontBuild = true;
+  dontConfigure = true;
   # The official bundle is signed and notarized. Generic fixup would mutate
   # its contents and invalidate that identity without improving Darwin runtime
   # compatibility.
@@ -34,7 +36,19 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.updateScript = [ ./update.py ];
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s "$out/Applications/T3 Code (Alpha).app/Contents/Info.plist"
+    test -x "$out/Applications/T3 Code (Alpha).app/Contents/MacOS/T3 Code (Alpha)"
+    test -x "$out/bin/t3-code"
+    runHook postInstallCheck
+  '';
+
+  passthru.updateScript = [
+    "python3"
+    "pkgs/by-name/t3/t3-code/update.py"
+  ];
 
   meta = {
     description = "Desktop control surface for AI coding agents";
