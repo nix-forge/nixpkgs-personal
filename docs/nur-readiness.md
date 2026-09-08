@@ -61,8 +61,10 @@ retained in the package install check.
 PR #48 records exact Nixpkgs revisions and NAR hashes, verifies the locked hash,
 and provides readable NUR summaries with source links. Its local locked and
 unstable checks each pass all 86 evaluations and return 13 restricted-index entries.
-A negative check rejects a mismatched lockfile hash. Fresh hosted PR and queue
-validation of this follow-up remain pending.
+A negative check rejects a mismatched lockfile hash. All final hosted PR checks
+passed. Protected queue validation is running against the Nixpkgs update merged
+in #49. The package repository now enforces 19 required checks, including both
+NUR inputs and the five existing Swift quality, sanitizer and compiler-audit jobs.
 
 The newer package reorganization must pass both PR checks and the protected merge
 queue before publication is complete.
