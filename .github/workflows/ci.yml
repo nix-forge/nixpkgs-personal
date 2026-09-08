@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         lockfile: [flake.lock, flake/dev/flake.lock]
-    uses: nix-forge/ci/.github/workflows/flake-lock.yml@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+    uses: nix-forge/ci/.github/workflows/flake-lock.yml@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
     with:
       lockfile: ${{ matrix.lockfile }}
   lint:
@@ -35,13 +35,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Test source fetch retry behavior
-        run: python3 -m unittest discover -s .github/tests
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+        uses: nix-forge/ci/actions/setup-nix@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
         with:
           cache: 'false'
           cache-scope: ci-lint
+      - name: Test build selection and source fetch retries
+        run: python3 -m unittest discover -s .github/tests
+      - name: Test safe release archive inspection
+        run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
       - name: Materialize partition source
         run: nix store add-path flake/dev
       - run: nix develop --command prek run --all-files
@@ -67,7 +69,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+        uses: nix-forge/ci/actions/setup-nix@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
         with:
           cache: 'false'
           cache-scope: ci-flake
@@ -103,7 +105,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+        uses: nix-forge/ci/actions/setup-nix@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
         with:
           cache: 'false'
           cache-scope: ci-build
@@ -124,59 +126,7 @@ jobs:
             || github.event.before }}
           SYSTEM: ${{ matrix.system }}
         shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
-            changed_files=$(git ls-files)
-          else
-            changed_files=$(git diff --name-only "$BASE_SHA" HEAD)
-          fi
-
-          all_packages=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
-          if grep -qE '^(flake\.nix|flake\.lock|pkgs/default\.nix|flake/|tests/)' <<<"$changed_files"; then
-            targets="$all_packages"
-          elif grep -q '^pkgs/by-name/' <<<"$changed_files"; then
-            targets=$(sed -nE 's#^pkgs/by-name/[^/]+/([^/]+)/.*#\1#p' <<<"$changed_files" | sort -u)
-            targets=$(comm -12 <(sort <<<"$targets") <(sort <<<"$all_packages"))
-          else
-            targets=""
-          fi
-
-          if [[ -z "$targets" ]]; then
-            echo "No packages for $SYSTEM were affected."
-            exit 0
-          fi
-
-          # Metadata and documentation can change without changing a build recipe.
-          # If the base cannot be evaluated, conservatively rebuild every target.
-          base_derivations='{}'
-          if [[ -n "$BASE_SHA" && ! "$BASE_SHA" =~ ^0+$ ]]; then
-            if ! base_derivations=$(nix eval --json \
-              "git+file://$PWD?rev=$BASE_SHA#packages.$SYSTEM" \
-              --no-write-lock-file --option allow-import-from-derivation false \
-              --apply 'builtins.mapAttrs (_: package: package.drvPath)'); then
-              echo '::notice::Base derivation comparison unavailable; rebuilding selected packages.'
-              base_derivations='{}'
-            fi
-          fi
-
-          while IFS= read -r package; do
-            [[ -n "$package" ]] || continue
-            base_drv=$(jq -r --arg package "$package" '.[$package] // empty' <<<"$base_derivations")
-            current_drv=$(nix eval --raw ".#packages.$SYSTEM.$package.drvPath")
-            if [[ -n "$base_drv" && "$base_drv" == "$current_drv" ]]; then
-              echo "$package: unchanged derivation; no rebuild needed."
-            else
-              bash .github/scripts/build-with-fetch-retry.sh \
-                nix build ".#$package" --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
-            fi
-            # Additional contracts run even when the package output is unchanged.
-            if [[ "$package" == openai-codex-desktop ]]; then
-              nix build --no-link --keep-going --show-trace --print-build-logs \
-                ".#checks.$SYSTEM.openai-codex-desktop-updater" \
-                ".#checks.$SYSTEM.openai-codex-desktop-package-contract"
-            fi
-          done <<<"$targets"
+        run: bash .github/scripts/build-affected.sh
   swift-quality:
     name: Swift quality (${{ matrix.package }})
     runs-on: macos-26
@@ -192,7 +142,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+        uses: nix-forge/ci/actions/setup-nix@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
         with:
           cache: 'false'
           cache-scope: ci-swift-quality
@@ -263,9 +213,9 @@ jobs:
       actions: write # Dispatch trusted queue validation.
     steps:
       - name: Notify trusted queue reconciler
-        uses: nix-forge/ci/actions/queue-completion@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+        uses: nix-forge/ci/actions/queue-completion@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
   nur:
     name: NUR compatibility
     permissions:
       contents: read
-    uses: nix-forge/ci/.github/workflows/nur.yml@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+    uses: nix-forge/ci/.github/workflows/nur.yml@03eb849e788bd71ac08afab6a1135a6ff6514f3c # v1.0.4
