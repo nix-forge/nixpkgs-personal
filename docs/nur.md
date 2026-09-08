@@ -66,7 +66,8 @@ The script fetches a pinned NUR evaluator and the requested Nixpkgs source befor
 restricted evaluation. It follows NUR's default unfree policy and 180-second
 timeout, then separately evaluates supported derivation paths across all three
 platforms with explicit unfree consent and import-from-derivation disabled.
-Reports include source identities and package counts. These are evaluation checks;
+Reports include the resolved Nixpkgs revision and NAR hash, including for the
+moving unstable branch, plus package counts. These are evaluation checks;
 native build coverage remains in the existing CI matrix.
 
 ## Submission preparation
