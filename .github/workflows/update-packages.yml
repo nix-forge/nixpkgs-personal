@@ -35,7 +35,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: nix develop --command python scripts/update-packages.py --all --keep-going
-      - name: Create or update the auto-merge pull request
+      - name: Create or update the package pull request
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -67,16 +67,14 @@ jobs:
               --body "Automated package source updates.")
           fi
 
-          # Pull requests created with GITHUB_TOKEN require workflow approval.
-          # Explicit workflow_dispatch events are exempt and publish the same
-          # required checks against the generated update commit.
+          # GITHUB_TOKEN does not trigger ordinary PR workflows. Explicit
+          # dispatches publish required checks against the update commit.
           gh workflow run ci.yml --repo "$REPOSITORY" --ref "$branch" -f base_sha="$base_sha"
           gh workflow run codeql.yml --repo "$REPOSITORY" --ref "$branch"
           gh workflow run dependency-review.yml --repo "$REPOSITORY" --ref "$branch" \
             -f base_ref=main \
             -f head_ref="$branch"
 
-          # GitHub's merge queue handles branch deletion itself; gh rejects
-          # --delete-branch when the target branch uses a merge queue.
-          gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --squash --match-head-commit "$(git rev-parse HEAD)"
+          # Validation completion triggers the shared reconciler. It alone
+          # admits eligible updates, leaving automation changes for review.
     name: update
