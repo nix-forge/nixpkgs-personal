@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NUR_REVISION = "6e73a28249bbd53525bc1a7b385fcf3413c4e056"
 
 
-def source_path(reference: str) -> Path:
+def source_info(reference: str) -> dict[str, str]:
     """Fetch a source tree before entering restricted evaluation."""
     result = subprocess.run(
         ["nix", "flake", "prefetch", "--json", reference],
@@ -23,7 +23,7 @@ def source_path(reference: str) -> Path:
         capture_output=True,
         text=True,
     )
-    return Path(json.loads(result.stdout)["storePath"])
+    return json.loads(result.stdout)
 
 
 def main() -> None:
@@ -38,8 +38,23 @@ def main() -> None:
         if args.nixpkgs == "locked"
         else "github:NixOS/nixpkgs/nixos-unstable"
     )
-    nixpkgs = source_path(reference)
-    nur = source_path(f"github:nix-community/NUR/{NUR_REVISION}")
+    # Resolve moving branches once, then fetch that exact revision. Lazy-tree Nix
+    # metadata may omit its store path and NAR hash until explicitly prefetched.
+    metadata = json.loads(
+        subprocess.run(
+            ["nix", "flake", "metadata", "--json", "--no-write-lock-file", reference],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    )
+    resolved_reference = metadata["url"]
+    nixpkgs_source = source_info(resolved_reference)
+    expected_hash = locked.get("narHash") if args.nixpkgs == "locked" else None
+    if expected_hash is not None and nixpkgs_source["hash"] != expected_hash:
+        raise RuntimeError("Fetched Nixpkgs does not match flake.lock's NAR hash")
+    nixpkgs = Path(nixpkgs_source["storePath"])
+    nur = Path(source_info(f"github:nix-community/NUR/{NUR_REVISION}")["storePath"])
     evaluator = nur / "lib/evalRepo.nix"
     args.output.mkdir(parents=True, exist_ok=True)
 
@@ -95,6 +110,8 @@ def main() -> None:
                 timeout=180,
                 env={
                     "PATH": os.environ["PATH"],
+                    # Only the explicit -I sources belong in restricted evaluation.
+                    "NIX_PATH": "",
                     "NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM": "1",
                 },
             )
@@ -128,6 +145,9 @@ def main() -> None:
     platforms = json.loads(result.stdout)
     summary = {
         "nixpkgs_reference": reference,
+        "nixpkgs_resolved_reference": resolved_reference,
+        "nixpkgs_revision": metadata["locked"]["rev"],
+        "nixpkgs_nar_hash": nixpkgs_source["hash"],
         "nixpkgs_store_path": str(nixpkgs),
         "nur_revision": NUR_REVISION,
         "indexed_packages": count,
