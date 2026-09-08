@@ -40,6 +40,7 @@ fi
 
 while IFS= read -r package; do
   [[ -n $package ]] || continue
+  echo "::group::Package: $package"
   base_drv=$(jq -r --arg package "$package" '.[$package] // empty' <<<"$base_derivations")
   current_drv=$(nix eval --raw ".#packages.$SYSTEM.$package.drvPath")
   if [[ -n $base_drv && $base_drv == "$current_drv" ]]; then
@@ -54,4 +55,5 @@ while IFS= read -r package; do
       ".#checks.$SYSTEM.openai-codex-desktop-updater" \
       ".#checks.$SYSTEM.openai-codex-desktop-package-contract"
   fi
+  echo "::endgroup::"
 done <<<"$targets"
