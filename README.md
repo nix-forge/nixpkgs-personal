@@ -40,3 +40,8 @@ The WireGuard roaming controller runs rustfmt, Rust compiler checks, strict
 Clippy, tests, rustdoc, cargo-machete, and cargo-deny during its Nix build. The
 development shell supplies the same Rust tools. CI also checks current RustSec
 advisories and scans the Rust source with CodeQL.
+
+## NUR preparation
+
+The root `default.nix` supports NUR and non-flake consumers with caller-supplied
+Nixpkgs. Registration is pending. See [NUR usage, compatibility and submission](docs/nur.md).
