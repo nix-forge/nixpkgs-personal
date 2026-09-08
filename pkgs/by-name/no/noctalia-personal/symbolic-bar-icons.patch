@@ -1,0 +1,202 @@
+--- a/src/config/config_types.h
++++ b/src/config/config_types.h
+@@ -388,6 +388,8 @@
+ };
+ 
+ struct CommonWidgetOptions {
++  bool symbolicIcons = false;
++  std::unordered_map<std::string, std::string> iconOverrides;
+   bool enabled = true;
+   bool anchor = false;
+   bool interactive = true;
+--- a/src/config/config_types.cpp
++++ b/src/config/config_types.cpp
+@@ -576,6 +576,10 @@
+     return options;
+   }
+ 
++  options.symbolicIcons = widget->getBool("symbolic_icons", false);
++  if (const auto it = widget->tables.find("icon_overrides"); it != widget->tables.end()) {
++    options.iconOverrides = it->second;
++  }
+   options.enabled = widget->getBool("enabled", true);
+   options.anchor = widget->getBool("anchor", false);
+   options.interactive = widget->getBool("interactive", options.interactive);
+--- a/src/shell/bar/widget.h
++++ b/src/shell/bar/widget.h
+@@ -140,6 +140,8 @@
+   // Resolved icon color: `[widget.*] icon_color` when set, else the foreground chain
+   // (`color` → `capsule_foreground` → `fallback`), so a bare `color` still tints icons.
+   [[nodiscard]] ColorSpec widgetIconColorOr(const ColorSpec& fallback) const noexcept;
++  [[nodiscard]] bool symbolicIcons() const noexcept { return m_symbolicIcons; }
++  [[nodiscard]] const auto& iconOverrides() const noexcept { return m_iconOverrides; }
+ 
+ protected:
+   void requestUpdate();
+@@ -180,6 +182,8 @@
+   WidgetBarCapsuleSpec m_barCapsuleSpec{};
+   std::optional<ColorSpec> m_widgetForeground;
+   std::optional<ColorSpec> m_widgetIconColor;
++  bool m_symbolicIcons = false;
++  std::unordered_map<std::string, std::string> m_iconOverrides;
+   bool m_nonInteractive = false;
+   bool m_barPointerSuppressed = false;
+   Node* m_capsuleShell = nullptr;
+--- a/src/shell/bar/widget.cpp
++++ b/src/shell/bar/widget.cpp
+@@ -191,6 +191,8 @@
+     const CommonWidgetOptions& options, FontWeight barFontWeight, const std::string& barFontFamily,
+     std::string_view logContext
+ ) {
++  m_symbolicIcons = options.symbolicIcons;
++  m_iconOverrides = options.iconOverrides;
+   setAnchor(options.anchor);
+   setNonInteractive(!options.interactive);
+   m_labelFontWeight =
+--- a/src/shell/bar/widgets/active_window_widget.cpp
++++ b/src/shell/bar/widgets/active_window_widget.cpp
+@@ -1,4 +1,5 @@
+ #include "shell/bar/widgets/active_window_widget.h"
++#include "shell/bar/widgets/bar_icon_policy.h"
+ 
+ #include "compositors/compositor_platform.h"
+ #include "config/config_service.h"
+@@ -240,7 +241,13 @@
+   applyTitleScrollMode(m_title->visible());
+   m_title->measure(renderer);
+ 
+-  m_icon->setAppIconColorization(effectiveShellAppIconColorizationTint(m_config.config().shell));
++  const bool symbolic = symbolicIcons() && bar_icons::isSymbolicPath(iconPath);
++  if (symbolic) {
++    m_icon->setForegroundTint(widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface)));
++  } else {
++    m_icon->setForegroundTint(std::nullopt);
++    m_icon->setAppIconColorization(effectiveShellAppIconColorizationTint(m_config.config().shell));
++  }
+   if (iconPath != m_lastIconPath) {
+     m_lastIconPath = iconPath;
+     if (!m_lastIconPath.empty()) {
+@@ -265,7 +272,9 @@
+   if (const auto entry = app_identity::findDesktopEntry(appId, desktopEntries());
+       entry.has_value() && !entry->icon.empty()) {
+     const int iconTargetSize = static_cast<int>(std::round(48.0F * m_contentScale));
+-    const std::string& resolved = m_iconResolver.resolve(entry->icon, iconTargetSize);
++    const std::string resolved = bar_icons::resolve(entry->icon, symbolicIcons(), [this, iconTargetSize](const std::string& name) {
++      return m_iconResolver.resolve(name, iconTargetSize);
++    });
+     if (!resolved.empty()) {
+       return resolved;
+     }
+@@ -276,7 +285,9 @@
+     if (name.empty()) {
+       return {};
+     }
+-    return m_iconResolver.resolve(name, iconTargetSize);
++    return bar_icons::resolve(name, symbolicIcons(), [this, iconTargetSize](const std::string& candidate) {
++      return m_iconResolver.resolve(candidate, iconTargetSize);
++    });
+   };
+ 
+   if (auto it = m_appIcons.find(appId); it != m_appIcons.end()) {
+--- a/src/shell/bar/widgets/taskbar_widget.cpp
++++ b/src/shell/bar/widgets/taskbar_widget.cpp
+@@ -1,4 +1,5 @@
+ #include "shell/bar/widgets/taskbar_widget.h"
++#include "shell/bar/widgets/bar_icon_policy.h"
+ 
+ #include "compositors/compositor_detect.h"
+ #include "compositors/hyprland/hyprland_window_id.h"
+@@ -1133,7 +1134,11 @@
+           .width = iconSize,
+           .height = iconSize,
+       });
+-      image->setAppIconColorization(effectiveShellAppIconColorizationTint(m_configService.config().shell));
++      if (symbolicIcons() && bar_icons::isSymbolicPath(task.iconPath)) {
++        image->setForegroundTint(widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface)));
++      } else {
++        image->setAppIconColorization(effectiveShellAppIconColorizationTint(m_configService.config().shell));
++      }
+       image->setSourceFile(renderer, task.iconPath, static_cast<int>(std::round(iconSize)), true);
+       if (image->hasImage()) {
+         content->addChild(std::move(image));
+@@ -3234,7 +3239,9 @@
+     if (name.empty()) {
+       return {};
+     }
+-    return m_iconResolver.resolve(name, iconTargetSize);
++    return bar_icons::resolve(name, symbolicIcons(), [this, iconTargetSize](const std::string& candidate) {
++      return m_iconResolver.resolve(candidate, iconTargetSize);
++    });
+   };
+ 
+   if (!iconNameOrPath.empty()) {
+--- a/src/shell/bar/widgets/tray_widget.cpp
++++ b/src/shell/bar/widgets/tray_widget.cpp
+@@ -1,4 +1,5 @@
+ #include "shell/bar/widgets/tray_widget.h"
++#include "shell/bar/widgets/bar_icon_policy.h"
+ 
+ #include "config/config_service.h"
+ #include "core/log.h"
+@@ -81,7 +82,7 @@
+     return name.contains("symbolic") || name.ends_with("-panel") || name.ends_with("_panel");
+   }
+ 
+-  bool isSymbolicIconPath(std::string_view path) { return path.contains("symbolic") || path.contains("/status/"); }
++  bool isSymbolicIconPath(std::string_view path) { return bar_icons::isSymbolicPath(path); }
+ 
+   bool isSvgPath(std::string_view path) { return path.ends_with(".svg") || path.ends_with(".SVG"); }
+ 
+@@ -617,8 +618,8 @@
+           .width = iconSize,
+           .height = iconSize,
+       });
+-      const bool symbolicPath = isSymbolicIconPath(iconPath);
+-      const auto appIconTint = currentAppIconColorizeTint();
++      const bool symbolicPath = !item.needsAttention && isSymbolicIconPath(iconPath);
++      const auto appIconTint = item.needsAttention ? std::nullopt : currentAppIconColorizeTint();
+       if (!symbolicPath && appIconTint.has_value()) {
+         image->setAppIconColorization(appIconTint);
+       }
+@@ -666,7 +667,7 @@
+             .width = iconSize,
+             .height = iconSize,
+         });
+-        const auto pixmapTint = currentAppIconColorizeTint();
++        const auto pixmapTint = item.needsAttention ? std::nullopt : currentAppIconColorizeTint();
+         if (pixmapTint.has_value()) {
+           image->setAppIconColorization(pixmapTint);
+         }
+@@ -902,6 +903,18 @@
+ }
+ 
+ std::string TrayWidget::resolveIconPath(const TrayItemInfo& item) {
++  // Opt-in overrides are configuration data, never app-specific renderer rules.
++  // Attention icons and overlays keep their original status information.
++  if (!item.needsAttention) {
++    for (const auto& [identity, icon] : iconOverrides()) {
++      if (tray::tokenMatchesItem(identity, item)) {
++        const auto resolved = m_iconResolver.resolve(icon, 48);
++        if (!resolved.empty()) {
++          return resolved;
++        }
++      }
++    }
++  }
+   const bool hasNamedIcon = item.needsAttention ? !item.attentionIconName.empty() : !item.iconName.empty();
+   if (const auto it = m_preferPixmap.find(item.id); it != m_preferPixmap.end() && it->second) {
+     // Some indicators publish pixmaps late (after startup) that are monochrome
+@@ -926,6 +939,13 @@
+   if (const auto themed = resolveFromTrayThemePath(item.iconThemePath, preferred); !themed.empty()) {
+     m_preferredIconPaths[item.id] = themed;
+     return themed;
++  }
++
++  if (!preferred.empty()) {
++    const auto exact = m_iconResolver.resolve(preferred, 48);
++    if (!exact.empty()) {
++      return exact;
++    }
+   }
+ 
+   if (tray::looksGenericStatusItemName(preferred)) {

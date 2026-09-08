@@ -1,0 +1,16 @@
+{
+  "name": "apple-color-emoji",
+  "version": "26-20260722-484daf4e",
+  "kind": "ttf",
+  "url": "https://github.com/samuelngs/apple-emoji-ttf/releases/download/macos-26-20260722-484daf4e/AppleColorEmoji-Linux.ttf",
+  "hash": "sha256-43x69iZaxKCvbVe8ZehhCad22ZZug0MzRVf2PaSCUW8=",
+  "upstreamRevision": "484daf4e13942437e083d881cae39fbc92d837e1",
+  "provenance": "Third-party Linux conversion of Apple Color Emoji, distributed by samuelngs/apple-emoji-ttf; not an Apple-hosted download. The font remains proprietary Apple artwork.",
+  "files": [
+    {
+      "path": "font.ttf",
+      "sha256": "e37c7af6265ac4a0af6d57bc65e86109a776d9966e8343334557f63da482516f",
+      "faces": ["AppleColorEmoji"]
+    }
+  ]
+}

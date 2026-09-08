@@ -4,3 +4,5 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.toml text eol=lf
+# Unified diff context markers and final context lines contain significant spaces.
+*.patch whitespace=-blank-at-eol,-blank-at-eof

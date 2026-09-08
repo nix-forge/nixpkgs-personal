@@ -1,0 +1,5 @@
+{
+  "nix-forge": {
+    "url": "https://github.com/nix-forge/nixpkgs-personal"
+  }
+}

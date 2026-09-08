@@ -3,26 +3,49 @@
   stdenvNoCC,
   fetchurl,
   _7zz,
+  python3,
+  fontconfig,
+  writeShellApplication,
+  nix,
 }:
 
 let
   pname = "ttf-ms-win11-auto";
   source = import ./source.nix;
 
-  src = fetchurl { inherit (source.src) url hash; };
+  src = fetchurl {
+    inherit (source.src) url hash;
+    meta.license = lib.licenses.unfree;
+    preferLocalBuild = true;
+    derivationArgs.allowSubstitutes = false;
+  };
+  inspector = lib.fileset.toSource {
+    root = ../..;
+    fileset = lib.fileset.unions [
+      ./font_manifest.py
+      ../../ap/apple-fonts/font_support.py
+    ];
+  };
 in
+assert (builtins.fromJSON (builtins.readFile ./manifest.json)).version == source.version;
 stdenvNoCC.mkDerivation (finalAttrs: {
   inherit pname src;
   inherit (source) version;
 
-  nativeBuildInputs = [ _7zz ];
+  nativeBuildInputs = [
+    _7zz
+    python3
+    fontconfig
+  ];
   dontUnpack = true;
   strictDeps = true;
 
   installPhase = ''
     runHook preInstall
 
-    workdir="$out/.extract-work"
+    export XDG_CACHE_HOME="$TMPDIR/font-cache"
+    export FONTCONFIG_FILE=${../../ap/apple-fonts/fonts.conf}
+    workdir="$TMPDIR/font-extraction"
     isodir="$workdir/iso"
     extracteddir="$workdir/extracted"
     mkdir -p "$isodir" "$extracteddir"
@@ -48,6 +71,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       exit 1
     fi
 
+    python3 ${inspector}/tt/ttf-ms-win11-auto/font_manifest.py "$extracteddir" ${./manifest.json}
+
     install -d "$out/share/fonts/truetype"
     for fontPath in "''${fontPaths[@]}"; do
       fontFile="$(basename "$fontPath")"
@@ -57,6 +82,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     install -d "$out/share/licenses/${finalAttrs.pname}"
     install -m444 "$extracteddir/license.rtf" "$out/share/licenses/${finalAttrs.pname}/license.rtf"
 
+    python3 ${inspector}/tt/ttf-ms-win11-auto/font_manifest.py "$out/share/fonts/truetype" ${./manifest.json}
+    install -Dm444 ${./manifest.json} "$out/share/doc/${finalAttrs.pname}/manifest.json"
+    install -Dm444 ${./README.md} "$out/share/doc/${finalAttrs.pname}/README.md"
     rm -rf "$workdir"
 
     runHook postInstall
@@ -64,15 +92,26 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   preferLocalBuild = true;
   allowSubstitutes = false;
-  passthru.updateScript = [ ./update.py ];
+  passthru.updateScript = lib.getExe (writeShellApplication {
+    name = "update-windows-fonts";
+    runtimeInputs = [
+      python3
+      fontconfig
+      _7zz
+      nix
+    ];
+    text = ''
+      exec python3 pkgs/by-name/tt/ttf-ms-win11-auto/update.py "$@"
+    '';
+  });
 
   meta = {
     description = "Microsoft Windows 11 TrueType fonts extracted from the Enterprise Evaluation ISO";
     homepage = "https://www.microsoft.com/typography/fonts/product.aspx?PID=164";
     downloadPage = "https://www.microsoft.com/en-us/evalcenter/evaluate-windows-11-enterprise";
-    platforms = lib.platforms.all;
+    platforms = lib.platforms.unix;
     license = lib.licenses.unfree;
     priority = 5;
-    sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
+    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
   };
 })

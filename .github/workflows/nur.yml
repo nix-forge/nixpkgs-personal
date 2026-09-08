@@ -1,0 +1,15 @@
+name: NUR compatibility
+on:
+  schedule:
+    - cron: 41 6 * * 1
+  workflow_dispatch:
+permissions: {}
+jobs:
+  nur:
+    name: NUR compatibility
+    permissions:
+      contents: read
+    uses: nix-forge/ci/.github/workflows/nur.yml@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
