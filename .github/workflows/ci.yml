@@ -35,6 +35,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Test source fetch retry behavior
+        run: python3 -m unittest discover -s .github/tests
       - name: Set up Nix
         uses: nix-forge/ci/actions/setup-nix@a75d21dababfd55145e2df1db81f3d2d865bec59 # v1.0.0
         with:
@@ -156,7 +158,8 @@ jobs:
             if [[ -n "$base_drv" && "$base_drv" == "$current_drv" ]]; then
               echo "$package: unchanged derivation; no rebuild needed."
             else
-              nix build ".#$package" --keep-going --show-trace --print-build-logs
+              bash .github/scripts/build-with-fetch-retry.sh \
+                nix build ".#$package" --keep-going --show-trace --print-build-logs
             fi
             # Additional contracts run even when the package output is unchanged.
             if [[ "$package" == openai-codex-desktop ]]; then
