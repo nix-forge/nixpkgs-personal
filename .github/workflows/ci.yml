@@ -14,15 +14,42 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions: {}
 jobs:
+  discover:
+    name: Discover CI inputs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      lockfiles: ${{ steps.inventory.outputs.lockfiles }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: inventory
+        uses: nix-forge/ci/actions/discover-lockfiles@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
+  lock-health:
+    name: Flake lock health
+    needs: [flake-lock]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Require every discovered lockfile to pass
+        env:
+          LOCK_RESULT: ${{ needs.flake-lock.result }}
+        run: test "$LOCK_RESULT" = success
   flake-lock:
+    needs: [discover]
     name: Flake lock (${{ matrix.lockfile }})
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        lockfile: [flake.lock, flake/dev/flake.lock]
-    uses: nix-forge/ci/.github/workflows/flake-lock.yml@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+        lockfile: ${{ fromJSON(needs.discover.outputs.lockfiles) }}
+    uses: nix-forge/ci/.github/workflows/flake-lock.yml@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
     with:
       lockfile: ${{ matrix.lockfile }}
   lint:
@@ -37,7 +64,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+        uses: nix-forge/ci/actions/setup-nix@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
         with:
           cache: 'false'
           cache-scope: ci-lint
@@ -46,9 +73,9 @@ jobs:
       - name: Test safe release archive inspection
         run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
       - name: Check shared workflow contracts
-        uses: nix-forge/ci/actions/validate-workflows@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+        uses: nix-forge/ci/actions/validate-workflows@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
       - name: Run repository hooks and publication checks
-        uses: nix-forge/ci/actions/repository-checks@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+        uses: nix-forge/ci/actions/repository-checks@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
   flake:
     name: Flake checks (${{ matrix.system }})
     runs-on: ${{ matrix.runner }}
@@ -70,12 +97,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+        uses: nix-forge/ci/actions/setup-nix@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
         with:
           cache: 'false'
           cache-scope: ci-flake
-      - name: Materialize partition source
-        run: nix store add-path flake/dev
+      - name: Materialize discovered partitions
+        uses: nix-forge/ci/actions/materialize-partitions@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
       - env:
           TARGET_SYSTEM: ${{ matrix.system }}
         run: |
@@ -106,21 +133,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+        uses: nix-forge/ci/actions/setup-nix@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
         with:
           cache: 'false'
           cache-scope: ci-build
-      - name: Materialize partition source
-        run: nix store add-path flake/dev
-      - name: Check package independence and local tests
-        env:
-          SYSTEM: ${{ matrix.system }}
-        run: >-
-          nix build --no-link --print-build-logs ".#checks.$SYSTEM.package-independence" ".#checks.$SYSTEM.package-unit-tests"
-      - name: Check font import and update contracts
-        env:
-          SYSTEM: ${{ matrix.system }}
-        run: nix build --no-link --print-build-logs ".#checks.$SYSTEM.apple-font-tooling"
+      - name: Build every declared native check
+        uses: nix-forge/ci/actions/flake-checks@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
+        with:
+          system: ${{ matrix.system }}
       - name: Build affected packages
         env:
           BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha
@@ -147,12 +167,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+        uses: nix-forge/ci/actions/setup-nix@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
         with:
           cache: 'false'
           cache-scope: ci-swift-quality
-      - name: Materialize partition source
-        run: nix store add-path flake/dev
+      - name: Materialize discovered partitions
+        uses: nix-forge/ci/actions/materialize-partitions@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
       - name: Compiler, lint, test, and dead-code checks
         env:
           OCR_CAPTURE_RUN_SANITIZERS: "0"
@@ -212,16 +232,26 @@ jobs:
     continue-on-error: true
     name: Queue completion callback
     if: always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/gh-readonly-queue/main/')
-    needs: [flake-lock, lint, flake, build, swift-quality, swift-sanitizers, swift-compiler-audits, nur]
+    needs:
+      - lock-health
+      - discover
+      - flake-lock
+      - lint
+      - flake
+      - build
+      - swift-quality
+      - swift-sanitizers
+      - swift-compiler-audits
+      - nur
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
       actions: write # Dispatch trusted queue validation.
     steps:
       - name: Notify trusted queue reconciler
-        uses: nix-forge/ci/actions/queue-completion@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+        uses: nix-forge/ci/actions/queue-completion@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
   nur:
     name: NUR compatibility
     permissions:
       contents: read
-    uses: nix-forge/ci/.github/workflows/nur.yml@7903659c4b16378411a3ea79dd73cec5c82708cc # v2.0.0
+    uses: nix-forge/ci/.github/workflows/nur.yml@d84cb92725a2ab7eafcdc9d1f1fb7a06048dfa1a # v2.2.0
