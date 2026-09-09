@@ -76,6 +76,13 @@ class BuildSelectionTests(unittest.TestCase):
             "diff-failure",
             "unchanged-contracts",
             "current-eval-failure",
+            "evaluation-only",
+            "unknown-policy-package",
+            "blank-policy-reason",
+            "missing-policy",
+            "malformed-policy",
+            "invalid-policy-reason",
+            "other-platform-policy",
         ]
         for case in cases:
             with (
@@ -88,6 +95,12 @@ class BuildSelectionTests(unittest.TestCase):
                 helper = root / ".github/scripts/build-with-fetch-retry.sh"
                 helper.parent.mkdir(parents=True)
                 helper.write_text(RETRY.read_text())
+                policy = root / ".github/ci-policy.json"
+                policy.write_text(
+                    '{"demo": "Evaluation only: fixture restriction"}'
+                    if case == "evaluation-only"
+                    else "{}"
+                )
                 command(["git", "init", "-q", "-b", "main"], root)
                 command(["git", "config", "user.name", "CI Test"], root)
                 command(["git", "config", "user.email", "ci@example.invalid"], root)
@@ -98,6 +111,21 @@ class BuildSelectionTests(unittest.TestCase):
                 source = root / "pkgs/by-name" / name[:2] / name / "package.nix"
                 package(source, name)
                 package(root / "other.nix", "other")
+                if case == "unknown-policy-package":
+                    policy.write_text('{"demoo": "Evaluation only: typo"}')
+                elif case == "blank-policy-reason":
+                    policy.write_text('{"demo": "   "}')
+                elif case == "missing-policy":
+                    policy.unlink()
+                elif case == "malformed-policy":
+                    policy.write_text('{"demo":')
+                elif case == "invalid-policy-reason":
+                    policy.write_text('{"demo": null}')
+                elif case == "other-platform-policy":
+                    policy.write_text(
+                        '{"foreign": "Evaluation only: another platform"}'
+                    )
+                    package(root / "pkgs/by-name/fo/foreign/package.nix", "foreign")
                 flake(
                     root,
                     name,
@@ -117,7 +145,18 @@ class BuildSelectionTests(unittest.TestCase):
                 package(
                     source,
                     name,
-                    version="2" if case == "runtime-change" else "1",
+                    version="2"
+                    if case
+                    in {
+                        "runtime-change",
+                        "evaluation-only",
+                        "unknown-policy-package",
+                        "blank-policy-reason",
+                        "missing-policy",
+                        "malformed-policy",
+                        "invalid-policy-reason",
+                    }
+                    else "1",
                     description="after",
                 )
                 flake(root, name, invalid=case == "current-eval-failure")
@@ -191,12 +230,24 @@ exec "$REAL_GIT" "$@"
                     capture_output=True,
                 )
                 builds = log.read_text().splitlines() if log.exists() else []
-                if case == "current-eval-failure":
+                if case in {
+                    "current-eval-failure",
+                    "unknown-policy-package",
+                    "blank-policy-reason",
+                    "missing-policy",
+                    "malformed-policy",
+                    "invalid-policy-reason",
+                }:
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(builds, [])
+                    if case != "current-eval-failure":
+                        self.assertIn("policy", result.stdout.lower())
                     continue
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                if case == "metadata":
+                if case == "evaluation-only":
+                    self.assertEqual(builds, [])
+                    self.assertIn("fixture restriction", result.stdout)
+                elif case in {"metadata", "other-platform-policy"}:
                     self.assertEqual(builds, [])
                     self.assertIn("unchanged derivation", result.stdout)
                 elif case.startswith("infrastructure-"):

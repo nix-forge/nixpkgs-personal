@@ -1,0 +1,15 @@
+diff --git a/repos.json b/repos.json
+index 135fe9fdda18..f6a3d60890fb 100644
+--- a/repos.json
++++ b/repos.json
+@@ -1548,6 +1548,10 @@
+             "github-contact": "Jake-Gillberg",
+             "url": "https://github.com/Jake-Gillberg/nix-data"
+         },
++        "nix-forge": {
++            "github-contact": "IanHollow",
++            "url": "https://github.com/nix-forge/nixpkgs-personal"
++        },
+         "nix-geht": {
+             "github-contact": "vifino",
+             "url": "https://github.com/vifino/nix-geht"

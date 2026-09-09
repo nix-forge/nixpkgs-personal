@@ -10,7 +10,10 @@ let
     let
       pkgs = import nixpkgsPath {
         inherit system;
-        config.allowUnfree = true;
+        config = {
+          allowUnfree = true;
+          checkMeta = true;
+        };
       };
       packages = import repositoryPath { inherit pkgs; };
       supported = pkgs.lib.filterAttrs (

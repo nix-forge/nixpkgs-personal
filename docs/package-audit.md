@@ -109,3 +109,130 @@ claim macOS builds or GUI tests were run from the Linux review host.
   encoding and shaping checks. Native macOS and ARM64 Linux builds run in the
   repository's CI matrix; this review runs on the `desktop` x86_64 Linux host.
   No system activation is part of this change.
+
+## Metadata and unfree review, 2026-09-08
+
+Scope: the complete 39-package collection at base
+`cf6cad184f3d4f35bfde13336609fe2a7daacf3d`, with the changes recorded below.
+The requirements are accurate licenses, consumer policy, provenance, platforms,
+entrypoints and build settings. The [package standard](package-standard.md)
+provides repository conventions; [metadata research](package-metadata-research.md)
+provides the pinned Nixpkgs and upstream evidence.
+
+### Initial metadata corrections
+
+- Mark the full Anthropic and OpenAI skill catalogs unfree. Anthropic includes
+  restricted document skills and 54 prebuilt OFL fonts; OpenAI includes Figma
+  terms and MIT Notion skills. Keep the mixed license and provenance metadata.
+- Declare MPL-2.0 for the official LibreOffice distribution.
+- Give the Windows ISO fetcher `pname = "ttf-ms-win11-auto"` so the documented
+  name predicate permits both the package and its source. Retain its original
+  filename, hash, restrictive license and local-build settings. Remove the
+  redundant `meta.priority = 5`, which only repeated Nixpkgs' default.
+- Install omitted upstream notices for Matt Pocock skills, pstack skills,
+  Bibata, M PLUS, Twemoji, Noctalia, Vorssaint and remindctl. Fetch remindctl's
+  missing MIT notice from its matching release with a reviewed hash.
+- Preserve remindctl's signed executable through installation. Both architectures
+  in the pinned universal binary contain code-signature load commands.
+- Use `stdenvNoCC` for the prebuilt Twemoji font. Remove its inherited
+  `nix-update` script, which cannot update the source defined in upstream Nixpkgs.
+  Its existing manual update policy follows the Nixpkgs pin.
+- Enable Nixpkgs metadata type checks and add policy regression checks. Document
+  that direct flake outputs enable unfree internally, while imports and overlays
+  preserve the caller's policy.
+
+No changes were needed to the other license classifications, supported platform
+sets or executable names. Data packages, the CEF library, LinearMouse and macOS
+Spotify correctly omit `mainProgram` because they install no `bin` entrypoint.
+Linux Spotify retains `mainProgram = "spotify"`. Existing source-built utilities
+and vendor binaries retain their distinct provenance. No new redistribution,
+maintainer, vulnerability or broken-platform assertions were justified.
+
+The follow-up [licensing changes](package-licensing.md) supersede the full-catalog
+default above: Anthropic now selects free examples, and Noctalia records its
+bundled Apache-2.0 component. The table reflects current defaults.
+
+### Complete classification
+
+The table describes installed payloads. "Source" includes source text and
+locally compiled code; packages may leave the default source provenance implicit.
+"Font binary" follows Nixpkgs' `binaryBytecode` convention. These are package
+classifications, not an audit of every dependency's copyright notices.
+
+| Package | Declared licenses | Unfree | Payload provenance |
+| --- | --- | --- | --- |
+| `anthropic-skills` | Apache-2.0, OFL-1.1 by default | No | Source, Font binary |
+| `apple-color-emoji` | unfree, OFL-1.1 | Yes | Font binary |
+| `apple-fonts` | unfree | Yes | Font binary |
+| `apple-new-york` | unfree | Yes | Font binary |
+| `apple-sf-arabic` | unfree | Yes | Font binary |
+| `apple-sf-armenian` | unfree | Yes | Font binary |
+| `apple-sf-compact` | unfree | Yes | Font binary |
+| `apple-sf-georgian` | unfree | Yes | Font binary |
+| `apple-sf-hebrew` | unfree | Yes | Font binary |
+| `apple-sf-mono` | unfree | Yes | Font binary |
+| `apple-sf-pro` | unfree | Yes | Font binary |
+| `bibata-cursors-hyprcursor` | GPL-3.0-or-later | No | Source |
+| `bitwarden-desktop` | GPL-3.0-only | No | Native binary |
+| `claude-desktop` | unfree | Yes | Native binary |
+| `emojione-legacy` | MIT, CC-BY-4.0 | No | Font binary |
+| `finder-favorites` | MIT | No | Source |
+| `firefox-emoji` | Apache-2.0, CC-BY-4.0 | No | Font binary |
+| `google-fonts-design` | Apache-2.0, OFL-1.1, Ubuntu-font-1.0 | No | Font binary |
+| `libreoffice` | MPL-2.0 | No | Native binary |
+| `linearmouse` | MIT | No | Native binary |
+| `mattpocock-skills` | MIT | No | Source |
+| `microsoft-teams` | unfree | Yes | Native binary |
+| `mplus-outline-fonts-compatible` | OFL-1.1 | No | Font binary |
+| `mutant-standard-emoji` | CC-BY-NC-SA-4.0 | Yes | Source |
+| `noctalia-dark-app-icons` | CC-BY-SA-4.0, GPL-3.0-only | No | Source |
+| `noctalia-personal` | MIT, Apache-2.0 | No | Source |
+| `ocr-capture` | MIT | No | Source |
+| `openai-codex-desktop` | unfree | Yes | Native binary |
+| `openai-skills` | Apache-2.0, MIT, unfree | Yes | Source |
+| `pstack-skills` | MIT | No | Source |
+| `remindctl` | MIT | No | Native binary |
+| `spotify-spotx` | unfree | Yes | Native binary |
+| `steam` | unfree | Yes | Native binary |
+| `steam-cef-scale-override` | MIT | No | Source |
+| `t3-code` | MIT | No | Native binary |
+| `ttf-ms-win11-auto` | unfree | Yes | Font binary |
+| `twemoji-color-font-optional` | CC-BY-4.0, MIT | No | Font binary |
+| `vorssaint` | GPL-3.0-or-later | No | Source |
+| `wootility` | unfree | Yes | Native binary |
+
+### Validation and limits
+
+- The regression check failed on the original Anthropic classification.
+  The original Windows font allowlist also failed on its restricted ISO.
+  Both now pass, while unrelated unfree packages remain rejected.
+- `just check` evaluates all 39 package recipes on all three supported systems
+  with metadata type checks and import-from-derivation disabled. It forces 86
+  supported derivations, 27 Linux x64, 25 Linux ARM64 and 34 macOS ARM64, and
+  their overlay counterparts. The policy check covers default rejection,
+  selected unfree consent and independent source-provenance restrictions.
+- `just test` passes the independence, package policy and Python suites.
+  `just lint`, formatting and configured pre-commit checks pass.
+- All 27 x86_64 Linux outputs build or reuse successfully, including Noctalia's
+  C++ check, Bibata's installation checks, and the complete Font8 collection
+  with source-specific evidence records.
+- Additional builds verify the full Anthropic catalog, OpenAI's free selection,
+  and the unchanged Apple emoji variant. The catalog installation checks compare
+  restricted contents byte for byte; the unchanged emoji check compares the font
+  with the downloaded source. The desktop package's updater and package-contract
+  checks pass. CI selection tests cover the hosted-build exclusions.
+- A Linux-only packaging check for remindctl verifies the pinned license,
+  installed skill and byte-identical Mach-O executable. It deliberately does
+  not execute that binary. An initial attempt to fetch through the Darwin
+  derivation failed on platform mismatch; fetching through a Linux builder
+  succeeded. The normal Darwin package evaluates with its native checks intact.
+- PersonalMonitor's native build, bundle checks, helper self-test and strict macOS
+  signature verification pass. The consuming Home Manager module evaluates to
+  the renamed application path. Its privileged fan-control feature remains
+  unavailable in the ad-hoc signed package.
+- [NUR preparation](nur-submission.md#verified-checkout) verified all 34 native
+  macOS outputs against the current checkout's derivation paths.
+- No ARM64 Linux build, GUI launch, Reminders permission test,
+  system activation or complete transitive license audit ran in this review.
+  The package metadata review does not establish every upstream component's
+  copyright ownership or grant redistribution rights.

@@ -49,6 +49,8 @@ class _UpstreamState:
     version: str
     url: str
     hash_sri: str
+    schema_url: str
+    schema_hash_sri: str
 
 
 def _stdout(message: str) -> None:
@@ -141,6 +143,13 @@ def _validate_download_url(release: _Release) -> None:
         )
 
 
+def _schema_url(version: str) -> str:
+    return (
+        "https://raw.githubusercontent.com/linearmouse/linearmouse/"
+        f"v{version}/Documentation/Configuration.json"
+    )
+
+
 def _prefetch_hash(url: str) -> str:
     nix_binary = shutil.which("nix")
     if nix_binary is None:
@@ -162,7 +171,7 @@ def _prefetch_hash(url: str) -> str:
     )
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip() or "(no output)"
-        _fail(f"failed to prefetch LinearMouse DMG hash:\n{detail}")
+        _fail(f"failed to prefetch LinearMouse source hash:\n{detail}")
 
     try:
         hash_value = json.loads(completed.stdout).get("hash")
@@ -178,14 +187,23 @@ def _prefetch_hash(url: str) -> str:
 
 def _parse_existing(content: str) -> _UpstreamState:
     version_match = re.search(r'^  version = "([^"]+)";$', content, re.MULTILINE)
-    url_match = re.search(r'^    url = "([^"]+)";$', content, re.MULTILINE)
-    hash_match = re.search(r'^    hash = "([^"]+)";$', content, re.MULTILINE)
-    if version_match is None or url_match is None or hash_match is None:
-        _fail("could not parse existing LinearMouse source metadata")
+    blocks = {}
+    for name in ("src", "configurationSchema"):
+        match = re.search(
+            rf'  {name} = \{{\n    url = "([^"]+)";\n    hash = "([^"]+)";\n  \}};',
+            content,
+        )
+        if match is None:
+            _fail(f"could not parse existing LinearMouse {name} metadata")
+        blocks[name] = match.groups()
+    if version_match is None:
+        _fail("could not parse existing LinearMouse version")
     return _UpstreamState(
         version=version_match.group(1),
-        url=url_match.group(1),
-        hash_sri=hash_match.group(1),
+        url=blocks["src"][0],
+        hash_sri=blocks["src"][1],
+        schema_url=blocks["configurationSchema"][0],
+        schema_hash_sri=blocks["configurationSchema"][1],
     )
 
 
@@ -196,6 +214,10 @@ def _render_source(upstream: _UpstreamState) -> str:
         "  src = {\n"
         f'    url = "{upstream.url}";\n'
         f'    hash = "{upstream.hash_sri}";\n'
+        "  };\n"
+        "  configurationSchema = {\n"
+        f'    url = "{upstream.schema_url}";\n'
+        f'    hash = "{upstream.schema_hash_sri}";\n'
         "  };\n"
         "}\n"
     )
@@ -242,9 +264,10 @@ def _main(argv: Sequence[str] | None = None) -> int:
     )
     _validate_download_url(release)
 
-    if not args.refresh and (existing.version, existing.url) == (
+    if not args.refresh and (existing.version, existing.url, existing.schema_url) == (
         release.version,
         release.url,
+        _schema_url(release.version),
     ):
         _stdout("[update] linearmouse is already up to date")
         return 0
@@ -253,6 +276,8 @@ def _main(argv: Sequence[str] | None = None) -> int:
         version=release.version,
         url=release.url,
         hash_sri=_prefetch_hash(release.url),
+        schema_url=_schema_url(release.version),
+        schema_hash_sri=_prefetch_hash(_schema_url(release.version)),
     )
     new_content = _render_source(upstream)
     diff_text = "".join(

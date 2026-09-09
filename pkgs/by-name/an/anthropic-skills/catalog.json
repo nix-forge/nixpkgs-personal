@@ -1,0 +1,242 @@
+{
+  "root": "skills",
+  "prefix": "anthropic",
+  "rootNotices": {
+    "THIRD_PARTY_NOTICES.md": "a8ff7a84dee9dfb42ab448de281784387ceafdf63881b7c070ee2de7f6ed865c"
+  },
+  "skills": {
+    "academy-guide": {
+      "skillHash": "f27992510c051355dfe68c92394d509af730da5298094ec86834ee40bbd31376",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "algorithmic-art": {
+      "skillHash": "3bc4092c09804853186524c826bc0621b940bb6122c05b84496dff95388e6eef",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "brand-guidelines": {
+      "skillHash": "1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "canvas-design": {
+      "skillHash": "a1f288079624402f30682753c1d43920b6664785698d21d3e7aa197450a6448b",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+        "canvas-fonts/ArsenalSC-OFL.txt": "8ddd61b18ba2c0d0dbe4a691cf5f1a0673f473d02fa0546e67ee88c006aeff6e",
+        "canvas-fonts/BigShoulders-OFL.txt": "fbc746aabf0eb1847dfd92e2efc4596d79fa897d60b8e64062a22f585508fb3f",
+        "canvas-fonts/Boldonse-OFL.txt": "45cc82ab4032273c0924025ffcf8f0665a68e1a5955e3f7247e5daf1deeb1326",
+        "canvas-fonts/BricolageGrotesque-OFL.txt": "0e4f4eb8534bc66a76aca13dd19c1f9731b2008866b29ccff182b764649df9b4",
+        "canvas-fonts/CrimsonPro-OFL.txt": "35680d14547b6748b6f362a052a46d22764ce5eccf96e18b74f567bb2ee58114",
+        "canvas-fonts/DMMono-OFL.txt": "bfe7842fcb88323e2981e24710c25202677385a8c75fb6a87217b275a0247ae3",
+        "canvas-fonts/EricaOne-OFL.txt": "e0de629968b52255548d5fafcf30b24ff9edae0eda362380755a75816404d0fa",
+        "canvas-fonts/GeistMono-OFL.txt": "6a873c900f584109b13ae0aaf81d6e3cf0a68751a216b03f7b6c68d547057bb4",
+        "canvas-fonts/Gloock-OFL.txt": "c0a3f3125ac491ef3d1f09f401be4834c646562f647e44f2bcbc49f0466c656d",
+        "canvas-fonts/IBMPlexMono-OFL.txt": "5294ce778857e1eb02e830b6ab06435537d38f43055327e73d03a2d4d57d5123",
+        "canvas-fonts/InstrumentSans-OFL.txt": "bf4dc6d13a8cccd4807133c77a1ee9619a16b92cb23322258725ab6731c2f6e5",
+        "canvas-fonts/Italiana-OFL.txt": "8373b11312ace78c4cec2e8f9f6aa9f2330601107dac7bcf899c6f2dbd40c5a5",
+        "canvas-fonts/JetBrainsMono-OFL.txt": "a76abf002c49097d146e86740a3105a5d00450b1592e820a1109a8c5680cd697",
+        "canvas-fonts/Jura-OFL.txt": "eaf9bdb675f6d87e5feb88199ab3ea581d3bd2082f426e384fa9c394576d7260",
+        "canvas-fonts/LibreBaskerville-OFL.txt": "55959eef5b0c3b2e3c1c7631b8ff0f9447d75de20f29cfa7db5bcfb026763343",
+        "canvas-fonts/Lora-OFL.txt": "62e37a82d3f1ef2a70712885fa8b3144b65fd144d8e748d6196b690a354d792c",
+        "canvas-fonts/NationalPark-OFL.txt": "81c6c71d83b5b45d7344f96df12bb4a2477a5b092a9144757ee1d0f50f855175",
+        "canvas-fonts/NothingYouCouldDo-OFL.txt": "7c2a6970584ddad04919816163746f83b378078015899b18468b40f05e9ce128",
+        "canvas-fonts/Outfit-OFL.txt": "1945b62cd76da9a3051a1660dde72afaa64ffc2666d30e7a78356d651653ba2f",
+        "canvas-fonts/PixelifySans-OFL.txt": "7f54d1d9f1ae1ba9f2722f978145f90324fea34ca3c2304b3a29cfa96ac6037e",
+        "canvas-fonts/PoiretOne-OFL.txt": "2eaf541f7eb8b512e4c757a5212060abf5b6edfef230e9d7640bf736b315c33a",
+        "canvas-fonts/RedHatMono-OFL.txt": "435fbfb7e66988b2a06686a4cb966faec733f35d8fe100a1601573c27f3e0bb8",
+        "canvas-fonts/Silkscreen-OFL.txt": "6b849745119bbe85ec01fd080c9cd50234da9f52ac6e48b55d1a424a0c4d7ca9",
+        "canvas-fonts/SmoochSans-OFL.txt": "74c9c4eb88e891483e1b7bc54780b452cbf4f4df66d4e71881d7569aa2130749",
+        "canvas-fonts/Tektur-OFL.txt": "3f1466cb5438f31782eeb6e895f3a655bc4d090e24263e331f555357d1cb734e",
+        "canvas-fonts/WorkSans-OFL.txt": "ace8c22a3326318b54e67c3691857929634205533f454a70ef5a3473ddb2e2ba",
+        "canvas-fonts/YoungSerif-OFL.txt": "cdcb8039606b40a027a6d24586ec62d5fe29c701343d82a048c829cb28a3dd28"
+      },
+      "fonts": [
+        "canvas-fonts/ArsenalSC-Regular.ttf",
+        "canvas-fonts/BigShoulders-Bold.ttf",
+        "canvas-fonts/BigShoulders-Regular.ttf",
+        "canvas-fonts/Boldonse-Regular.ttf",
+        "canvas-fonts/BricolageGrotesque-Bold.ttf",
+        "canvas-fonts/BricolageGrotesque-Regular.ttf",
+        "canvas-fonts/CrimsonPro-Bold.ttf",
+        "canvas-fonts/CrimsonPro-Italic.ttf",
+        "canvas-fonts/CrimsonPro-Regular.ttf",
+        "canvas-fonts/DMMono-Regular.ttf",
+        "canvas-fonts/EricaOne-Regular.ttf",
+        "canvas-fonts/GeistMono-Bold.ttf",
+        "canvas-fonts/GeistMono-Regular.ttf",
+        "canvas-fonts/Gloock-Regular.ttf",
+        "canvas-fonts/IBMPlexMono-Bold.ttf",
+        "canvas-fonts/IBMPlexMono-Regular.ttf",
+        "canvas-fonts/IBMPlexSerif-Bold.ttf",
+        "canvas-fonts/IBMPlexSerif-BoldItalic.ttf",
+        "canvas-fonts/IBMPlexSerif-Italic.ttf",
+        "canvas-fonts/IBMPlexSerif-Regular.ttf",
+        "canvas-fonts/InstrumentSans-Bold.ttf",
+        "canvas-fonts/InstrumentSans-BoldItalic.ttf",
+        "canvas-fonts/InstrumentSans-Italic.ttf",
+        "canvas-fonts/InstrumentSans-Regular.ttf",
+        "canvas-fonts/InstrumentSerif-Italic.ttf",
+        "canvas-fonts/InstrumentSerif-Regular.ttf",
+        "canvas-fonts/Italiana-Regular.ttf",
+        "canvas-fonts/JetBrainsMono-Bold.ttf",
+        "canvas-fonts/JetBrainsMono-Regular.ttf",
+        "canvas-fonts/Jura-Light.ttf",
+        "canvas-fonts/Jura-Medium.ttf",
+        "canvas-fonts/LibreBaskerville-Regular.ttf",
+        "canvas-fonts/Lora-Bold.ttf",
+        "canvas-fonts/Lora-BoldItalic.ttf",
+        "canvas-fonts/Lora-Italic.ttf",
+        "canvas-fonts/Lora-Regular.ttf",
+        "canvas-fonts/NationalPark-Bold.ttf",
+        "canvas-fonts/NationalPark-Regular.ttf",
+        "canvas-fonts/NothingYouCouldDo-Regular.ttf",
+        "canvas-fonts/Outfit-Bold.ttf",
+        "canvas-fonts/Outfit-Regular.ttf",
+        "canvas-fonts/PixelifySans-Medium.ttf",
+        "canvas-fonts/PoiretOne-Regular.ttf",
+        "canvas-fonts/RedHatMono-Bold.ttf",
+        "canvas-fonts/RedHatMono-Regular.ttf",
+        "canvas-fonts/Silkscreen-Regular.ttf",
+        "canvas-fonts/SmoochSans-Medium.ttf",
+        "canvas-fonts/Tektur-Medium.ttf",
+        "canvas-fonts/Tektur-Regular.ttf",
+        "canvas-fonts/WorkSans-Bold.ttf",
+        "canvas-fonts/WorkSans-BoldItalic.ttf",
+        "canvas-fonts/WorkSans-Italic.ttf",
+        "canvas-fonts/WorkSans-Regular.ttf",
+        "canvas-fonts/YoungSerif-Regular.ttf"
+      ],
+      "licenses": ["asl20", "ofl"]
+    },
+    "claude-api": {
+      "skillHash": "001abd67b06d9aa18f7f7c1a221200a51394f2cfb45cb583f4931bf77fd4b70f",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "discernment-nudge": {
+      "skillHash": "9191177c4a8ef11a20dace786d708506b22d43e748c71287bb823de0dc812dad",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "doc-coauthoring": {
+      "skillHash": "2e47d78846faeea4a56e9809c52700087a15a2155a3f293a3efbaded81398ef4",
+      "notices": {},
+      "fonts": [],
+      "licenses": ["unfree"],
+      "reviewNote": "No explicit per-skill license at the pinned revision; preserve unchanged and exclude from the free selection."
+    },
+    "docx": {
+      "skillHash": "8017469ea95fb7d28225c62daf8e2f3492a7b516fc64c18c28977cbf8980b7fe",
+      "notices": {
+        "LICENSE.txt": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "frontend-design": {
+      "skillHash": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
+      "notices": {
+        "LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "internal-comms": {
+      "skillHash": "067b7587a344a928fc6534ef66b1bcd591fc7c26d207ea7ca3334aeb678d6475",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "mcp-builder": {
+      "skillHash": "0f4592dcb53cf2b5d6b7febee6b4152018b565551a1c29e3c612f57b218ab295",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "pdf": {
+      "skillHash": "9f78b8359fbd4943ad260a7a1e436e5a96503406d6c34e99f69223d647d85b9c",
+      "notices": {
+        "LICENSE.txt": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "pptx": {
+      "skillHash": "a7ff03e2c85b636f55232a6b1555f5dd90216b7a1a359ab289d8364e6acbc6a0",
+      "notices": {
+        "LICENSE.txt": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "skill-creator": {
+      "skillHash": "dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "slack-gif-creator": {
+      "skillHash": "2efca615ce55a3edd8fc05c779068a8085816617991987e446606403cd3abb22",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "theme-factory": {
+      "skillHash": "c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "web-artifacts-builder": {
+      "skillHash": "81c5002c6643b0de7b8710b00e7a9038daa6fb9b68d59870ee6adb12da8d10f8",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "webapp-testing": {
+      "skillHash": "51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2",
+      "notices": {
+        "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "xlsx": {
+      "skillHash": "6712b39718fe815054abca9c3ee72f989613e6f771c8a5c58f30a65a6c905622",
+      "notices": {
+        "LICENSE.txt": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    }
+  }
+}

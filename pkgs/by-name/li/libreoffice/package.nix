@@ -51,7 +51,8 @@ stdenvNoCC.mkDerivation {
     description = "Comprehensive, professional-quality productivity suite";
     homepage = "https://www.libreoffice.org/";
     downloadPage = "https://www.libreoffice.org/download/download-libreoffice/";
-    license = lib.licenses.lgpl3;
+    # The official distribution uses MPL 2.0; the bundle retains third-party notices.
+    license = lib.licenses.mpl20;
     mainProgram = "libreoffice";
     platforms = [ "aarch64-darwin" ];
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];

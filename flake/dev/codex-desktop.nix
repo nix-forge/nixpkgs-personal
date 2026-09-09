@@ -2,13 +2,17 @@
   perSystem =
     { config, pkgs, ... }:
     let
+      updaterSource = lib.fileset.toSource {
+        root = ../..;
+        fileset = ../../pkgs/by-name/op/openai-codex-desktop;
+      };
       codexDesktop = config.packages.openai-codex-desktop;
     in
     {
       checks.openai-codex-desktop-updater =
         pkgs.runCommand "openai-codex-desktop-updater-tests" { nativeBuildInputs = [ pkgs.python3 ]; }
           ''
-            cd ${../..}
+            cd ${updaterSource}
             python -B -m unittest discover \
               -s pkgs/by-name/op/openai-codex-desktop \
               -p 'test_*.py'

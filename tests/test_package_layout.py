@@ -25,6 +25,7 @@ class HelperCopiesTest(unittest.TestCase):
             (target / "package.nix").write_text("{ }: { }\n")
             (target / "README.md").write_text("Fixture package\n")
             for filename in (
+                "catalog.py",
                 "update_support.py",
                 "skills_updater.py",
                 "unpack.py",

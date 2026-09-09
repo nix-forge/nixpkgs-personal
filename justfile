@@ -10,7 +10,7 @@ check:
 
 test:
     nix store add-path flake/dev
-    nix build --no-link .#checks.$(nix eval --impure --raw --expr builtins.currentSystem).package-independence .#checks.$(nix eval --impure --raw --expr builtins.currentSystem).package-unit-tests
+    nix build --no-link .#checks.$(nix eval --impure --raw --expr builtins.currentSystem).package-independence .#checks.$(nix eval --impure --raw --expr builtins.currentSystem).package-policy .#checks.$(nix eval --impure --raw --expr builtins.currentSystem).package-unit-tests
 
 fmt:
     nix fmt

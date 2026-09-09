@@ -1,8 +1,8 @@
-#!@bash@
+#!/usr/bin/env bash
 # shellcheck shell=bash
 set -euo pipefail
 
-repository_root="$(@git@ -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" || {
+repository_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "error: run this command from a Git checkout of nixpkgs-personal" >&2
   exit 2
 }
@@ -13,4 +13,4 @@ if [[ ! -f $updater ]]; then
   exit 2
 fi
 
-exec @python@ "$updater" "$@"
+exec python3 "$updater" "$@"

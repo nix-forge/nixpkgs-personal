@@ -1,0 +1,14 @@
+{
+  "apple-color-emoji": "Evaluation only: third-party Apple artwork and the repaired Apple/Noto output have unresolved permission questions for hosted processing. Local recipes remain available.",
+  "apple-fonts": "Evaluation only: the Font8 collection has no reviewed grant covering hosted extraction of every included asset.",
+  "apple-new-york": "Evaluation only: the Apple developer-font grant is scoped to design work; hosted CI extraction has not been reviewed under that grant.",
+  "apple-sf-arabic": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
+  "apple-sf-armenian": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
+  "apple-sf-compact": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
+  "apple-sf-georgian": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
+  "apple-sf-hebrew": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
+  "apple-sf-mono": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
+  "apple-sf-pro": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
+  "spotify-spotx": "Evaluation only: CI would execute Spotify modifications covered by the service's alteration and ad-blocking restrictions.",
+  "ttf-ms-win11-auto": "Evaluation only: the evaluation ISO grant has not been established to cover standalone font extraction on hosted Linux runners."
+}

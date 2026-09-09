@@ -12,6 +12,7 @@ from pathlib import Path
 # List intended copies explicitly; specialized Windows and emoji font inspectors
 # have separate behavior and do not belong to the Apple font helper group.
 HELPER_COPIES = {
+    "catalog.py": ("anthropic-skills", "openai-skills"),
     "update_support.py": (
         "anthropic-skills",
         "apple-color-emoji",

@@ -201,6 +201,8 @@ else
         --replace-fail \
         "const LDD_PATH = '/usr/bin/ldd';" \
         "const LDD_PATH = '${stdenv.cc.libc.bin}/bin/ldd';"
+      sed -i '1i// Modified by nixpkgs-personal: use the Nix glibc ldd path.' \
+        app-asar/node_modules/@parcel/watcher/node_modules/detect-libc/lib/filesystem.js
       # Keep native modules and their helper executables outside the archive
       # so autoPatchelf updates the files Electron actually loads.
       asar pack app-asar usr/lib/chatgpt/resources/app.asar --unpack-dir node_modules

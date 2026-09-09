@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import difflib
+import importlib
 import json
 import os
 import re
@@ -87,6 +88,21 @@ def _prefetch_source(owner: str, repo: str, revision: str) -> str:
     content_hash = payload.get("hash") if isinstance(payload, dict) else None
     if not isinstance(content_hash, str) or not content_hash.startswith("sha256-"):
         _fail("nix prefetch output did not contain an SRI SHA-256 hash")
+    manifest_path = Path(__file__).with_name("catalog.json")
+    if manifest_path.is_file():
+        store_path = payload.get("storePath")
+        if not isinstance(store_path, str):
+            _fail("nix prefetch output did not contain a store path")
+        validate = importlib.import_module("catalog").validate
+
+        manifest = json.loads(manifest_path.read_text())
+        try:
+            validate(Path(store_path), manifest)
+        except ValueError as exc:
+            _fail(
+                f"{exc}. Inspect the new source with catalog.py inspect, review terms, "
+                "then update catalog.json before changing the source pin."
+            )
     return content_hash
 
 

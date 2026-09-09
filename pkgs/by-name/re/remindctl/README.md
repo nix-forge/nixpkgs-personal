@@ -10,6 +10,10 @@ This directory can be copied and instantiated with upstream Nixpkgs using
 `pkgs.callPackage ./package.nix { }`. Dependencies come from upstream
 Nixpkgs; the package does not require another personal package.
 
+The release ZIP contains only the signed executable. Packaging preserves its
+bytes and installs the matching release's MIT notice under `share/doc/remindctl`.
+The notice hash in `package.nix` needs manual review if an update changes it.
+
 ## Updates
 
 Run `python3 pkgs/by-name/re/remindctl/update.py --dry-run` from the repository root

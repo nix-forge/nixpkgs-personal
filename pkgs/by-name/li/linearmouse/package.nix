@@ -54,10 +54,14 @@ stdenvNoCC.mkDerivation {
     runHook postInstallCheck
   '';
 
-  passthru.updateScript = [
-    "python3"
-    "pkgs/by-name/li/linearmouse/update.py"
-  ];
+  passthru = {
+    configurationSchema = fetchurl source.configurationSchema;
+    configurationSchemaVersion = source.version;
+    updateScript = [
+      "python3"
+      "pkgs/by-name/li/linearmouse/update.py"
+    ];
+  };
 
   meta = {
     description = "Customizable mouse and trackpad utility for macOS";

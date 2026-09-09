@@ -2,68 +2,76 @@
   lib,
   stdenvNoCC,
   fetchFromGitHub,
-  findutils,
-  gnused,
+  python3,
+  writeText,
+  includeRestricted ? true,
+  selectedSkills ? null,
 }:
-
 let
   pname = "openai-skills";
   source = import ./source.nix;
+  inventory = builtins.fromJSON (builtins.readFile ./catalog.json);
+  availableSkills = builtins.attrNames inventory.skills;
+  freeSkills = builtins.filter (
+    name: !(builtins.elem "unfree" inventory.skills.${name}.licenses)
+  ) availableSkills;
+  names =
+    if selectedSkills != null then
+      selectedSkills
+    else if includeRestricted then
+      availableSkills
+    else
+      freeSkills;
+  validSelection =
+    names != [ ]
+    && lib.unique names == names
+    && lib.all (name: builtins.hasAttr name inventory.skills) names;
+  selection = writeText "${pname}-selection.json" (builtins.toJSON names);
+  licenseNames = lib.unique (lib.concatMap (name: inventory.skills.${name}.licenses) names);
+  hasFonts = lib.any (name: inventory.skills.${name}.fonts != [ ]) names;
 in
-stdenvNoCC.mkDerivation (_finalAttrs: {
+assert lib.assertMsg validSelection
+  "${pname}: select a nonempty list of unique reviewed skill names";
+stdenvNoCC.mkDerivation {
   inherit pname;
   inherit (source) version;
-
   src = fetchFromGitHub source.src;
-  nativeBuildInputs = [
-    findutils
-    gnused
-  ];
+  nativeBuildInputs = [ python3 ];
   strictDeps = true;
   dontConfigure = true;
   dontBuild = true;
-
+  # Skill resources are data; generic script fixups would alter upstream files.
+  dontFixup = true;
   installPhase = ''
     runHook preInstall
-
-    skill_root="$out/share/agent-skills"
-    mkdir -p "$skill_root"
-    for source_skill in "$src"/skills/.curated/*; do
-      test -f "$source_skill/SKILL.md" || continue
-      skill_name="$(basename "$source_skill")"
-      target_name="openai-$skill_name"
-      target_skill="$TMPDIR/$target_name"
-      cp -R --no-preserve=ownership "$source_skill" "$target_skill"
-      chmod -R u+w "$target_skill"
-      sed -i "0,/^name: /s//name: $target_name/" "$target_skill/SKILL.md"
-      cp -R --no-preserve=ownership "$target_skill" "$skill_root/$target_name"
-    done
-
+    python3 ${./catalog.py} install "$src" --manifest ${./catalog.json} \
+      --selection ${selection} --output "$out"
+    install -Dm644 ${./README.md} "$out/share/doc/${pname}/PACKAGING.md"
     runHook postInstall
   '';
-
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
-
-    test "$(find "$out/share/agent-skills" -mindepth 1 -maxdepth 1 -type d | wc -l)" -gt 0
-    while IFS= read -r skill_file; do
-      grep -q '^---$' "$skill_file"
-      grep -q "^name: openai-" "$skill_file"
-    done < <(find "$out/share/agent-skills" -mindepth 2 -maxdepth 2 -name SKILL.md -type f | sort)
-
+    python3 ${./catalog.py} verify "$src" --manifest ${./catalog.json} \
+      --selection ${selection} --output "$out"
     runHook postInstallCheck
   '';
-
-  passthru.updateScript = [
-    "python3"
-    "pkgs/by-name/op/openai-skills/update.py"
-  ];
-
+  passthru = {
+    inherit availableSkills freeSkills;
+    restrictedSkills = lib.subtractLists freeSkills availableSkills;
+    updateScript = [
+      "python3"
+      "pkgs/by-name/op/openai-skills/update.py"
+    ];
+  };
   meta = {
-    description = "OpenAI curated Agent Skills catalog";
+    description = "openai Agent Skills with reviewed component selection";
     homepage = "https://github.com/openai/skills";
-    license = lib.licenses.asl20;
+    license = map (name: lib.licenses.${name}) licenseNames;
+    sourceProvenance = [
+      lib.sourceTypes.fromSource
+    ]
+    ++ lib.optional hasFonts lib.sourceTypes.binaryBytecode;
     platforms = lib.platforms.all;
   };
-})
+}

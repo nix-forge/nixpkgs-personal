@@ -1,0 +1,49 @@
+{
+  "default": {
+    "status": "unreviewed",
+    "terms": "https://www.apple.com/legal/sla/docs/macOSTahoe.pdf",
+    "scope": "No source-specific grant has been reviewed. For Font8 assets, individual foundry permissions remain unverified. For user-supplied archives, review the terms of their original distribution. A family name or free upstream alternative does not license this binary."
+  },
+  "sources": {
+    "apple-new-york": {
+      "status": "restricted-developer-font",
+      "terms": "https://developer.apple.com/fonts/",
+      "scope": "The license bundled with this developer-font distribution governs eligibility and Apple-platform UI mockups. No general use or redistribution grant is asserted."
+    },
+    "apple-sf-arabic": {
+      "status": "restricted-developer-font",
+      "terms": "https://developer.apple.com/fonts/",
+      "scope": "The license bundled with this developer-font distribution governs eligibility and Apple-platform UI mockups. No general use or redistribution grant is asserted."
+    },
+    "apple-sf-armenian": {
+      "status": "restricted-developer-font",
+      "terms": "https://developer.apple.com/fonts/",
+      "scope": "The license bundled with this developer-font distribution governs eligibility and Apple-platform UI mockups. No general use or redistribution grant is asserted."
+    },
+    "apple-sf-compact": {
+      "status": "restricted-developer-font",
+      "terms": "https://developer.apple.com/fonts/",
+      "scope": "The license bundled with this developer-font distribution governs eligibility and Apple-platform UI mockups. No general use or redistribution grant is asserted."
+    },
+    "apple-sf-georgian": {
+      "status": "restricted-developer-font",
+      "terms": "https://developer.apple.com/fonts/",
+      "scope": "The license bundled with this developer-font distribution governs eligibility and Apple-platform UI mockups. No general use or redistribution grant is asserted."
+    },
+    "apple-sf-hebrew": {
+      "status": "restricted-developer-font",
+      "terms": "https://developer.apple.com/fonts/",
+      "scope": "The license bundled with this developer-font distribution governs eligibility and Apple-platform UI mockups. No general use or redistribution grant is asserted."
+    },
+    "apple-sf-mono": {
+      "status": "restricted-developer-font",
+      "terms": "https://developer.apple.com/fonts/",
+      "scope": "The license bundled with this developer-font distribution governs eligibility and Apple-platform UI mockups. No general use or redistribution grant is asserted."
+    },
+    "apple-sf-pro": {
+      "status": "restricted-developer-font",
+      "terms": "https://developer.apple.com/fonts/",
+      "scope": "The license bundled with this developer-font distribution governs eligibility and Apple-platform UI mockups. No general use or redistribution grant is asserted."
+    }
+  }
+}

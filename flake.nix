@@ -42,19 +42,20 @@
       _module.args.packageNixpkgs = nixpkgs;
       _module.args.packageOverlay = personalOverlay;
 
-      imports = [ ./flake/partitions.nix ];
+      imports = [
+        ./flake/partitions.nix
+        ./flake/ci.nix
+      ];
 
       flake = {
         overlays.default = personalOverlay;
-        legacyPackages = builtins.listToAttrs (
-          map (system: {
-            name = system;
-            value = import nixpkgs {
-              inherit system;
-              config.allowUnfree = true;
-              overlays = [ personalOverlay ];
-            };
-          }) supportedSystems
+        legacyPackages = nixpkgs.lib.genAttrs supportedSystems (
+          system:
+          import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+            overlays = [ personalOverlay ];
+          }
         );
       };
 
@@ -62,16 +63,13 @@
         { pkgs, system, ... }:
         let
           packages = packagesFor system;
-          update = pkgs.replaceVarsWith {
+          update = pkgs.writeShellApplication {
             name = "update-packages";
-            src = ./scripts/update-packages.sh;
-            dir = "bin";
-            isExecutable = true;
-            replacements = {
-              bash = "${pkgs.bash}/bin/bash";
-              git = "${pkgs.git}/bin/git";
-              python = "${pkgs.python3}/bin/python3";
-            };
+            runtimeInputs = [
+              pkgs.git
+              pkgs.python3
+            ];
+            text = builtins.readFile ./scripts/update-packages.sh;
           };
         in
         {
