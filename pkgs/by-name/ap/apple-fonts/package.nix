@@ -6,12 +6,13 @@
   python3,
   fontconfig,
   _7zz,
-  symlinkJoin,
+  buildEnv,
   writeText,
   writeShellApplication,
 }:
 let
   manifest = builtins.fromJSON (builtins.readFile ./sources.json);
+  licenseEvidence = builtins.fromJSON (builtins.readFile ./license-evidence.json);
   builder = lib.fileset.toSource {
     root = ./.;
     fileset = lib.fileset.unions [
@@ -51,6 +52,16 @@ let
         export FONTCONFIG_FILE=${./fonts.conf}
         python3 ${builder}/unpack.py "$src" ${writeText "font-manifest.json" (builtins.toJSON entry)} "$out"
         install -Dm444 ${./README.md} "$out/share/doc/${entry.name}/PACKAGING.md"
+        install -Dm444 ${
+          writeText "license-scope.json" (
+            builtins.toJSON {
+              source = entry.name;
+              inherit (entry) hash;
+              url = entry.url or null;
+              evidence = licenseEvidence.sources.${entry.name} or licenseEvidence.default;
+            }
+          )
+        } "$out/share/doc/${entry.name}/license-scope.json"
         runHook postInstall
       '';
       # Verification in unpack.py checks the manifest, face identities and every
@@ -119,13 +130,17 @@ let
     in
     mkFont entry archive;
 in
-symlinkJoin {
+buildEnv {
   pname = "apple-fonts";
   inherit (manifest) version;
-  strictDeps = true;
   paths = lib.attrValues assets;
-  preferLocalBuild = true;
-  allowSubstitutes = false;
+  ignoreCollisions = false;
+  checkCollisionContents = true;
+  derivationArgs = {
+    strictDeps = true;
+    preferLocalBuild = true;
+    allowSubstitutes = false;
+  };
   passthru = {
     inherit
       assets

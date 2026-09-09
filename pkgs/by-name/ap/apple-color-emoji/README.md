@@ -6,11 +6,11 @@ of samuelngs/apple-emoji-ttf. It is a third-party conversion of Apple's font,
 not an Apple-hosted download. The release uses CBDT/CBLC color bitmap tables
 with eight sizes from 20 to 96 pixels and retains Apple AAT shaping tables.
 
-The package reuses apple-fonts' manifest installer. The versioned URL, SHA-256,
+The versioned URL, SHA-256,
 payload hash and PostScript face are recorded in source.json. Builds verify
 downloaded bytes and do not contact a moving release endpoint,
 execute installers, or require a private Mac export. The font is installed
-with its original artwork and shaping preserved. Upstream's Fontconfig replacement rules are not
+with its existing artwork and shaping preserved. Upstream's Fontconfig replacement rules are not
 installed; applications can request the Apple Color Emoji family explicitly.
 
 The release advertises three standalone symbols with no artwork: female sign,
@@ -46,3 +46,26 @@ pins. Use `python update.py --version macos-…` for an explicit release, or omi
 verifies GitHub's published SHA-256 and the payload's PostScript identity, and
 atomically replaces source.json. Discovery may use `latest`; builds never do.
 Rebuild and run the font/browser checks after updating.
+
+## Output variants
+
+The default retains the repaired behavior for existing users. Select an unchanged
+upstream font explicitly:
+
+```nix
+pkgs.apple-color-emoji.override { repairArtwork = false; }
+```
+
+This variant is verified byte-for-byte against the pinned download. It omits
+Noto additions and their repair report, and retains the three missing standalone
+symbols described above. `share/doc/apple-color-emoji/variant.txt` identifies
+the chosen variant. A separate Noto font is not a tested replacement for the
+repair because the Apple font maps those characters to empty artwork.
+
+The OFL permits private modification; its requirement that font derivatives be
+distributed under the OFL becomes relevant when sharing the merged output.
+Apple's artwork rights remain separate in both variants. Neither a local build
+nor `allowUnfree` supplies a missing grant. See the
+[pinned Noto license](https://github.com/googlefonts/noto-emoji/blob/v2.051/fonts/LICENSE).
+Hosted CI evaluates this recipe without building either Apple-font variant
+under the repository's current hosted-build policy.

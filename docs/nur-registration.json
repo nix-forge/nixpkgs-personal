@@ -1,5 +1,6 @@
 {
   "nix-forge": {
+    "github-contact": "IanHollow",
     "url": "https://github.com/nix-forge/nixpkgs-personal"
   }
 }

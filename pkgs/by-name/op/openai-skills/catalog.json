@@ -1,0 +1,321 @@
+{
+  "root": "skills/.curated",
+  "prefix": "openai",
+  "rootNotices": {},
+  "skills": {
+    "aspnet-core": {
+      "skillHash": "1f487ef3565e5ac1ee6c93cbeb9ac666292b30285877c82ddb0a77c9777fe92f",
+      "notices": {
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "chatgpt-apps": {
+      "skillHash": "c3a13a659ce26e9d067b5a97c321e8abec6d8e878afce31b7e841dfcf2635c3a",
+      "notices": {
+        "LICENSE.txt": "a7f55b2cb68997f729e6199720d4d3cae47633aba0254a84b2d36ab284be9d45"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "cli-creator": {
+      "skillHash": "24058eabf0aafce6def3fb937ac93cbe3fa341c653c658dc589edb77f73d6152",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "cloudflare-deploy": {
+      "skillHash": "d7632537cf19be17cf33d2c696b9d9c2ea3ee51026030e9b203d5b9255e75b15",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "define-goal": {
+      "skillHash": "708df89ff19cbae82a762efae036735d1914b5c7e44df1832e0b723f6cd9ee30",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "figma": {
+      "skillHash": "5b11f7c8d0ce4c047b401323e7b8fe6559bd3162a3397bf5248634a5444609d5",
+      "notices": {
+        "LICENSE.txt": "36bdad8e8a43a282ba3a5af4ac022d8b117c5826b8b473fe6a32622e83856ae3"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "figma-code-connect-components": {
+      "skillHash": "0f19edad8aed28063a3517c419fbcbef5421d024f189fd02a17fae25093ec69d",
+      "notices": {
+        "LICENSE.TXT": "36bdad8e8a43a282ba3a5af4ac022d8b117c5826b8b473fe6a32622e83856ae3"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "figma-create-design-system-rules": {
+      "skillHash": "1f4d7e16ba5325a80da32e2e6bde0ea850ba9287f35f4675d51d55d2f0dc6e2a",
+      "notices": {
+        "LICENSE.TXT": "36bdad8e8a43a282ba3a5af4ac022d8b117c5826b8b473fe6a32622e83856ae3"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "figma-create-new-file": {
+      "skillHash": "23f429203bd57f186905b2523d4ff8bdf10d3b85b39fc7eed4786097d81f1adc",
+      "notices": {
+        "LICENSE.TXT": "36bdad8e8a43a282ba3a5af4ac022d8b117c5826b8b473fe6a32622e83856ae3"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "figma-generate-design": {
+      "skillHash": "45d2b97103bdeb31cb2744fca2c79bcefb659c88faca626bea30ec2f9342dcc9",
+      "notices": {
+        "LICENSE.TXT": "36bdad8e8a43a282ba3a5af4ac022d8b117c5826b8b473fe6a32622e83856ae3"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "figma-generate-library": {
+      "skillHash": "7f42103c59fc181d7081404a56545f321c458d97f5ee7f7a0ab2af75ea69a85f",
+      "notices": {
+        "LICENSE.TXT": "36bdad8e8a43a282ba3a5af4ac022d8b117c5826b8b473fe6a32622e83856ae3"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "figma-implement-design": {
+      "skillHash": "63f3d12d444547bbf68c10a12982b1f42e0f6e26fc074324564a13184d4b15ad",
+      "notices": {
+        "LICENSE.txt": "36bdad8e8a43a282ba3a5af4ac022d8b117c5826b8b473fe6a32622e83856ae3"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "figma-use": {
+      "skillHash": "afa9c4ae068a18b93e4914b2d224180ace113db7713dd66f4df397f16ba9c4b4",
+      "notices": {
+        "LICENSE.TXT": "36bdad8e8a43a282ba3a5af4ac022d8b117c5826b8b473fe6a32622e83856ae3"
+      },
+      "fonts": [],
+      "licenses": ["unfree"]
+    },
+    "gh-address-comments": {
+      "skillHash": "77389eefd3fb6584210668ca8e43f4b8de87e7722ddd953474bc9e24cdfaaedd",
+      "notices": {
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "gh-fix-ci": {
+      "skillHash": "7b326b4a2f0f5f85122144628ec02077e48841e0e0e82efce88b3415bcfb7c26",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "hatch-pet": {
+      "skillHash": "7ab0f01e8561085d1b494a6ca74abed766c655da8ec98284fb38a362c19d6871",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "jupyter-notebook": {
+      "skillHash": "62f102e8554b25716dccef0ffab4572d4e3eaf05ccc76562d33a065bc9c521fb",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "linear": {
+      "skillHash": "ce0f39c95b6c9190f8ea33614393cdb556b2684dd8388ded394e9cb915f42601",
+      "notices": {
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "migrate-to-codex": {
+      "skillHash": "145b7fe48360642cb7a42bad3a817f10833fa8a387ffcb4c2df8a47c01a832e2",
+      "notices": {
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "netlify-deploy": {
+      "skillHash": "bb2c29bf599a043cade932f60cc64f632ca100e8767ccdfa2ba1a42c8d43958f",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "notion-knowledge-capture": {
+      "skillHash": "b49383b229bc766190ea22bb58502cfcf7e08449f5fce55a104eef1e54e27f00",
+      "notices": {
+        "LICENSE.txt": "0f377d9b2a1db642e4b0531ffa126e96d9bc6c085f8d9441f220fb25f723c6f8"
+      },
+      "fonts": [],
+      "licenses": ["mit"]
+    },
+    "notion-meeting-intelligence": {
+      "skillHash": "bad61faccbbe0f2cab53bcfbc4cb22f847ba8593ef14c2e37fea5b9b03346332",
+      "notices": {
+        "LICENSE.txt": "0f377d9b2a1db642e4b0531ffa126e96d9bc6c085f8d9441f220fb25f723c6f8"
+      },
+      "fonts": [],
+      "licenses": ["mit"]
+    },
+    "notion-research-documentation": {
+      "skillHash": "e88a46da978cf6f088a788fa92ee736df699a355a72f41f14bdc258bf3ef57e7",
+      "notices": {
+        "LICENSE.txt": "0f377d9b2a1db642e4b0531ffa126e96d9bc6c085f8d9441f220fb25f723c6f8"
+      },
+      "fonts": [],
+      "licenses": ["mit"]
+    },
+    "notion-spec-to-implementation": {
+      "skillHash": "6e22c4c6df441e849fa6b4b825371b579c9bb4896f97bedca5f8536020427a81",
+      "notices": {
+        "LICENSE.txt": "0f377d9b2a1db642e4b0531ffa126e96d9bc6c085f8d9441f220fb25f723c6f8"
+      },
+      "fonts": [],
+      "licenses": ["mit"]
+    },
+    "openai-docs": {
+      "skillHash": "057d24b4f36dab38299857777e4c0ca5bcce65d8cf89d917c174c1a0ae23d9f8",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "pdf": {
+      "skillHash": "d108cf2b36355ab37eb5962933f4d09785ec002f3105c506129320209306b9d2",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "playwright": {
+      "skillHash": "0ffaabcc8e0990627c4725f18bf1c7955534a796c1c199e872909de2013ce6a8",
+      "notices": {
+        "LICENSE.txt": "9a7110fc2d2f964038e5dc49128f908f29f47a574c961cba16085914e879cbda",
+        "NOTICE.txt": "417d5d3372914ecfd9fe102ac1d7dc2119253209f9718d6c222f616876c1904b"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "playwright-interactive": {
+      "skillHash": "f6c1155d923e6ae3ccc12abfef2266f119f8e9546df2ddeee1f5eb369845a0a1",
+      "notices": {
+        "LICENSE.txt": "9a7110fc2d2f964038e5dc49128f908f29f47a574c961cba16085914e879cbda",
+        "NOTICE.txt": "7fe676d2e5359fb6aa0bdf5b0881b26e14c272dd36b04408366d4b0e26738322"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "render-deploy": {
+      "skillHash": "c17c75adeb1834ed5cee1e440a651ae476c4101cd63762fcd9a58eada917552d",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "screenshot": {
+      "skillHash": "081935a6a163277537d46365f49d6b4a3cb40b4748347e7e88759c5927fa8cf5",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "security-best-practices": {
+      "skillHash": "7b3dae1ffc5434d890f3c65c8f552af52d0307fab3b35dec13013c9ca3844c4f",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "security-ownership-map": {
+      "skillHash": "f06c1a59247569326702c945f397af163ea96cf2ecfdf2dde280605bf89a3ec8",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "security-threat-model": {
+      "skillHash": "1283c0dd62a8104d9edda4583569b5d8510b4ddaa45120687c999250fd96bad2",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "sentry": {
+      "skillHash": "508c6f5c100586c81a34397d30f00f4b8771b66d698a7ac1836998df925dd007",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "speech": {
+      "skillHash": "d6120efc03ea0e80204f687801cfaec8efc4519a3430b68e13e4ebd8e1c69b52",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "transcribe": {
+      "skillHash": "f530021da9f377362ee4214e0bc689cbb5404640d2eb88ee272d51d61f530a09",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "vercel-deploy": {
+      "skillHash": "f4a6cbfbb378a320fae179a79f727a881d19677e9b3db96ed49d2dc02a74fa46",
+      "notices": {
+        "LICENSE.txt": "e0fad1e120e56b02bb8e65745ff5be6d3234368f2df9d0dd183183879e595fc1"
+      },
+      "fonts": [],
+      "licenses": ["mit"]
+    },
+    "winui-app": {
+      "skillHash": "917341ec9eb688d73e21362910a7178a92b2ae49544b7d8f17ee9e19adfe2ea8",
+      "notices": {
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    },
+    "yeet": {
+      "skillHash": "4829d4909081e1abf91507fb581e6f566ce7064001892414f32191895b08a595",
+      "notices": {
+        "LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9"
+      },
+      "fonts": [],
+      "licenses": ["asl20"]
+    }
+  }
+}

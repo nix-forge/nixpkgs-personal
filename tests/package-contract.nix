@@ -7,7 +7,10 @@
 let
   base = import nixpkgs {
     inherit system;
-    config.allowUnfree = true;
+    config = {
+      allowUnfree = true;
+      checkMeta = true;
+    };
   };
   inherit (base) lib;
   byName = ../pkgs/by-name;
@@ -50,6 +53,10 @@ let
     assert lib.assertMsg (metadata.description or "" != "") "Missing description: ${entry.name}";
     assert lib.assertMsg (metadata.homepage or "" != "") "Missing homepage: ${entry.name}";
     assert lib.assertMsg (metadata ? license) "Missing license: ${entry.name}";
+    assert lib.assertMsg (lib.all
+      (license: builtins.isAttrs license && builtins.isBool (license.free or null))
+      (lib.toList metadata.license)
+    ) "License must declare freedom explicitly, not use a string: ${entry.name}";
     assert lib.assertMsg (metadata.platforms or [ ] != [ ]) "Missing platforms: ${entry.name}";
     assert lib.assertMsg (package ? override) "Missing override interface: ${entry.name}";
     # Discovery must read metadata for every package, even on unsupported hosts.

@@ -17,7 +17,11 @@ let
     inherit (source.src) url hash;
     meta.license = lib.licenses.unfree;
     preferLocalBuild = true;
-    derivationArgs.allowSubstitutes = false;
+    derivationArgs = {
+      allowSubstitutes = false;
+      # Keep the upstream filename while matching the package's unfree predicate.
+      inherit pname;
+    };
   };
   inspector = lib.fileset.toSource {
     root = ./.;
@@ -113,7 +117,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     downloadPage = "https://www.microsoft.com/en-us/evalcenter/evaluate-windows-11-enterprise";
     platforms = lib.platforms.unix;
     license = lib.licenses.unfree;
-    priority = 5;
     sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
   };
 })

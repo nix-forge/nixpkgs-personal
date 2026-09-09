@@ -55,6 +55,20 @@ Provide a factual description, upstream homepage, license, platforms, and binary
 provenance where applicable. Set `mainProgram` only for an installed executable.
 Do not fabricate maintainer identities. Retain required upstream notices.
 
+Review the license of every bundled component, including per-skill terms and
+font assets. A mixed license list must include restricted components; public
+source code alone does not establish a free license. Use `binaryBytecode` for
+prebuilt fonts, `binaryNativeCode` for vendor executables, and `fromSource` for
+locally compiled code or supplied source text. A catalog containing source text
+and prebuilt fonts needs both provenance values.
+
+Keep unfree policy in the consuming Nixpkgs import. Restricted source fetchers
+should have stable `pname` values so a package-name predicate can allow them.
+Composite font packages also require consent for their constituent packages.
+Do not add speculative `broken`, vulnerability, maintainer or redistribution
+metadata. Preserve upstream fields only while they remain accurate for the
+variant, including update scripts. See the [metadata research](package-metadata-research.md).
+
 ## Implementation languages
 
 Use Nix for derivations, Bash for short build commands and wrappers, and Python
@@ -90,9 +104,14 @@ match supported packages, preventing recursion and unsupported overrides. The la
 rejects escaping symlinks and runs every updater's help from a temporary copy.
 Python test modules run in separate processes to avoid collisions between local
 module names such as `update` and `font_support`.
+Metadata validation uses `checkMeta = true`. The package-policy check exercises
+default unfree rejection, selective package-name consent and source provenance
+through the public import and overlay interfaces on all supported flake systems.
 
-CI builds changed packages on matching Linux and macOS runners. Packaging or
-check-infrastructure changes select every output. Both first-party Swift
+CI evaluates all packages and builds eligible changed packages on matching Linux
+and macOS runners. The reasoned exclusions in `.github/ci-policy.json` govern
+hosted builds; see [the licensing policy](package-licensing.md#hosted-builds).
+Packaging or check-infrastructure changes select every output. Both first-party Swift
 packages run their quality suites and address/thread sanitizers. Build-time
 checks do not establish GUI behavior, bit-for-bit reproducibility, or future
 availability of upstream downloads; report those separately when relevant.

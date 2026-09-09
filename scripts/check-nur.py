@@ -12,7 +12,21 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NUR_REVISION = "6e73a28249bbd53525bc1a7b385fcf3413c4e056"
+NUR_REVISION = "c9d28a9dc181899c9df1390804837b28cff3b0ae"
+
+
+def registration(path: Path) -> tuple[str, dict[str, str]]:
+    """Validate the submission entry before testing its actual name and URL."""
+    entries = json.loads(path.read_text())
+    if not isinstance(entries, dict) or len(entries) != 1:
+        raise ValueError("NUR registration must contain exactly one repository")
+    name, entry = next(iter(entries.items()))
+    if not name or not isinstance(entry, dict):
+        raise ValueError("NUR registration requires a name and repository object")
+    for field in ("url", "github-contact"):
+        if not isinstance(entry.get(field), str) or not entry[field].strip():
+            raise ValueError(f"NUR registration is missing {field}")
+    return name, entry
 
 
 def source_info(reference: str) -> dict[str, str]:
@@ -32,6 +46,7 @@ def main() -> None:
     parser.add_argument("--nixpkgs", choices=["locked", "unstable"], default="locked")
     parser.add_argument("--output", type=Path, default=Path("nur-results"))
     args = parser.parse_args()
+    name, entry = registration(ROOT / "docs/nur-registration.json")
     lock = json.loads((ROOT / "flake.lock").read_text())
     locked = lock["nodes"][lock["nodes"]["root"]["inputs"]["nixpkgs"]]["locked"]
     reference = (
@@ -63,14 +78,20 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="nur-eval-") as directory:
         temp = Path(directory)
         arguments = temp / "args.json"
-        arguments.write_text(json.dumps({"src": str(ROOT / "default.nix")}))
+        arguments.write_text(
+            json.dumps({
+                "name": name,
+                "url": entry["url"],
+                "src": str(ROOT / "default.nix"),
+            })
+        )
         wrapper = temp / "default.nix"
         # Paths become Nix strings via JSON encoding, never interpolated shell code.
         wrapper.write_text(
             "let pkgs = import <nixpkgs> {}; "
             f"args = builtins.fromJSON (builtins.readFile {json.dumps(str(arguments))}); "
             f"in import {json.dumps(str(evaluator))} {{ "
-            'name = "nix-forge"; url = "https://github.com/nix-forge/nixpkgs-personal"; '
+            "inherit (args) name url; "
             "src = /. + args.src; inherit pkgs; inherit (pkgs) lib; }\n"
         )
         command = [
@@ -146,9 +167,20 @@ def main() -> None:
     )
     platforms = json.loads(result.stdout)
     counts = {system: len(packages) for system, packages in platforms.items()}
-    revision = os.environ.get("GITHUB_SHA")
+    revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+    dirty = bool(
+        subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=normal"],
+            cwd=ROOT,
+            text=True,
+        ).strip()
+    )
     summary = {
         "repository_revision": revision,
+        "repository_dirty": dirty,
+        "registration": {name: entry},
         "nixpkgs_reference": reference,
         "nixpkgs_resolved_reference": resolved_reference,
         "nixpkgs_revision": metadata["locked"]["rev"],

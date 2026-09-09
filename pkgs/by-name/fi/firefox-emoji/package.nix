@@ -4,9 +4,14 @@
   fetchurl,
   fontconfig,
   python3,
+  writers,
 }:
 let
   source = import ./source.nix;
+  apacheLicense = fetchurl {
+    url = "https://www.apache.org/licenses/LICENSE-2.0.txt";
+    hash = "sha256-z8d0m5b2O9McPEK1xHG/dWgUBT6EfBDz6wA0F7xSPTA=";
+  };
   baseUrl = "https://raw.githubusercontent.com/mozilla/fxemoji/${source.revision}";
   upstreamLicense = fetchurl {
     url = "${baseUrl}/LICENSE.md";
@@ -31,6 +36,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     runHook preInstall
     install -Dm444 "$src" "$out/share/fonts/truetype/FirefoxEmoji.ttf"
     install -Dm444 ${upstreamLicense} "$out/share/doc/${finalAttrs.pname}/LICENSE.md"
+    install -Dm444 ${apacheLicense} "$out/share/doc/${finalAttrs.pname}/Apache-2.0.txt"
     cat > "$out/share/doc/${finalAttrs.pname}/README.txt" <<'EOF'
     Firefox Emoji artwork by Mozilla Foundation. Font distributed unmodified.
     Source: https://github.com/mozilla/fxemoji/tree/${source.revision}
@@ -41,10 +47,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   '';
 
   doInstallCheck = true;
-  nativeInstallCheckInputs = [
-    fontconfig
-    (python3.withPackages (p: [ p.fonttools ]))
-  ];
+  nativeInstallCheckInputs = [ fontconfig ];
   installCheckPhase = ''
     runHook preInstallCheck
     export XDG_CACHE_HOME="$TMPDIR/font-cache"
@@ -56,18 +59,14 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     font="$out/share/fonts/truetype/FirefoxEmoji.ttf"
     cmp "$src" "$font"
     test "$(fc-scan --format '%{family}' "$font")" = 'Firefox Emoji'
-    python3 - "$font" <<'PY'
-    import sys
-    from fontTools.ttLib import TTFont
-
-    with TTFont(sys.argv[1]) as font:
-        sample = "😀😁😂😃😄😅😆😇😈😉😊😋😌😍"
-        cmap = font.getBestCmap()
-        assert all(ord(char) in cmap and font.getGlyphID(cmap[ord(char)]) for char in sample)
-        assert font["COLR"].version == 0
-        assert font["CPAL"].palettes
-        assert all(cmap[ord(char)] in font["COLR"].ColorLayers for char in sample)
-    PY
+    ${
+      lib.getExe (
+        writers.writePython3Bin "check-installed-assets" {
+          libraries = [ python3.pkgs.fonttools ];
+          flakeIgnore = [ "E501" ];
+        } ./check-installed.py
+      )
+    } "$font"
     runHook postInstallCheck
   '';
 

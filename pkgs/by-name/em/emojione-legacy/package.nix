@@ -4,9 +4,14 @@
   fetchurl,
   fontconfig,
   python3,
+  writers,
 }:
 let
   source = import ./source.nix;
+  adobeLicense = fetchurl {
+    url = "https://raw.githubusercontent.com/adobe-fonts/emojione-color/835b4ef8384f55ecf9abf7ecc943a3980884690b/LICENSE.md";
+    hash = "sha256-p54R2CS+ck02LIwUO0EwiJxmzy70fxblrYO9eW3RgYM=";
+  };
   baseUrl = "https://raw.githubusercontent.com/joypixels/emojione/${source.revision}";
   upstreamLicense = fetchurl {
     url = "${baseUrl}/LICENSE.md";
@@ -31,8 +36,14 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     runHook preInstall
     install -Dm444 "$src" "$out/share/fonts/opentype/emojione-svg.otf"
     install -Dm444 ${upstreamLicense} "$out/share/doc/${finalAttrs.pname}/LICENSE.md"
+    install -Dm444 ${adobeLicense} "$out/share/doc/${finalAttrs.pname}/LICENSE-ADOBE-MIT"
     cat > "$out/share/doc/${finalAttrs.pname}/README.txt" <<'EOF'
-    EmojiOne artwork by EmojiOne. Font distributed unmodified.
+    Copyright 2016 Adobe Systems Incorporated.
+    Emoji art supplied by EmojiOne. Original attribution: http://emojione.com
+    Font distributed unmodified.
+    Adobe's matching font: adobe-fonts/emojione-color commit
+    835b4ef8384f55ecf9abf7ecc943a3980884690b. All font tables match except
+    its added DSIG signature and the corresponding head checksum adjustment.
     Source: https://github.com/joypixels/emojione/tree/${source.revision}
     See LICENSE.md for upstream attribution and license terms.
     This historical font is for explicit family selection, not current Unicode coverage.
@@ -41,10 +52,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   '';
 
   doInstallCheck = true;
-  nativeInstallCheckInputs = [
-    fontconfig
-    (python3.withPackages (p: [ p.fonttools ]))
-  ];
+  nativeInstallCheckInputs = [ fontconfig ];
   installCheckPhase = ''
     runHook preInstallCheck
     export XDG_CACHE_HOME="$TMPDIR/font-cache"
@@ -56,22 +64,14 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     font="$out/share/fonts/opentype/emojione-svg.otf"
     cmp "$src" "$font"
     test "$(fc-scan --format '%{family}' "$font")" = 'EmojiOne'
-    python3 - "$font" <<'PY'
-    import sys
-    from fontTools.ttLib import TTFont
-
-    with TTFont(sys.argv[1]) as font:
-        sample = "😀😁😂😃😄😅😆😇😈😉😊😋😌😍"
-        cmap = font.getBestCmap()
-        assert all(ord(char) in cmap and font.getGlyphID(cmap[ord(char)]) for char in sample)
-        documents = font["SVG "].docList
-        assert documents
-        assert all(
-            any(doc.startGlyphID <= font.getGlyphID(cmap[ord(char)]) <= doc.endGlyphID
-                for doc in documents)
-            for char in sample
-        )
-    PY
+    ${
+      lib.getExe (
+        writers.writePython3Bin "check-installed-assets" {
+          libraries = [ python3.pkgs.fonttools ];
+          flakeIgnore = [ "E501" ];
+        } ./check-installed.py
+      )
+    } "$font"
     runHook postInstallCheck
   '';
 

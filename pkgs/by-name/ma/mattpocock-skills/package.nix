@@ -28,6 +28,7 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
 
     skill_root="$out/share/agent-skills"
     mkdir -p "$skill_root"
+    install -Dm644 "$src/LICENSE" "$out/share/doc/${pname}/LICENSE"
     while IFS= read -r -d "" skill_file; do
       source_skill="''${skill_file%/SKILL.md}"
       skill_name="$(basename "$source_skill")"
@@ -45,6 +46,8 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
+
+    cmp "$src/LICENSE" "$out/share/doc/${pname}/LICENSE"
 
     installed_skill_count="$(find "$out/share/agent-skills" -mindepth 1 -maxdepth 1 -type d | wc -l)"
     test "$installed_skill_count" -gt 0

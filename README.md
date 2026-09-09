@@ -18,6 +18,31 @@ inputs.nixpkgs-personal = {
 Packages are available as `inputs.nixpkgs-personal.packages.${system}`. To add
 them to `pkgs`, use `inputs.nixpkgs-personal.overlays.default`.
 
+Direct `packages` and `legacyPackages` outputs enable `allowUnfree` internally.
+The caller's NixOS or Home Manager unfree setting does not configure those
+separate imports. To enforce a selective policy, use the overlay or ordinary
+`default.nix` import with your configured `pkgs`:
+
+```nix
+pkgs = import nixpkgs {
+  inherit system;
+  overlays = [ nixpkgs-personal.overlays.default ];
+  config.allowUnfreePredicate = package:
+    builtins.elem (nixpkgs.lib.getName package) [
+      "openai-skills"
+      "ttf-ms-win11-auto"
+    ];
+};
+```
+
+Keep `allowUnfree = false`, its default, when using a selective predicate.
+The Anthropic catalog defaults to reviewed free examples; restricted skills
+are separately selectable. The full OpenAI catalog still requires unfree
+consent and also offers a free selection. The [metadata research](docs/package-metadata-research.md) explains
+license classification, source provenance and build settings. The
+[metadata audit](docs/package-audit.md#metadata-and-unfree-review-2026-09-08)
+records the classification of all 39 packages.
+
 | Platform | Package coverage |
 | --- | --- |
 | `x86_64-linux` | Fonts, skills, Linux desktop packages, cursors, Spotify and CEF helper |
@@ -29,8 +54,12 @@ for the exact platform inventory. Linux-only packages are not exported on macOS.
 
 `x86_64-darwin` is intentionally unsupported because nixpkgs unstable has
 dropped that platform. Several packages are proprietary or subject to upstream
-terms; this repository packages them but does not redistribute their sources or
-provide a public binary cache.
+terms. Recipes fetch those vendor payloads when users build them; this repository
+does not publish those payloads or provide a public binary cache. It does include
+source code for bundled utilities and a vendored expression, with their retained
+notices. The root MIT license applies to the repository's original code, not to
+everything downloaded by a recipe. See the [licensing policy](docs/package-licensing.md)
+for hosted-build exclusions and unresolved permission questions.
 
 ## Development and updates
 
@@ -64,7 +93,7 @@ incoming upstream scope. It does not inject this collection's outputs into
 another personal package. Explicit `.override` remains available.
 
 Run `just test` for package independence and Python tests. CI also evaluates all
-three systems and builds affected packages on matching runners. The independence
+three systems and builds eligible affected packages on matching runners. The independence
 check copies each package directory into the store and rejects dependencies on
 any public personal package. Updater import checks run outside the checkout.
 

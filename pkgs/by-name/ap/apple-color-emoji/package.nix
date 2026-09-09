@@ -6,6 +6,7 @@
   noto-fonts-color-emoji,
   writeShellApplication,
   fontconfig,
+  repairArtwork ? true,
 }:
 let
   source = builtins.fromJSON (builtins.readFile ./source.json);
@@ -46,26 +47,41 @@ stdenvNoCC.mkDerivation {
     install -Dm644 "$src" "$out/share/fonts/truetype/apple-color-emoji/font.ttf"
     install -Dm444 ${./source.json} "$out/share/doc/apple-color-emoji/manifest.json"
     install -Dm444 ${./README.md} "$out/share/doc/apple-color-emoji/PACKAGING.md"
-    ${checkPython}/bin/python ${./repair.py} \
-      "$out/share/fonts/truetype/apple-color-emoji/font.ttf" \
-      ${noto-fonts-color-emoji}/share/fonts/noto/NotoColorEmoji.ttf ${emojiData} \
-      "$out/share/doc/apple-color-emoji/artwork-repairs.json"
-    install -Dm444 ${noto-fonts-color-emoji.src}/fonts/LICENSE \
-      "$out/share/doc/apple-color-emoji/Noto-OFL.txt"
-    install -Dm444 ${noto-fonts-color-emoji.src}/LICENSE \
-      "$out/share/doc/apple-color-emoji/Noto-Apache-2.0.txt"
+    ${lib.optionalString repairArtwork ''
+      ${checkPython}/bin/python ${./repair.py} \
+        "$out/share/fonts/truetype/apple-color-emoji/font.ttf" \
+        ${noto-fonts-color-emoji}/share/fonts/noto/NotoColorEmoji.ttf ${emojiData} \
+        "$out/share/doc/apple-color-emoji/artwork-repairs.json"
+      install -Dm444 ${noto-fonts-color-emoji.src}/fonts/LICENSE \
+        "$out/share/doc/apple-color-emoji/Noto-OFL.txt"
+      install -Dm444 ${noto-fonts-color-emoji.src}/LICENSE \
+        "$out/share/doc/apple-color-emoji/Noto-Apache-2.0.txt"
+    ''}
+    echo '${if repairArtwork then "repaired" else "unmodified"}' \
+      > "$out/share/doc/apple-color-emoji/variant.txt"
     runHook postInstall
   '';
 
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
-    ${checkPython}/bin/python ${./check.py} \
-      "$out/share/fonts/truetype/apple-color-emoji/font.ttf" ${emojiData} --original "$src"
+    ${
+      if repairArtwork then
+        ''
+          ${checkPython}/bin/python ${./check.py} \
+            "$out/share/fonts/truetype/apple-color-emoji/font.ttf" ${emojiData} --original "$src"
+        ''
+      else
+        ''
+          cmp "$src" "$out/share/fonts/truetype/apple-color-emoji/font.ttf"
+          test ! -e "$out/share/doc/apple-color-emoji/artwork-repairs.json"
+        ''
+    }
     runHook postInstallCheck
   '';
 
   passthru = {
+    inherit repairArtwork;
     sourceManifest = source;
     updateScript = lib.getExe (writeShellApplication {
       name = "update-apple-color-emoji";
@@ -82,7 +98,7 @@ stdenvNoCC.mkDerivation {
     sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     description = "Apple Color Emoji converted to Linux-compatible color bitmap tables";
     homepage = "https://github.com/samuelngs/apple-emoji-ttf";
-    license = lib.licenses.unfree;
+    license = [ lib.licenses.unfree ] ++ lib.optional repairArtwork lib.licenses.ofl;
     platforms = lib.platforms.linux;
   };
 }

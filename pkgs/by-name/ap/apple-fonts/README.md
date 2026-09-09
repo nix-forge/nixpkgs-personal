@@ -148,3 +148,32 @@ and [macOS license](https://www.apple.com/legal/sla/docs/macOSTahoe.pdf).
 Font parsing is checked on Linux. Native Core Text rendering, application
 shaping, and color-font support remain separate checks. No package promises
 that Apple Color Emoji or every historical font renders in every application.
+
+## Licensing evidence
+
+The repository publishes recipes. The source archives and extracted fonts are
+acquired when the user builds them. Publishing these instructions is distinct
+from sharing an ISO, archive, or built store output.
+
+`license-evidence.json` records source-specific evidence where available. Each
+installed source has a `license-scope.json` tied to its name, URL, and hash.
+The eight developer distributions refer to their included Apple font agreements.
+The 323 Font8 assets remain explicitly unreviewed for individual foundry grants.
+Do not infer permissions for an Apple-distributed binary from a similarly named
+free font available elsewhere. New or user-supplied sources inherit unreviewed
+status unless an exact source receives a reviewed entry.
+
+Apple's [macOS agreement](https://www.apple.com/legal/sla/docs/macOSTahoe.pdf)
+and [developer-font agreements](https://developer.apple.com/fonts/) address
+different distributions and uses. A valid Mac license or `fromArchive` input
+alone does not establish rights to modify, embed, use on other platforms, or
+redistribute every font. Existing notices are preserved as evidence, not as a
+claim that all those activities are authorized. Hosted CI evaluates this recipe
+without downloading and extracting these payloads under current project policy.
+
+## Aggregate collisions
+
+The catalog aggregate uses `buildEnv` with content checking. Identical files at
+the same relative path may be shared; conflicting content fails the build.
+Source-specific documentation and license evidence remain in the aggregate.
+The development checks include both identical and conflicting synthetic files.

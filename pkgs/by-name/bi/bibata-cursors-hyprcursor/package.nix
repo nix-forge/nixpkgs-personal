@@ -2,6 +2,7 @@
   lib,
   stdenvNoCC,
   fetchFromGitHub,
+  fetchurl,
   coreutils,
   librsvg,
   python3,
@@ -11,6 +12,10 @@
 let
   pname = "bibata-cursors-hyprcursor";
   source = import ./source.nix;
+  licenseText = fetchurl {
+    url = "https://raw.githubusercontent.com/spdx/license-list-data/v3.27.0/text/GPL-3.0-or-later.txt";
+    hash = "sha256-+5gWaMGKJ54oX8TYP7oeg2zITdTapzyWl9PP0tispuA=";
+  };
   themes = [
     "Bibata-Modern-Amber"
     "Bibata-Modern-Amber-Right"
@@ -104,6 +109,9 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
 
     iconRoot="$out/share/icons"
     mkdir -p "$iconRoot"
+    # Upstream records attribution and GPL-3.0-or-later in its AsciiDoc README.
+    install -Dm644 readme.adoc "$out/share/doc/${pname}/readme.adoc"
+    install -Dm644 ${licenseText} "$out/share/doc/${pname}/COPYING"
 
     ${lib.concatMapStringsSep "\n" (theme: ''
       install -d "$iconRoot/${theme}"
@@ -116,6 +124,8 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
+
+    cmp readme.adoc "$out/share/doc/${pname}/readme.adoc"
 
     test "$(find "$out/share/icons" -mindepth 1 -maxdepth 1 -type d -name 'Bibata-*' | wc -l)" -eq ${toString (builtins.length themes)}
 

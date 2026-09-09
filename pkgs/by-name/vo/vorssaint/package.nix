@@ -33,6 +33,9 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
       # Swift 6 silently: skipping it both validates the upstream source and
       # prompts removal of the now-dead patch via the warning above.
       patches = lib.optionals needsSwift510CompatibilityPatch [ ./swift-5.10-concurrency.patch ];
+      postPatch = ''
+        python3 ${./rebrand.py} .
+      '';
       patchFlags = [
         "-p1"
         "--fuzz=0"
@@ -66,7 +69,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         done < <(find Sources/Vorssaint -type f -name '*.swift' | sort)
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
           -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem "''${appSources[@]}" \
-          -o "$buildDir/Vorssaint"
+          -o "$buildDir/PersonalMonitor"
 
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
           Sources/Vorssaint/Services/FanControl/FanControlSupport.swift \
@@ -75,17 +78,16 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
           Sources/Vorssaint/Services/Metrics/TemperatureSensorSelector.swift \
           Sources/Vorssaint/Services/FanControl/FanControlHardware.swift \
           Sources/FanControlHelper/main.swift \
-          -o "$buildDir/com.vorssaint.utils.fan-control"
-        "$buildDir/com.vorssaint.utils.fan-control" --selftest
+          -o "$buildDir/io.github.ianhollow.personalmonitor.fan-control"
+        "$buildDir/io.github.ianhollow.personalmonitor.fan-control" --selftest
 
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
-          -emit-library -module-name VorssaintNowPlaying \
+          -emit-library -module-name PersonalMonitorNowPlaying \
           Sources/NowPlayingAdapter/NowPlayingAdapter.swift \
-          -o "$buildDir/libVorssaintNowPlaying.dylib"
+          -o "$buildDir/libPersonalMonitorNowPlaying.dylib"
 
-        # The upstream icon generator uses AppKit, which is unavailable inside the
-        # macOS build sandbox. Generate the same set of bundle assets from its
-        # canonical logo with sandbox-safe tools instead.
+        # Generate independently drawn package artwork in the required sizes.
+        # The upstream name and artwork are reserved by TRADEMARKS.md.
         iconset="$buildDir/AppIcon.iconset"
         mkdir -p "$iconset"
         for icon in \
@@ -102,7 +104,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         do
           name="''${icon%%:*}"
           size="''${icon##*:}"
-          magick Resources/Brand/logo.png -trim -resize "$size"x"$size" \
+          magick ${./icon.svg} -trim -resize "$size"x"$size" \
             -gravity center -background '#f7f7f7' -extent "$size"x"$size" "$iconset/$name.png"
         done
 
@@ -130,11 +132,11 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         Path(sys.argv[2]).write_bytes(b"icns" + struct.pack(">I", len(payload) + 8) + payload)
         PY
 
-        magick Resources/Brand/logo.png -trim -resize 26x20 -gravity center -background none -extent 26x20 \
+        magick ${./icon.svg} -trim -resize 26x20 -gravity center -background none -extent 26x20 \
           "$buildDir/MenuBarIcon.png"
-        magick Resources/Brand/logo.png -trim -resize 52x40 -gravity center -background none -extent 52x40 \
+        magick ${./icon.svg} -trim -resize 52x40 -gravity center -background none -extent 52x40 \
           "$buildDir/MenuBarIcon@2x.png"
-        magick Resources/Brand/logo.png -trim -resize 640x "$buildDir/BrandMark.png"
+        magick ${./icon.svg} -trim -resize 640x "$buildDir/BrandMark.png"
 
         runHook postBuild
       '';
@@ -142,20 +144,23 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
       installPhase = ''
         runHook preInstall
 
-        app="$out/Applications/Vorssaint.app"
+        app="$out/Applications/PersonalMonitor.app"
         contents="$app/Contents"
         resources="$contents/Resources"
-        helperID="com.vorssaint.utils.fan-control"
+        helperID="io.github.ianhollow.personalmonitor.fan-control"
 
         mkdir -p "$contents"/{MacOS,Resources,Frameworks,Library/LaunchDaemons,Library/LaunchServices}
-        install -Dm755 "$buildDir/Vorssaint" "$contents/MacOS/Vorssaint"
+        install -Dm755 "$buildDir/PersonalMonitor" "$contents/MacOS/PersonalMonitor"
         install -Dm755 "$buildDir/$helperID" "$contents/Library/LaunchServices/$helperID"
         install -Dm644 Resources/com.vorssaint.utils.fan-control.plist \
           "$contents/Library/LaunchDaemons/$helperID.plist"
         install -Dm644 Resources/Info.plist "$contents/Info.plist"
-        install -Dm755 "$buildDir/libVorssaintNowPlaying.dylib" "$contents/Frameworks/libVorssaintNowPlaying.dylib"
+        install -Dm755 "$buildDir/libPersonalMonitorNowPlaying.dylib" "$contents/Frameworks/libPersonalMonitorNowPlaying.dylib"
         install -Dm644 Resources/now-playing.pl "$resources/now-playing.pl"
         install -Dm644 CHANGELOG.md "$resources/CHANGELOG.md"
+        install -Dm644 LICENSE "$out/share/doc/${pname}/LICENSE"
+        install -Dm644 TRADEMARKS.md "$out/share/doc/${pname}/TRADEMARKS.md"
+        install -Dm644 ${./README.md} "$out/share/doc/${pname}/PACKAGING.md"
         install -Dm644 "$buildDir/AppIcon.icns" "$resources/AppIcon.icns"
         install -Dm644 "$buildDir/MenuBarIcon.png" "$resources/MenuBarIcon.png"
         install -Dm644 "$buildDir/MenuBarIcon@2x.png" "$resources/MenuBarIcon@2x.png"
@@ -165,7 +170,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         cp -R Resources/*.lproj "$resources/"
         cp -R Resources/Gifs Resources/Images "$resources/"
 
-        makeWrapper "$contents/MacOS/Vorssaint" "$out/bin/${pname}"
+        makeWrapper "$contents/MacOS/PersonalMonitor" "$out/bin/${pname}"
 
         runHook postInstall
       '';
@@ -174,30 +179,35 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
       # resources to be sealed as a single bundle. rcodesign provides a reproducible
       # ad-hoc signature; a public Nix derivation cannot embed a private Developer ID.
       postFixup = ''
-        ${lib.getExe rcodesign} sign "$out/Applications/Vorssaint.app"
+        ${lib.getExe rcodesign} sign "$out/Applications/PersonalMonitor.app"
       '';
 
       doInstallCheck = true;
       installCheckPhase = ''
         runHook preInstallCheck
 
-        "$out/Applications/Vorssaint.app/Contents/Library/LaunchServices/com.vorssaint.utils.fan-control" --selftest
-        test -s "$out/Applications/Vorssaint.app/Contents/Frameworks/libVorssaintNowPlaying.dylib"
-        test -s "$out/Applications/Vorssaint.app/Contents/Resources/now-playing.pl"
-        test -s "$out/Applications/Vorssaint.app/Contents/Resources/AppIcon.icns"
-        test -s "$out/Applications/Vorssaint.app/Contents/Resources/MenuBarIcon.png"
-        test -s "$out/Applications/Vorssaint.app/Contents/Resources/MenuBarIcon@2x.png"
-        test -s "$out/Applications/Vorssaint.app/Contents/Resources/BrandMark.png"
+        python3 ${./check_bundle.py} "$out"
+
+        "$out/Applications/PersonalMonitor.app/Contents/Library/LaunchServices/io.github.ianhollow.personalmonitor.fan-control" --selftest
+        test -s "$out/Applications/PersonalMonitor.app/Contents/Frameworks/libPersonalMonitorNowPlaying.dylib"
+        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/now-playing.pl"
+        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/AppIcon.icns"
+        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/MenuBarIcon.png"
+        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/MenuBarIcon@2x.png"
+        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/BrandMark.png"
         runHook postInstallCheck
       '';
 
-      passthru.updateScript = [
-        "python3"
-        "pkgs/by-name/vo/vorssaint/update.py"
-      ];
+      passthru = {
+        appName = "PersonalMonitor";
+        updateScript = [
+          "python3"
+          "pkgs/by-name/vo/vorssaint/update.py"
+        ];
+      };
 
       meta = {
-        description = "Modular macOS menu bar toolkit";
+        description = "PersonalMonitor, an unofficial build of the Vorssaint macOS toolkit";
         homepage = "https://vorssaint.com/";
         downloadPage = "https://github.com/vorssaint/vorssaint-utils/releases";
         changelog = "https://github.com/vorssaint/vorssaint-utils/releases/tag/v${finalAttrs.version}";

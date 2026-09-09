@@ -19,19 +19,23 @@
           websocket-client
         ]
       );
-      evaluationCheck = pkgs.writeShellScript "package-evaluation-check" ''
-        set -euo pipefail
-        # A fresh filtered source needs materialization before a read-only check.
-        nix store add-path flake/dev >/dev/null
-        nix eval --option allow-import-from-derivation false --json .#checks --apply 'builtins.mapAttrs (_: checks: builtins.mapAttrs (_: check: check.drvPath) checks)' >/dev/null
-        nix flake check --all-systems --no-build --option allow-import-from-derivation false
-      '';
-      pythonCompile = pkgs.writeShellScript "package-python-compile" ''
-        set -euo pipefail
-        cache="$(${lib.getExe' pkgs.coreutils "mktemp"} -d)"
-        trap '${lib.getExe' pkgs.coreutils "rm"} -rf -- "$cache"' EXIT
-        PYTHONPYCACHEPREFIX="$cache" ${lib.getExe pkgs.python3} -m compileall -q scripts pkgs
-      '';
+      evaluationCheck = pkgs.writeShellApplication {
+        name = "package-evaluation-check";
+        text = ''
+          # A fresh filtered source needs materialization before a read-only check.
+          nix store add-path flake/dev >/dev/null
+          nix eval --option allow-import-from-derivation false --json .#checks --apply 'builtins.mapAttrs (_: checks: builtins.mapAttrs (_: check: check.drvPath) checks)' >/dev/null
+          nix flake check --all-systems --no-build --option allow-import-from-derivation false
+        '';
+      };
+      pythonCompile = pkgs.writeShellApplication {
+        name = "package-python-compile";
+        text = ''
+          cache="$(${lib.getExe' pkgs.coreutils "mktemp"} -d)"
+          trap '${lib.getExe' pkgs.coreutils "rm"} -rf -- "$cache"' EXIT
+          PYTHONPYCACHEPREFIX="$cache" ${lib.getExe pkgs.python3} -m compileall -q scripts pkgs
+        '';
+      };
       # Xcode and SourceKit are supplied by the host and cannot run in a Nix sandbox.
       # Keep these hooks in local Git workflows and the required native Swift jobs.
       xcodeHooks = {
@@ -157,7 +161,7 @@
             enable = true;
             # Compile every package updater as well as the top-level scripts.
             # compileall writes bytecode even with -B; use a temporary cache.
-            entry = toString pythonCompile;
+            entry = lib.getExe pythonCompile;
             language = "system";
             always_run = true;
             pass_filenames = false;
@@ -230,7 +234,7 @@
             enable = true;
             # Use the Nix installation that supplies the daemon and its settings.
             # Injecting nixpkgs' CLI rejects Determinate's schemas/settings.
-            entry = toString evaluationCheck;
+            entry = lib.getExe evaluationCheck;
             language = "system";
             always_run = true;
             pass_filenames = false;

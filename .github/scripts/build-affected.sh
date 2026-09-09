@@ -1,5 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+# Check every exclusion against the complete package tree, including packages
+# unavailable on this runner. A typo must not silently enable a hosted build.
+policy=.github/ci-policy.json
+if ! jq -e '
+  type == "object" and all(to_entries[];
+    (.key | test("^[a-z0-9][a-z0-9+._-]*$")) and
+    (.value | type == "string" and test("\\S")))
+' "$policy" >/dev/null; then
+  echo '::error::Invalid hosted-build policy; expected package names and nonblank reasons.'
+  exit 1
+fi
+while IFS= read -r package; do
+  if [[ ! -f "pkgs/by-name/${package:0:2}/$package/package.nix" ]]; then
+    echo "::error::Hosted-build policy names an unknown package: $package"
+    exit 1
+  fi
+done < <(jq -r 'keys[]' "$policy")
+
 base_available=false
 changed_files=''
 if [[ -n $BASE_SHA && ! $BASE_SHA =~ ^0+$ ]] &&
@@ -11,7 +30,7 @@ else
 fi
 
 all_packages=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
-if [[ $base_available == false ]] || grep -qE '^((flake\.nix|flake\.lock|pkgs/default\.nix)$|flake/|tests/|\.github/(scripts|tests|workflows)/)' <<<"$changed_files"; then
+if [[ $base_available == false ]] || grep -qE '^((flake\.nix|flake\.lock|pkgs/default\.nix|\.github/ci-policy\.json)$|flake/|tests/|\.github/(scripts|tests|workflows)/)' <<<"$changed_files"; then
   targets="$all_packages"
 elif grep -q '^pkgs/by-name/' <<<"$changed_files"; then
   targets=$(sed -nE 's#^pkgs/by-name/[^/]+/([^/]+)/.*#\1#p' <<<"$changed_files" | sort -u)
@@ -41,6 +60,12 @@ fi
 while IFS= read -r package; do
   [[ -n $package ]] || continue
   echo "::group::Package: $package"
+  reason=$(jq -r --arg package "$package" '.[$package] // empty' "$policy")
+  if [[ -n $reason ]]; then
+    echo "$package: $reason"
+    echo "::endgroup::"
+    continue
+  fi
   base_drv=$(jq -r --arg package "$package" '.[$package] // empty' <<<"$base_derivations")
   current_drv=$(nix eval --raw ".#packages.$SYSTEM.$package.drvPath")
   if [[ -n $base_drv && $base_drv == "$current_drv" ]]; then
