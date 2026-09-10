@@ -25,7 +25,10 @@ upstream.overrideAttrs (old: {
   pname = "noctalia-personal";
   patches = (old.patches or [ ]) ++ [
     ./symbolic-bar-icons.patch
+    ./tray-icon-size.patch
     ./media-player-selector.patch
+    # Semantic secondary text already carries the palette's contrast hierarchy.
+    ./readable-control-colors.patch
   ];
   postPatch = (old.postPatch or "") + ''
     # Reject a stale version pin after source updates, without importing the source.
@@ -60,6 +63,6 @@ upstream.overrideAttrs (old: {
       mit
       asl20
     ];
-    description = "Noctalia with symbolic bar icons, exact tray icons, and landscape media playback cards";
+    description = "Noctalia with themed bar icons, readable control colors, and landscape media playback cards";
   };
 })

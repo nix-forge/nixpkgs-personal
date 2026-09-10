@@ -4,6 +4,14 @@ This package builds pinned upstream Noctalia with a general bar icon policy
 and landscape playback cards on the Control Center Media page. The patches
 contain no application names or application-specific artwork.
 
+Placeholders and adjacent-month calendar labels use the semantic secondary-text
+color at full opacity. Applying another opacity reduction to that role can make
+an otherwise readable custom palette fail text contrast. Disabled controls keep
+their upstream treatment. Slider handles use secondary text for their outline,
+and scrollbars retain 85% of that role's opacity, so both remain visible on dark
+surfaces. Palette authors still need to supply contrasting foreground/background
+pairs. Review these five UI integrations when updating the pinned source.
+
 Each available MPRIS endpoint gets its own compact card with artwork, track
 metadata, previous/play-pause/next controls, and a seek bar when supported.
 Paused sources remain visible. Endpoints are keyed by bus name, never grouped
@@ -40,6 +48,12 @@ map a stable tray identity to an icon-theme name. The existing tray identifier
 matcher handles identities, and missing overrides fall back to normal lookup.
 Overrides do not replace attention icons or overlays. This is configuration
 data, not a new source patch for every application.
+
+Vector status icons are selected for their displayed logical size, then rendered
+at the output's resolution. This preserves the proportions of size-specific
+theme artwork instead of shrinking a larger variant with wider padding. Bitmap
+and ordinary application icons retain higher-resolution lookup. The tray's
+attention-icon and overlay handling remains intact.
 
 The build checks symbolic precedence, lowercase matching, missing icons,
 explicit paths, opt-out behavior, and safe fallback for non-symbolic artwork.

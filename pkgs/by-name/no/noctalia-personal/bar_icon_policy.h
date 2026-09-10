@@ -44,4 +44,16 @@ std::string resolve(const std::string& name, bool preferSymbolic, Lookup lookup)
   return lookup(name);
 }
 
+// Select vector status artwork for its logical size, not its rasterization
+// resolution. A 24px panel asset often has wider padding than its 16px variant.
+// Bitmap and ordinary application artwork still need the higher-resolution asset.
+template <typename Lookup>
+std::string resolveStatus(const std::string& name, int logicalSize, int rasterSize, Lookup lookup) {
+  const std::string vector = lookup(name, logicalSize);
+  if (isSymbolicPath(vector) && vector.ends_with(".svg")) {
+    return vector;
+  }
+  return lookup(name, rasterSize);
+}
+
 } // namespace bar_icons
