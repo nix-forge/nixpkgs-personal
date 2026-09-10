@@ -29,5 +29,18 @@ int main() {
   assert(bar_icons::isSymbolicPath("/icons/scalable/status/service-playing.svg"));
   assert(!bar_icons::isSymbolicPath("/nix/store/symbolic-package/icons/apps/editor.svg"));
   assert(!bar_icons::isSymbolicPath("/icons/apps/editor.png"));
-  std::cout << "Symbolic selection, original-artwork fallback, and opt-out checks passed\n";
+  auto sizedLookup = [](const std::string& name, int size) {
+    if (name == "missing") {
+      return std::string{};
+    }
+    const auto context = name == "app" ? "apps" : "panel";
+    const auto extension = name == "bitmap" ? ".png" : ".svg";
+    return "/theme/" + std::to_string(size) + "/" + context + "/" + name + extension;
+  };
+  assert(bar_icons::resolveStatus("status", 16, 48, sizedLookup) == "/theme/16/panel/status.svg");
+  assert(bar_icons::resolveStatus("status", 20, 48, sizedLookup) == "/theme/20/panel/status.svg");
+  assert(bar_icons::resolveStatus("bitmap", 16, 48, sizedLookup) == "/theme/48/panel/bitmap.png");
+  assert(bar_icons::resolveStatus("app", 16, 48, sizedLookup) == "/theme/48/apps/app.svg");
+  assert(bar_icons::resolveStatus("missing", 16, 48, sizedLookup).empty());
+  std::cout << "Symbolic selection, logical status size, artwork fallback, and opt-out checks passed\n";
 }
