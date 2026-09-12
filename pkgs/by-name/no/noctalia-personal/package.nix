@@ -29,6 +29,10 @@ upstream.overrideAttrs (old: {
     ./media-player-selector.patch
     # Semantic secondary text already carries the palette's contrast hierarchy.
     ./readable-control-colors.patch
+    # Keep the Home date card useful in profiles that disable weather.
+    ./home-calendar-card.patch
+    # Minimal inline workspace groups share target sizes and a quiet state hierarchy.
+    ./workspace-strip.patch
   ];
   postPatch = (old.postPatch or "") + ''
     # Reject a stale version pin after source updates, without importing the source.

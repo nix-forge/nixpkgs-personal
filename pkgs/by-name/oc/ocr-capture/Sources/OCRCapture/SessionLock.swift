@@ -13,9 +13,9 @@ final class CaptureSessionLock {
     close(descriptor)
   }
 
-  static func acquire() throws -> CaptureSessionLock? {
+  static func acquire(directory: String = NSTemporaryDirectory()) throws -> CaptureSessionLock? {
     let filename = "dev.ianmh.ocr-capture-\(geteuid()).lock"
-    let path = (NSTemporaryDirectory() as NSString).appendingPathComponent(filename)
+    let path = (directory as NSString).appendingPathComponent(filename)
     #if compiler(>=6.2)
       // Darwin temporarily borrows the string's NUL-terminated storage.
       let descriptor = unsafe open(

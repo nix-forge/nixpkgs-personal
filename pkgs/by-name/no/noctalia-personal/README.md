@@ -4,6 +4,24 @@ This package builds pinned upstream Noctalia with a general bar icon policy
 and landscape playback cards on the Control Center Media page. The patches
 contain no application names or application-specific artwork.
 
+The Home date card hides its weather row when the weather service is disabled
+and opens the calendar instead. Enabling weather restores both its row and its
+weather-page action. Review this behavior when updating the pinned source.
+
+Minimal workspace capsules with inline labels and application icons use equal
+label and icon hit cells, with larger gaps between workspaces than within them.
+Application artwork remains at the configured size. Empty workspaces keep a
+full label cell; longer names expand to fit. Inactive groups blend into the bar.
+Selection and inactive-group hover share the standard taskbar foreground tint.
+Urgency retains its semantic color. There are no outlines or stacked cell
+highlights. Hovering an inactive group's label, icons, padding or gaps reveals
+the fill behind the whole group. It persists while crossing between cells and
+fades when leaving. Groups omit outer cross-axis padding, leaving more bar
+surface above and below their 24-pixel hit cells. All states retain the same
+geometry, and the application artwork stays the same size and opacity.
+Other taskbar layouts retain upstream styling. Review the grouped rendering
+when updating the source pin.
+
 Placeholders and adjacent-month calendar labels use the semantic secondary-text
 color at full opacity. Applying another opacity reduction to that role can make
 an otherwise readable custom palette fail text contrast. Disabled controls keep

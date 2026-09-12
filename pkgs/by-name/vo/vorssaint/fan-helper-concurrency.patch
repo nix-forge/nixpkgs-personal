@@ -1,0 +1,26 @@
+Keep the controller logger in the same isolation domain as its state. The
+Swift 5.10 SDK does not declare Logger Sendable, so reading the file-scope
+logger from queue callbacks crosses inferred main-actor isolation. Read
+startup arguments through Foundation's accessor instead of Swift 5.10's
+mutable CommandLine.arguments static variable. Neither change suppresses
+concurrency diagnostics or changes the XPC or hardware operations.
+
+--- a/Sources/FanControlHelper/main.swift
++++ b/Sources/FanControlHelper/main.swift
+@@ -81,6 +81,7 @@
+ }
+ 
+ private final class FanControlController {
++    private let log = Logger(subsystem: FanControlIdentifiers.helperID, category: "FanControl")
+     private let queue = DispatchQueue(label: "com.vorssaint.fan-control.helper")
+     private let ownership = FanControlOwnership()
+     private var hardware: FanControlHardware?
+@@ -585,7 +586,7 @@
+     return true
+ }
+ 
+-if CommandLine.arguments.contains("--selftest") {
++if ProcessInfo.processInfo.arguments.contains("--selftest") {
+     exit(runSelfTest() ? EXIT_SUCCESS : EXIT_FAILURE)
+ }
+ 

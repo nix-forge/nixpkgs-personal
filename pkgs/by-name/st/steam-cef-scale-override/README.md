@@ -22,3 +22,15 @@ commit `f6651b1d6e85800885ea2b251ffc37c4e68df7e4`, under the included MIT
 license. This version narrows process scope, removes the unnecessary
 `cef_execute_process` hook and constructor, validates the complete scale
 string, fails open, enables linker hardening, and adds behavioral tests.
+
+Package checks run the mock CEF scenarios against the release library through
+`LD_PRELOAD` and against a separate ASan/UBSan build. The sanitizer executable,
+mock library, and interposer are all instrumented. The sanitizer executable links
+the interposer before the mock CEF library so the sanitizer runtime loads first.
+Checks cover process scoping, valid boundary values, absent and malformed scales,
+and initialization failure. Sanitizer diagnostics fail the build; only the
+release library is installed.
+
+Installed-library checks require ELF64, the interposer export, GNU_RELRO,
+immediate binding, and an explicit non-executable GNU_STACK header. Production
+compiler and linker settings remain separate from sanitizer instrumentation.

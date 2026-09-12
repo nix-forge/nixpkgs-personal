@@ -236,9 +236,16 @@ final class SecurityPolicyTests: XCTestCase {
   }
 
   func testCaptureSessionLockRejectsConcurrentOwnership() throws {
-    let first = try XCTUnwrap(CaptureSessionLock.acquire())
-    XCTAssertNil(try CaptureSessionLock.acquire())
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    var first: CaptureSessionLock? = try XCTUnwrap(
+      CaptureSessionLock.acquire(directory: directory.path))
+    XCTAssertNil(try CaptureSessionLock.acquire(directory: directory.path))
     withExtendedLifetime(first) {}
+    first = nil
+    let reacquired = try XCTUnwrap(CaptureSessionLock.acquire(directory: directory.path))
+    withExtendedLifetime(reacquired) {}
   }
 
   func testImagePreprocessorEnforcesPixelBudget() throws {
