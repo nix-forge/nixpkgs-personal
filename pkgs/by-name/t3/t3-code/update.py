@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Update ``t3-code`` from T3 Code's latest stable GitHub release."""
+"""Update ``t3-code`` from T3 Code's latest stable GitHub release.
+
+The macOS build uses the official signed ZIP. The Linux build compiles the
+application from the tagged source with the workspace's own artifact script,
+so this updater also refreshes the offline pnpm/cargo mirrors and the pinned
+Electron runtime that the Linux recipe needs.
+"""
 
 from __future__ import annotations
 
@@ -7,12 +13,14 @@ import argparse
 import base64
 import contextlib
 import difflib
+import io
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,26 +39,91 @@ REPOSITORY: Final = "pingdotgg/t3code"
 API_HOST: Final = "api.github.com"
 DOWNLOAD_HOST: Final = "github.com"
 LATEST_RELEASE_URL: Final = f"https://{API_HOST}/repos/{REPOSITORY}/releases/latest"
+ELECTRON_RELEASE_HOST: Final = "github.com"
+ELECTRON_OWNER_REPO: Final = "electron/electron"
+ELECTRON_HEADERS_HOST: Final = "www.electronjs.org"
 ARM64_ZIP_PATTERN: Final = re.compile(r"^T3-Code-([0-9]+\.[0-9]+\.[0-9]+)-arm64\.zip$")
 VERSION_PATTERN: Final = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+ELECTRON_VERSION_PATTERN: Final = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 DIGEST_PATTERN: Final = re.compile(r"^sha256:([0-9a-f]{64})$")
 SOURCE_PATTERN: Final = re.compile(
     r"\A\{\n"
     r'  version = "([^"]+)";\n'
-    r"  src = \{\n"
+    r'  appName = "([^"]+)";\n'
+    r"  darwin = \{\n"
     r'    url = "([^"]+)";\n'
     r'    hash = "(sha256-[A-Za-z0-9+/=]+)";\n'
     r"  \};\n"
+    r"  linux = \{\n"
+    r'    rev = "([^"]+)";\n'
+    r'    hash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'    pnpmHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'    cargoHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'    electronVersion = "([^"]+)";\n'
+    r'    electronDistUrl = "([^"]+)";\n'
+    r'    electronDistHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'    electronShasumsUrl = "([^"]+)";\n'
+    r'    electronShasumsHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'    electronHeadersUrl = "([^"]+)";\n'
+    r'    electronHeadersHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r"  };\n"
     r"\}\n\Z"
 )
 HTTP_USER_AGENT: Final = "nix-conf-updater/1.0 (+https://github.com/NixOS/nixpkgs)"
+EXPECTED_APP_NAME: Final = "T3 Code (Alpha)"
+FAKE_HASH: Final = "sha256-" + "A" * 43 + "="
+
+
+@dataclass(frozen=True)
+class _ReleaseMeta:
+    version: str
+    darwin_url: str
+    darwin_hash_sri: str
+    linux_rev: str
 
 
 @dataclass(frozen=True)
 class _Release:
     version: str
-    url: str
-    hash_sri: str
+    darwin_url: str
+    darwin_hash_sri: str
+    linux_rev: str
+    electron_version: str
+    electron_dist_url: str
+    electron_shasums_url: str
+    electron_headers_url: str
+
+
+@dataclass(frozen=True)
+class _ExistingSource:
+    version: str
+    app_name: str
+    darwin_url: str
+    darwin_hash: str
+    linux_rev: str
+    linux_hash: str
+    pnpm_hash: str
+    cargo_hash: str
+    electron_version: str
+    electron_dist_url: str
+    electron_dist_hash: str
+    electron_shasums_url: str
+    electron_shasums_hash: str
+    electron_headers_url: str
+    electron_headers_hash: str
+
+
+@dataclass(frozen=True)
+class _ResolvedSource:
+    existing: _ExistingSource
+    release: _Release
+    darwin_hash_sri: str
+    linux_hash_sri: str
+    pnpm_hash_sri: str
+    cargo_hash_sri: str
+    electron_dist_hash_sri: str
+    electron_shasums_hash_sri: str
+    electron_headers_hash_sri: str
 
 
 def _stdout(message: str) -> None:
@@ -90,7 +163,46 @@ def _get_nix_binary() -> str:
     _fail("`nix` executable not found in PATH")
 
 
-def _prefetch_hash(url: str) -> str:
+def _prefetch_hash(url: str, *, label: str, unpack: bool = False) -> str:
+    args = [
+        _get_nix_binary(),
+        "store",
+        "prefetch-file",
+        "--json",
+        "--hash-type",
+        "sha256",
+    ]
+    if unpack:
+        # fetchFromGitHub pins the unpacked source tree, not the tarball.
+        args.append("--unpack")
+    args.append(url)
+    completed = subprocess.run(
+        args,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip() or "(no output)"
+        _fail(f"failed to prefetch {label} from {url}:\n{detail}")
+
+    try:
+        data = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        _fail(f"failed to parse nix prefetch JSON output: {exc}")
+
+    hash_value = data.get("hash")
+    if not isinstance(hash_value, str) or not re.fullmatch(
+        r"sha256-[A-Za-z0-9+/=]+", hash_value
+    ):
+        _fail(f"nix prefetch returned an unexpected hash: {hash_value!r}")
+    store_path = data.get("storePath")
+    if not isinstance(store_path, str):
+        _fail("nix prefetch JSON did not include a string `storePath`")
+    return hash_value
+
+
+def _prefetch_store_path(url: str, *, label: str) -> Path:
     completed = subprocess.run(
         [
             _get_nix_binary(),
@@ -107,19 +219,20 @@ def _prefetch_hash(url: str) -> str:
     )
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip() or "(no output)"
-        _fail(f"failed to prefetch T3 Code archive hash:\n{detail}")
+        _fail(f"failed to prefetch {label} from {url}:\n{detail}")
 
     try:
         data = json.loads(completed.stdout)
     except json.JSONDecodeError as exc:
         _fail(f"failed to parse nix prefetch JSON output: {exc}")
 
-    hash_value = data.get("hash")
-    if not isinstance(hash_value, str) or not re.fullmatch(
-        r"sha256-[A-Za-z0-9+/=]+", hash_value
-    ):
-        _fail(f"nix prefetch returned an unexpected hash: {hash_value!r}")
-    return hash_value
+    store_path = data.get("storePath")
+    if not isinstance(store_path, str):
+        _fail("nix prefetch JSON did not include a string `storePath`")
+    path = Path(store_path)
+    if not path.is_absolute() or not path.is_file():
+        _fail(f"nix returned an unusable store path: {store_path!r}")
+    return path
 
 
 def _digest_to_sri(digest: str) -> str:
@@ -146,7 +259,115 @@ def _validate_download_url(url: str, version: str) -> None:
         _fail(f"unexpected T3 Code download path: {url!r}")
 
 
-def _discover_release() -> _Release:
+def _nixpkgs_expression() -> str:
+    # Keep copied package directories usable; in this repository use its
+    # locked upstream input rather than the caller's registry pin.
+    for directory in Path(__file__).resolve().parents:
+        if (directory / "flake.nix").is_file() and (directory / "flake.lock").is_file():
+            return "(builtins.getFlake flakeRef).inputs.nixpkgs"
+    return "builtins.getFlake flakeRef"
+
+
+def _nixpkgs_ref() -> str:
+    for directory in Path(__file__).resolve().parents:
+        if (directory / "flake.nix").is_file() and (directory / "flake.lock").is_file():
+            return str(directory)
+    return "nixpkgs"
+
+
+def _nix_build_fod_hash(*, attr: str, label: str) -> str:
+    expression = (
+        "{ packageDir, flakeRef }: let pkgs = import ("
+        + _nixpkgs_expression()
+        + ') { system = "x86_64-linux"; }; '
+        + "in (pkgs.callPackage (builtins.toPath packageDir + "
+        + '"/package.nix") { }).'
+        + attr
+    )
+    completed = subprocess.run(
+        [
+            _get_nix_binary(),
+            "build",
+            "--no-link",
+            "--print-out-paths",
+            "--impure",
+            "--expr",
+            expression,
+            "--argstr",
+            "packageDir",
+            str(Path(__file__).resolve().parent),
+            "--argstr",
+            "flakeRef",
+            _nixpkgs_ref(),
+        ],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if completed.returncode == 0:
+        _fail(
+            f"expected {label} to fail with a hash mismatch, but the build "
+            "succeeded; the pinned hash may already be current"
+        )
+    match = re.search(r"got:\s+(sha256-[A-Za-z0-9+/=]+)", completed.stderr)
+    if match is None:
+        detail = completed.stderr.strip()[-4000:] or "(no output)"
+        _fail(f"could not determine the fresh {label} hash:\n{detail}")
+    return match.group(1)
+
+
+def _electron_version_from_tarball(tarball: Path, *, rev: str) -> str:
+    try:
+        with tarfile.open(tarball, "r:gz") as archive:
+            member = next(
+                (
+                    m
+                    for m in archive.getmembers()
+                    if m.isfile()
+                    and m.name.endswith("apps/desktop/package.json")
+                    and m.size < 1024 * 1024
+                ),
+                None,
+            )
+            if member is None:
+                _fail(
+                    f"{rev} source archive has no apps/desktop/package.json; "
+                    "cannot pin the Electron runtime"
+                )
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                _fail(f"could not read apps/desktop/package.json from {rev}")
+            with io.TextIOWrapper(extracted, encoding="utf-8") as handle:
+                manifest = json.load(handle)
+    except tarfile.TarError as exc:
+        _fail(f"failed to inspect the {rev} source archive: {exc}")
+    except json.JSONDecodeError as exc:
+        _fail(f"failed to parse apps/desktop/package.json from {rev}: {exc}")
+
+    dependencies = manifest.get("dependencies")
+    version = dependencies.get("electron") if isinstance(dependencies, dict) else None
+    if (
+        not isinstance(version, str)
+        or ELECTRON_VERSION_PATTERN.fullmatch(version) is None
+    ):
+        _fail(f"{rev} has an unexpected Electron version: {version!r}")
+    return version
+
+
+def _electron_artifact_urls(electron_version: str) -> tuple[str, str, str]:
+    base = (
+        f"https://{ELECTRON_RELEASE_HOST}/{ELECTRON_OWNER_REPO}"
+        f"/releases/download/v{electron_version}"
+    )
+    return (
+        f"{base}/electron-v{electron_version}-linux-x64.zip",
+        f"{base}/SHASUMS256.txt",
+        f"https://{ELECTRON_HEADERS_HOST}/headers/v{electron_version}/"
+        f"node-v{electron_version}-headers.tar.gz",
+    )
+
+
+def _discover_release_meta() -> _ReleaseMeta:
     data = _fetch_json(LATEST_RELEASE_URL, label="latest T3 Code release")
     if not isinstance(data, dict):
         _fail("latest T3 Code release was not a JSON object")
@@ -188,23 +409,98 @@ def _discover_release() -> _Release:
         _fail("T3 Code ARM64 ZIP asset did not include a SHA-256 digest")
 
     _validate_download_url(asset_url, version)
-    return _Release(version=version, url=asset_url, hash_sri=_digest_to_sri(digest))
+    linux_rev = f"v{version}"
+    return _ReleaseMeta(
+        version=version,
+        darwin_url=asset_url,
+        darwin_hash_sri=_digest_to_sri(digest),
+        linux_rev=linux_rev,
+    )
 
 
-def _source_matches_release(content: str, release: _Release) -> bool:
+def _discover_release(meta: _ReleaseMeta) -> _Release:
+    tarball_url = (
+        f"https://{DOWNLOAD_HOST}/{REPOSITORY}/archive/{meta.linux_rev}.tar.gz"
+    )
+    tarball_path = _prefetch_store_path(tarball_url, label="T3 Code source archive")
+    electron_version = _electron_version_from_tarball(tarball_path, rev=meta.linux_rev)
+    electron_dist_url, electron_shasums_url, electron_headers_url = (
+        _electron_artifact_urls(electron_version)
+    )
+    return _Release(
+        version=meta.version,
+        darwin_url=meta.darwin_url,
+        darwin_hash_sri=meta.darwin_hash_sri,
+        linux_rev=meta.linux_rev,
+        electron_version=electron_version,
+        electron_dist_url=electron_dist_url,
+        electron_shasums_url=electron_shasums_url,
+        electron_headers_url=electron_headers_url,
+    )
+
+
+def _parse_existing(content: str) -> _ExistingSource:
     match = SOURCE_PATTERN.fullmatch(content)
     if match is None:
-        return False
-    return match.groups() == (release.version, release.url, release.hash_sri)
+        _fail("source.nix does not match the updater-owned format")
+    (
+        version,
+        app_name,
+        darwin_url,
+        darwin_hash,
+        linux_rev,
+        linux_hash,
+        pnpm_hash,
+        cargo_hash,
+        electron_version,
+        electron_dist_url,
+        electron_dist_hash,
+        electron_shasums_url,
+        electron_shasums_hash,
+        electron_headers_url,
+        electron_headers_hash,
+    ) = match.groups()
+    return _ExistingSource(
+        version=version,
+        app_name=app_name,
+        darwin_url=darwin_url,
+        darwin_hash=darwin_hash,
+        linux_rev=linux_rev,
+        linux_hash=linux_hash,
+        pnpm_hash=pnpm_hash,
+        cargo_hash=cargo_hash,
+        electron_version=electron_version,
+        electron_dist_url=electron_dist_url,
+        electron_dist_hash=electron_dist_hash,
+        electron_shasums_url=electron_shasums_url,
+        electron_shasums_hash=electron_shasums_hash,
+        electron_headers_url=electron_headers_url,
+        electron_headers_hash=electron_headers_hash,
+    )
 
 
-def _render_source(release: _Release) -> str:
+def _render_source(resolved: _ResolvedSource) -> str:
+    release = resolved.release
     return (
         "{\n"
         f'  version = "{release.version}";\n'
-        "  src = {\n"
-        f'    url = "{release.url}";\n'
-        f'    hash = "{release.hash_sri}";\n'
+        f'  appName = "{EXPECTED_APP_NAME}";\n'
+        "  darwin = {\n"
+        f'    url = "{release.darwin_url}";\n'
+        f'    hash = "{resolved.darwin_hash_sri}";\n'
+        "  };\n"
+        "  linux = {\n"
+        f'    rev = "{release.linux_rev}";\n'
+        f'    hash = "{resolved.linux_hash_sri}";\n'
+        f'    pnpmHash = "{resolved.pnpm_hash_sri}";\n'
+        f'    cargoHash = "{resolved.cargo_hash_sri}";\n'
+        f'    electronVersion = "{release.electron_version}";\n'
+        f'    electronDistUrl = "{release.electron_dist_url}";\n'
+        f'    electronDistHash = "{resolved.electron_dist_hash_sri}";\n'
+        f'    electronShasumsUrl = "{release.electron_shasums_url}";\n'
+        f'    electronShasumsHash = "{resolved.electron_shasums_hash_sri}";\n'
+        f'    electronHeadersUrl = "{release.electron_headers_url}";\n'
+        f'    electronHeadersHash = "{resolved.electron_headers_hash_sri}";\n'
         "  };\n"
         "}\n"
     )
@@ -232,6 +528,74 @@ def _build_diff(old: str, new: str, path: Path) -> str:
     )
 
 
+def _resolve_hashes(existing: _ExistingSource, release: _Release) -> _ResolvedSource:
+    darwin_hash_sri = _prefetch_hash(release.darwin_url, label="T3 Code macOS archive")
+    if darwin_hash_sri != release.darwin_hash_sri:
+        _fail(
+            "prefetched macOS archive hash does not match GitHub's published digest: "
+            f"{darwin_hash_sri!r} != {release.darwin_hash_sri!r}",
+        )
+
+    tarball_url = (
+        f"https://{DOWNLOAD_HOST}/{REPOSITORY}/archive/{release.linux_rev}.tar.gz"
+    )
+    linux_hash_sri = _prefetch_hash(
+        tarball_url, label="T3 Code source archive", unpack=True
+    )
+    electron_dist_hash_sri = _prefetch_hash(
+        release.electron_dist_url, label="Electron distribution archive"
+    )
+    electron_shasums_hash_sri = _prefetch_hash(
+        release.electron_shasums_url, label="Electron checksums"
+    )
+    # fetchzip pins the unpacked headers tree, not the tarball.
+    electron_headers_hash_sri = _prefetch_hash(
+        release.electron_headers_url, label="Electron headers", unpack=True
+    )
+
+    _stdout(
+        "[update] resolving offline pnpm and cargo mirrors (this downloads "
+        "the full dependency closures once per revision)..."
+    )
+    # Seed the candidate pins so the fixed-output derivations below evaluate
+    # against the new revision, then read the fresh hashes from their mismatch
+    # errors. _nix_build_fod_hash always fails by design; it never produces
+    # output paths.
+    source_path = Path(__file__).with_name("source.nix")
+    old_content = source_path.read_text(encoding="utf-8")
+    seed = _render_source(
+        _ResolvedSource(
+            existing=existing,
+            release=release,
+            darwin_hash_sri=darwin_hash_sri,
+            linux_hash_sri=linux_hash_sri,
+            pnpm_hash_sri=FAKE_HASH,
+            cargo_hash_sri=FAKE_HASH,
+            electron_dist_hash_sri=electron_dist_hash_sri,
+            electron_shasums_hash_sri=electron_shasums_hash_sri,
+            electron_headers_hash_sri=electron_headers_hash_sri,
+        )
+    )
+    _write_atomic(source_path, seed)
+    try:
+        pnpm_hash_sri = _nix_build_fod_hash(attr="pnpmDeps", label="pnpm mirror")
+        cargo_hash_sri = _nix_build_fod_hash(attr="cargoDeps", label="cargo vendor")
+    finally:
+        _write_atomic(source_path, old_content)
+
+    return _ResolvedSource(
+        existing=existing,
+        release=release,
+        darwin_hash_sri=darwin_hash_sri,
+        linux_hash_sri=linux_hash_sri,
+        pnpm_hash_sri=pnpm_hash_sri,
+        cargo_hash_sri=cargo_hash_sri,
+        electron_dist_hash_sri=electron_dist_hash_sri,
+        electron_shasums_hash_sri=electron_shasums_hash_sri,
+        electron_headers_hash_sri=electron_headers_hash_sri,
+    )
+
+
 def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -243,29 +607,41 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--refresh",
         action="store_true",
-        help="re-download and verify the archive even when release metadata is unchanged",
+        help="re-download and verify every artifact even when release metadata is unchanged",
     )
     return parser.parse_args(list(argv))
+
+
+def _quick_matches(existing: _ExistingSource, meta: _ReleaseMeta) -> bool:
+    # Every remaining pin (hashes, Electron runtime) is a pure function of the
+    # revision, so matching release metadata means the pins are current.
+    return (
+        existing.version == meta.version
+        and existing.app_name == EXPECTED_APP_NAME
+        and existing.darwin_url == meta.darwin_url
+        and existing.darwin_hash == meta.darwin_hash_sri
+        and existing.linux_rev == meta.linux_rev
+    )
 
 
 def _main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     source_path = Path(__file__).with_name("source.nix")
     old_content = source_path.read_text(encoding="utf-8")
-    release = _discover_release()
+    existing = _parse_existing(old_content)
+    meta = _discover_release_meta()
 
-    if not args.refresh and _source_matches_release(old_content, release):
+    if not args.refresh and _quick_matches(existing, meta):
         _stdout("[update] t3-code is already up to date")
         return 0
 
-    prefetched_hash = _prefetch_hash(release.url)
-    if prefetched_hash != release.hash_sri:
-        _fail(
-            "prefetched T3 Code archive hash does not match GitHub's published digest: "
-            f"{prefetched_hash!r} != {release.hash_sri!r}",
-        )
+    if args.check:
+        _stdout(f"[update] update available for: {meta.linux_rev}")
+        return 1
 
-    new_content = _render_source(release)
+    release = _discover_release(meta)
+    resolved = _resolve_hashes(existing, release)
+    new_content = _render_source(resolved)
     diff_text = _build_diff(old_content, new_content, source_path)
     if diff_text:
         sys.stdout.write(diff_text)
@@ -273,8 +649,6 @@ def _main(argv: Sequence[str] | None = None) -> int:
     if not diff_text:
         _stdout("[update] t3-code is already up to date")
         return 0
-    if args.check:
-        return 1
     if args.dry_run:
         return 0
 

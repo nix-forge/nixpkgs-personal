@@ -582,6 +582,7 @@ Desktop control surface for AI coding agents.
 [Recipe](../pkgs/by-name/t3/t3-code/package.nix) · [Package guide](../pkgs/by-name/t3/t3-code/README.md) · [Upstream](https://t3.codes/)
 
 - `aarch64-darwin`: 0.0.39; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: 0.0.39; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#t3-code
