@@ -27,8 +27,7 @@ in nurPackages.repos.nix-forge.bibata-cursors-hyprcursor
 Here `nixpkgs`, `nixpkgs-personal`, and `nur` are pinned source paths or flake inputs
 supplied by the consumer. NUR membership does not make packages available on
 unsupported platforms, audit their security, or grant redistribution permission.
-Its search may omit unfree and macOS-only packages. The README is the collection's
-full inventory.
+Its search may omit unfree and macOS-only packages. The [package catalog](catalog.md) is the collection's full inventory.
 
 ## Repository contents and licensing
 
