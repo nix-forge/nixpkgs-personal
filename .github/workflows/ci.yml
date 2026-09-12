@@ -86,7 +86,7 @@ jobs:
   flake:
     name: Flake checks (${{ matrix.system }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -102,6 +102,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Set up Nix
         uses: nix-forge/ci/actions/setup-nix@78ee44eba73081183f51c85194c6dd9382feb60f # v2.5.0
@@ -116,34 +117,6 @@ jobs:
           nix eval --option allow-import-from-derivation false --json ".#checks.$TARGET_SYSTEM" \
             --apply 'builtins.mapAttrs (_: check: check.drvPath)' > /dev/null
           nix flake check --keep-going --show-trace --print-build-logs --no-build --option allow-import-from-derivation false --system "$TARGET_SYSTEM"
-  build:
-    name: Build (${{ matrix.system }})
-    needs: [lint, flake]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - system: x86_64-linux
-            runner: ubuntu-24.04
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
-          - system: aarch64-darwin
-            runner: macos-26
-    runs-on: ${{ matrix.runner }}
-    # Full cold builds include font compilation and a multi-gigabyte ISO fetch.
-    timeout-minutes: 120
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@78ee44eba73081183f51c85194c6dd9382feb60f # v2.5.0
-        with:
-          cache: 'false'
-          cache-scope: ci-build
       - name: Build every declared native CI check
         uses: nix-forge/ci/actions/flake-checks@78ee44eba73081183f51c85194c6dd9382feb60f # v2.5.0
         with:
@@ -156,8 +129,24 @@ jobs:
           SYSTEM: ${{ matrix.system }}
         shell: bash
         run: bash .github/scripts/build-affected.sh
-  swift-quality:
-    name: Swift quality (${{ matrix.package }})
+  build:
+    name: Build (${{ matrix.system }})
+    needs: [flake]
+    if: always()
+    strategy:
+      fail-fast: false
+      matrix:
+        system: [x86_64-linux, aarch64-linux, aarch64-darwin]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Report native build result
+        env:
+          NATIVE_RESULT: ${{ needs.flake.result }}
+        run: test "$NATIVE_RESULT" = success
+  swift-validation:
+    name: Swift validation (${{ matrix.package }})
     runs-on: macos-26
     timeout-minutes: 30
     strategy:
@@ -194,48 +183,71 @@ jobs:
         run: >-
           xcrun swift-format lint --configuration "pkgs/by-name/$PACKAGE/.swift-format" --parallel --strict
           --recursive "pkgs/by-name/$PACKAGE/Sources" "pkgs/by-name/$PACKAGE/Tests"
+      - name: Address sanitizer
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: swift test --package-path "pkgs/by-name/$PACKAGE" --sanitize address
+      - name: Thread sanitizer
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: swift test --package-path "pkgs/by-name/$PACKAGE" --sanitize thread
+      - name: Strict memory-safety diagnostics
+        if: matrix.package == 'oc/ocr-capture'
+        run: >-
+          swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -strict-memory-safety
+      - name: Legacy Vision backend under Swift 6
+        if: matrix.package == 'oc/ocr-capture'
+        run: >-
+          swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -D -Xswiftc OCR_CAPTURE_NIX_BUILD
+  swift-quality:
+    name: Swift quality (${{ matrix.package }})
+    needs: [swift-validation]
+    if: always()
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [oc/ocr-capture, fi/finder-favorites]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Report Swift validation result
+        env:
+          SWIFT_RESULT: ${{ needs.swift-validation.result }}
+        run: test "$SWIFT_RESULT" = success
   swift-sanitizers:
     name: Swift ${{ matrix.sanitizer }} sanitizer (${{ matrix.package }})
-    runs-on: macos-26
-    timeout-minutes: 20
-    permissions:
-      contents: read
+    needs: [swift-validation]
+    if: always()
     strategy:
       fail-fast: false
       matrix:
         sanitizer: [address, thread]
         package: [oc/ocr-capture, fi/finder-favorites]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - env:
-          SANITIZER: ${{ matrix.sanitizer }}
-          PACKAGE: ${{ matrix.package }}
-        run: >-
-          swift test --package-path "pkgs/by-name/$PACKAGE" --sanitize "$SANITIZER"
+      - name: Report Swift validation result
+        env:
+          SWIFT_RESULT: ${{ needs.swift-validation.result }}
+        run: test "$SWIFT_RESULT" = success
   swift-compiler-audits:
     name: Swift compiler audit (${{ matrix.audit }})
-    runs-on: macos-26
-    timeout-minutes: 20
-    permissions:
-      contents: read
+    needs: [swift-validation]
+    if: always()
     strategy:
       fail-fast: false
       matrix:
         audit: [strict-memory-safety, legacy-backend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Strict memory-safety diagnostics
-        if: matrix.audit == 'strict-memory-safety'
-        run: >-
-          swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -strict-memory-safety
-      - name: Legacy Vision backend under Swift 6
-        if: matrix.audit == 'legacy-backend'
-        run: >-
-          swift test --package-path pkgs/by-name/oc/ocr-capture -Xswiftc -D -Xswiftc OCR_CAPTURE_NIX_BUILD
+      - name: Report Swift validation result
+        env:
+          SWIFT_RESULT: ${{ needs.swift-validation.result }}
+        run: test "$SWIFT_RESULT" = success
   queue-completion:
     continue-on-error: true
     name: Queue completion callback
@@ -248,6 +260,7 @@ jobs:
       - lint
       - flake
       - build
+      - swift-validation
       - swift-quality
       - swift-sanitizers
       - swift-compiler-audits
