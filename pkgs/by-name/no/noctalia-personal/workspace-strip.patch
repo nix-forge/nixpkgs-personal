@@ -1,0 +1,167 @@
+--- a/src/shell/bar/widgets/taskbar_widget.cpp
++++ b/src/shell/bar/widgets/taskbar_widget.cpp
+@@ -822,7 +822,12 @@
+   const float effectiveIconScale =
+       m_groupByWorkspace && m_workspaceGroupContent != WorkspaceGroupContent::Icons ? 1.0F : m_configOptions.iconScale;
+   float iconSize = std::round(Style::baseGlyphSize * effectiveIconScale * m_contentScale);
+-  float tilePadding = Style::spaceXs * 0.35F * m_contentScale;
++  // Minimal inline groups use the same hit cell for labels and application icons.
++  // Keep the artwork size independent of its target, and retain compact modes.
++  const bool inlineWorkspaceStrip = m_groupByWorkspace && m_minimal && m_workspaceGroupCapsule && m_showWorkspaceLabel
++      && m_workspaceLabelPlacement == WorkspaceLabelPlacement::Inside
++      && m_workspaceGroupContent == WorkspaceGroupContent::Icons;
++  float tilePadding = Style::spaceXs * (inlineWorkspaceStrip ? 1.0F : 0.35F) * m_contentScale;
+   float tileSize = std::round(iconSize + tilePadding * 2.0F);
+   const float barCross = m_vertical ? m_containerWidth : m_containerHeight;
+   const float capsuleThickness = barCapsuleThicknessFor(m_configService, m_barName);
+@@ -871,7 +876,23 @@
+   const bool showWindowTitle = m_showWindowTitle && windowTitleWidth > minWindowTitleWidth;
+   const float tileWidthWithTitle = tileSize + (showWindowTitle ? windowTitleWidth + windowTitleGap : 0.0F);
+ 
+-  auto attachHover = [this](InputArea& area, float width, float height) {
++  // Share the standard taskbar hover treatment between selection and group hover.
++  auto inlineWorkspaceFill = widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface));
++  inlineWorkspaceFill.alpha = 0.1F;
++
++  // Copied into each cell's callbacks while its workspace group is built.
++  std::function<void(bool)> workspaceHover;
++  auto attachHover = [this, inlineWorkspaceStrip, &workspaceHover](InputArea& area, float width, float height) {
++    if (workspaceHover) {
++      const auto hover = workspaceHover;
++      area.setOnEnter([hover](const InputArea::PointerData&) { hover(true); });
++      area.setOnLeave([hover]() { hover(false); });
++      return;
++    }
++    // The group already supplies its fill; avoid stacking a second cell highlight.
++    if (inlineWorkspaceStrip) {
++      return;
++    }
+     auto hoverBox = ui::box({
+         .radius = resolvedBarCapsuleRadius(width, height),
+         .width = width,
+@@ -1244,7 +1265,9 @@
+ 
+   if (m_groupByWorkspace && !m_workspaces.empty()) {
+     const float groupGap = Style::spaceXs * m_contentScale;
+-    const float groupPad = Style::spaceXs * m_contentScale;
++    const float groupPad = Style::spaceXs * (inlineWorkspaceStrip ? 0.5F : 1.0F) * m_contentScale;
++    // Retain the hit cells, but leave more bar surface above and below the fill.
++    const float groupCrossPad = inlineWorkspaceStrip ? 0.0F : groupPad;
+ 
+     const bool inlineBadge = m_showWorkspaceLabel && m_workspaceLabelPlacement == WorkspaceLabelPlacement::Inside;
+     const bool externalBadge = m_showWorkspaceLabel && !inlineBadge;
+@@ -1255,7 +1278,7 @@
+         ? std::max(0.0F, (m_workspaceGroupCapsule ? groupedCrossInner : crossExtent) - 2.0F * groupOutlineInset)
+         : 0.0F;
+ 
+-    float stripGap = groupGap;
++    float stripGap = groupGap * (inlineWorkspaceStrip ? 2.0F : 1.0F);
+     float stripPaddingMainStart = 0.0F;
+     float stripPaddingCrossStart = 0.0F;
+     if (externalBadge) {
+@@ -1544,15 +1567,27 @@
+       }
+ 
+       const bool emptyWorkspace = tasks.empty();
+-      const auto surfaceFill = colorSpecFromRole(ColorRole::SurfaceVariant, ws.workspace.active ? 0.52F : 0.18F);
+-      const auto borderColor = colorSpecFromRole(ColorRole::Primary, ws.workspace.active ? 0.65F : 0.16F);
+-
+-      const float crossSize = std::round(tileSize + groupPad * 2.0F);
+-
+-      float groupPadTop = groupPad;
+-      float groupPadRight = groupPad;
+-      float groupPadBottom = groupPad;
+-      float groupPadLeft = groupPad;
++      auto surfaceFill = colorSpecFromRole(ColorRole::SurfaceVariant, ws.workspace.active ? 0.52F : 0.18F);
++      auto borderColor = colorSpecFromRole(ColorRole::Primary, ws.workspace.active ? 0.65F : 0.16F);
++      if (inlineWorkspaceStrip) {
++        // Resting workspaces blend into the bar; only selection or urgency has a fill.
++        // Keep the outline transparent in every state so geometry stays unchanged.
++        surfaceFill = clearColorSpec();
++        borderColor = clearColorSpec();
++        if (ws.workspace.urgent) {
++          surfaceFill = workspaceTextColor(ws.workspace);
++          surfaceFill.alpha *= 0.14F;
++        } else if (ws.workspace.active) {
++          surfaceFill = inlineWorkspaceFill;
++        }
++      }
++
++      const float crossSize = std::round(tileSize + groupCrossPad * 2.0F);
++
++      float groupPadTop = m_vertical ? groupPad : groupCrossPad;
++      float groupPadRight = m_vertical ? groupCrossPad : groupPad;
++      float groupPadBottom = m_vertical ? groupPad : groupCrossPad;
++      float groupPadLeft = m_vertical ? groupCrossPad : groupPad;
+       std::optional<WorkspaceDiscSize> externalBadgeDisc;
+       if (externalBadge) {
+         externalBadgeDisc =
+@@ -1596,6 +1631,30 @@
+       );
+       group->setPadding(groupPadTop, groupPadRight, groupPadBottom, groupPadLeft);
+ 
++      if (inlineWorkspaceStrip && !ws.workspace.active && !ws.workspace.urgent) {
++        auto* groupPtr = group.get();
++        auto progress = std::make_shared<float>(0.0F);
++        const auto fill = inlineWorkspaceFill;
++        workspaceHover = [this, groupPtr, progress, fill](bool hovered) {
++          const float target = hovered ? 1.0F : 0.0F;
++          const auto update = [this, groupPtr, progress, fill](float p) {
++            *progress = p;
++            auto color = fill;
++            color.alpha *= p;
++            groupPtr->setFill(color);
++            requestRedraw();
++          };
++          if (m_animations == nullptr) {
++            update(target);
++            return;
++          }
++          // Cell-to-cell transitions cancel the fade-out before it advances.
++          m_animations->cancelForOwner(groupPtr);
++          m_animations->animate(*progress, target, Style::animFast, Easing::EaseOutCubic, update, {}, groupPtr);
++          requestFrameTick();
++        };
++      }
++
+       if (inlineBadge && m_showWorkspaceLabel) {
+         const float inlineBadgeFontSize = std::round(Style::fontSizeCaption * 0.85F * fontScale());
+         const float inlineBadgeHeight = std::round(std::max(10.0F, iconSize - (Style::spaceXs * m_contentScale)));
+@@ -1604,6 +1663,16 @@
+         );
+         disc.height = inlineBadgeHeight;
+         disc.width = std::round(std::max(inlineBadgeHeight, disc.width));
++        if (inlineWorkspaceStrip) {
++          // Reserve a full cell even for a single digit or an empty workspace.
++          // Longer names grow naturally instead of truncating navigation labels.
++          const auto labelCell = measureWorkspaceDiscSize(
++              renderer, ws.label, std::round(Style::fontSizeMini * fontScale()), tileSize,
++              m_contentScale, fontWeight
++          );
++          disc.width = labelCell.width;
++          disc.height = tileSize;
++        }
+         if (m_vertical) {
+           disc = clampWorkspaceDiscToCrossLimit(disc, externalBadgeCrossLimit);
+         }
+@@ -1661,6 +1730,20 @@
+         badge->setPosition(badgePos.left, badgePos.top);
+         badge->layout(renderer);
+         group->addChild(std::move(badge));
++      }
++
++      if (workspaceHover) {
++        // A background hit area covers the padding and gaps without intercepting
++        // label or app actions. It never contributes to the group's layout.
++        const auto size = group->measure(renderer, {});
++        auto gaps = ui::inputArea({});
++        gaps->setParticipatesInLayout(false);
++        gaps->setFrameSize(size.width, size.height);
++        gaps->setZIndex(-1);
++        gaps->setAcceptedButtons(0);
++        attachHover(*gaps, size.width, size.height);
++        group->addChild(std::move(gaps));
++        workspaceHover = {};
+       }
+ 
+       m_taskStrip->addChild(std::move(group));

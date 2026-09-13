@@ -32,7 +32,9 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
       # Nixpkgs currently ships Swift 5.10.1.  Do not carry this workaround into
       # Swift 6 silently: skipping it both validates the upstream source and
       # prompts removal of the now-dead patch via the warning above.
-      patches = lib.optionals needsSwift510CompatibilityPatch [ ./swift-5.10-concurrency.patch ];
+      patches = lib.optionals needsSwift510CompatibilityPatch [ ./swift-5.10-concurrency.patch ] ++ [
+        ./fan-helper-concurrency.patch
+      ];
       postPatch = ''
         python3 ${./rebrand.py} .
       '';
@@ -71,7 +73,8 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
           -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem "''${appSources[@]}" \
           -o "$buildDir/PersonalMonitor"
 
-        swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
+        # Native 5.10 and 6.3 checks found a smaller helper with WMO.
+        swiftc -O -whole-module-optimization -swift-version 5 -target arm64-apple-macosx14.0 \
           Sources/Vorssaint/Services/FanControl/FanControlSupport.swift \
           Sources/Vorssaint/Services/FanControl/FanControlXPC.swift \
           Sources/Vorssaint/Services/SystemMonitor/SMCClient.swift \
@@ -82,6 +85,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         "$buildDir/io.github.ianhollow.personalmonitor.fan-control" --selftest
 
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
+          -strict-concurrency=complete -warnings-as-errors \
           -emit-library -module-name PersonalMonitorNowPlaying \
           Sources/NowPlayingAdapter/NowPlayingAdapter.swift \
           -o "$buildDir/libPersonalMonitorNowPlaying.dylib"

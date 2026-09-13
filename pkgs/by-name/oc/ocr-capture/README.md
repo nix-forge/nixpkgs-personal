@@ -73,4 +73,29 @@ repository tooling. Xcode supplies Swift and swift-format.
 The suite runs swift-format, SwiftLint, compiler warnings and strict concurrency,
 unit tests, strict-memory checks, Periphery, AddressSanitizer, and
 ThreadSanitizer. The Nix package repeats its hermetic self-test, signature,
-deployment-target, and dependency checks.
+deployment-target, and dependency checks. The session-lock test uses a fresh
+temporary directory so it cannot contend with an interactive capture. It checks
+both concurrent rejection and reacquisition after the first owner releases.
+
+Swift 6 toolchains also run parameterized Swift Testing cases for nonfinite
+numeric inputs, integer overflow, and accepted option boundaries. Existing
+XCTest coverage remains available with Swift 5.10. Run both suites with
+`swift test`; the newer cases compile only when the toolchain supplies Testing.
+
+The direct release build uses whole-module optimization. A bounded comparison
+on arm64 macOS with Swift 5.10.1 and 6.3.3 reduced the legacy-backend executable
+by 10.6% and 11.3%, respectively. Both variants passed the fixture selftest;
+three-build medians also favored WMO. This measures compiled code and fixture
+execution, not screen capture or Vision recognition latency.
+
+Repeat the comparison with the current compiler and SDK:
+
+```console
+Scripts/benchmark-optimization.sh
+```
+
+The script probes document-API availability like the package recipe, alternates
+baseline and WMO builds, and reports wall time, CPU time, peak resident memory,
+and executable size. It runs only fixture selftests. `SWIFTC` selects a compiler;
+`BENCHMARK_BUILD_RUNS` and `BENCHMARK_TEST_RUNS` control the default three builds
+and twenty warm selftests per mode. Temporary binaries are removed on exit.

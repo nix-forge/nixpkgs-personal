@@ -98,8 +98,11 @@ stdenv.mkDerivation {
     else
       printf 'OCR Capture: macOS 26 document API unavailable; building the legacy backend\n'
     fi
+    # WMO reduced executable size with both 5.10 and 6.3; see the native
+    # benchmark script and README for the measured scope.
     swiftc \
       -O \
+      -whole-module-optimization \
       -swift-version ${swiftLanguageVersion} \
       -strict-concurrency=complete \
       -warnings-as-errors \

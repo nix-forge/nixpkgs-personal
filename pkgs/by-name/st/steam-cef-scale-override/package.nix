@@ -10,6 +10,8 @@ stdenv.mkDerivation {
       ./steam-cef-scale-override.c
       ./test-libcef.c
       ./test-helper.c
+      ./check-mock.sh
+      ./check-elf.sh
       ./LICENSE
       ./README.md
     ];
@@ -40,47 +42,33 @@ stdenv.mkDerivation {
       -shared test-libcef.c -o libcef-test.so
     $CC -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic \
       test-helper.c -L. -lcef-test -Wl,-rpath,"$PWD" -o steamwebhelper
-    cp steamwebhelper unrelated-cef-helper
+    bash check-mock.sh "$PWD" "$PWD/libsteam-cef-scale-override.so"
 
-    assert_log() {
-      local expected="$1"
-      local actual
-      actual="$(tr '\n' '|' < "$STEAM_SCALE_TEST_LOG")"
-      if [[ "$actual" != "$expected" ]]; then
-        echo "expected event log '$expected', got '$actual'" >&2
-        return 1
-      fi
-    }
-
-    export STEAM_SCALE_TEST_LOG="$PWD/events.log"
-
-    : > "$STEAM_SCALE_TEST_LOG"
-    STEAM_SCALE_FACTOR=1.5 \
-      LD_PRELOAD="$PWD/libsteam-cef-scale-override.so" \
-      ./steamwebhelper
-    assert_log 'initialize|scale=1.50|'
-
-    : > "$STEAM_SCALE_TEST_LOG"
-    STEAM_SCALE_FACTOR=1.5 \
-      LD_PRELOAD="$PWD/libsteam-cef-scale-override.so" \
-      ./unrelated-cef-helper
-    assert_log 'initialize|'
-
-    : > "$STEAM_SCALE_TEST_LOG"
-    STEAM_SCALE_FACTOR='1.5trailing' \
-      LD_PRELOAD="$PWD/libsteam-cef-scale-override.so" \
-      ./steamwebhelper 2> invalid-scale.log
-    assert_log 'initialize|'
-    grep -Fq 'ignoring invalid STEAM_SCALE_FACTOR' invalid-scale.log
-
-    : > "$STEAM_SCALE_TEST_LOG"
-    if STEAM_SCALE_TEST_INIT_FAIL=1 STEAM_SCALE_FACTOR=1.5 \
-      LD_PRELOAD="$PWD/libsteam-cef-scale-override.so" \
-      ./steamwebhelper; then
-      echo 'the mock CEF initialization failure unexpectedly succeeded' >&2
-      exit 1
-    fi
-    assert_log 'initialize|'
+    # Instrument every mock component. Link the interposer before the mock CEF
+    # library so the executable loads ASan first without preloading a runtime
+    # from a compiler-specific path. The release lane above tests LD_PRELOAD.
+    mkdir sanitized
+    sanitizerFlags=(
+      -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined
+      -fno-sanitize-recover=all
+    )
+    $CC -std=c11 "''${sanitizerFlags[@]}" -fPIC -fvisibility=hidden \
+      -Wall -Wextra -Werror -Wformat=2 -Wshadow -Wstrict-prototypes \
+      -Wmissing-prototypes -Wconversion -Wsign-conversion -Wpedantic \
+      -shared steam-cef-scale-override.c -ldl -lm \
+      -o sanitized/libsteam-cef-scale-override.so
+    $CC -std=c11 "''${sanitizerFlags[@]}" -fPIC \
+      -Wall -Wextra -Werror -Wpedantic -shared test-libcef.c \
+      -o sanitized/libcef-test.so
+    $CC -std=c11 "''${sanitizerFlags[@]}" -Wall -Wextra -Werror -Wpedantic \
+      test-helper.c -Lsanitized -Wl,--no-as-needed \
+      -lsteam-cef-scale-override -lcef-test -Wl,-rpath,"$PWD/sanitized" \
+      -o sanitized/steamwebhelper
+    # Shared sanitizer objects intentionally omit -z defs/--no-undefined;
+    # sanitizer runtime symbols are resolved by the instrumented executable.
+    ASAN_OPTIONS=halt_on_error=1:exitcode=99:detect_leaks=1 \
+      UBSAN_OPTIONS=halt_on_error=1:exitcode=99:print_stacktrace=1 \
+      bash check-mock.sh "$PWD/sanitized" ""
 
     runHook postCheck
   '';
@@ -100,14 +88,7 @@ stdenv.mkDerivation {
   installCheckPhase = ''
     runHook preInstallCheck
 
-    library="$out/lib/libsteam-cef-scale-override.so"
-    readelf -h "$library" | grep -Fq 'Class:                             ELF64'
-    readelf -d "$library" | grep -Fq '(SONAME)'
-    readelf -Ws "$library" | grep -Eq 'GLOBAL +DEFAULT +[0-9]+ +cef_initialize$'
-    if readelf -Ws "$library" | grep -Eq 'GLOBAL +DEFAULT +[0-9]+ +cef_execute_process$'; then
-      echo 'unexpected cef_execute_process interposition' >&2
-      exit 1
-    fi
+    bash check-elf.sh "$out/lib/libsteam-cef-scale-override.so"
 
     runHook postInstallCheck
   '';
