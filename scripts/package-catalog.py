@@ -61,10 +61,10 @@ def render(inventory: dict, policy: dict, root: Path = ROOT) -> str:
         lines += [" · ".join(links), ""]
         for system, variant in variants.items():
             licenses = ", ".join(
-                f"[{license['name']}]({license['url']})"
-                if license["url"]
-                else license["name"]
-                for license in variant["licenses"]
+                f"[{license_entry['name']}]({license_entry['url']})"
+                if license_entry["url"]
+                else license_entry["name"]
+                for license_entry in variant["licenses"]
             )
             restricted = (
                 "; includes unfree terms"

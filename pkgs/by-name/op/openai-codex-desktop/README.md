@@ -82,7 +82,14 @@ Codex still applies bubblewrap to individual sandboxed commands as intended.
 See [Nix's executable compatibility guidance](https://nix.dev/guides/faq#how-to-run-non-nix-executables)
 and [bubblewrap's implementation](https://github.com/containers/bubblewrap/blob/main/bubblewrap.c).
 
-The package does not mutate downloaded caches, replace vendor runtime
-versions, set a global library path, or require disabling either application
-sandbox. Fully removing nix-ld for downloads needs a separately maintained,
+The package does not replace vendor runtime versions, set a global library
+path, or require disabling either application sandbox. On Linux, the launcher
+checks the versioned browser-plugin cache before starting the application. If
+the matching service is absent or incomplete, it atomically copies the browser
+plugin shipped with that application version into Codex's writable cache. It
+does not remove caches for earlier versions. This avoids a desktop update
+leaving the trusted browser worker configured for a file that was never
+materialized.
+
+Fully removing nix-ld for downloaded runtimes needs a separately maintained,
 Nix-packaged runtime or a supported upstream runtime-execution hook.
