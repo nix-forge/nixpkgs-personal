@@ -27,7 +27,7 @@ jobs:
         with:
           persist-credentials: false
       - id: inventory
-        uses: nix-forge/ci/actions/discover-lockfiles@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/discover-lockfiles@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
   lock-health:
     name: Flake lock health
     needs: [flake-lock]
@@ -49,7 +49,7 @@ jobs:
       fail-fast: false
       matrix:
         lockfile: ${{ fromJSON(needs.discover.outputs.lockfiles) }}
-    uses: nix-forge/ci/.github/workflows/flake-lock.yml@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+    uses: nix-forge/ci/.github/workflows/flake-lock.yml@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
     with:
       lockfile: ${{ matrix.lockfile }}
   lint:
@@ -64,7 +64,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/setup-nix@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
         with:
           cache: 'false'
           cache-scope: ci-lint
@@ -73,11 +73,11 @@ jobs:
       - name: Test safe release archive inspection
         run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
       - name: Check shared workflow contracts
-        uses: nix-forge/ci/actions/validate-workflows@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/validate-workflows@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
       - name: Run repository hooks and publication checks
-        uses: nix-forge/ci/actions/repository-checks@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/repository-checks@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
       - name: Build portable lint checks
-        uses: nix-forge/ci/actions/flake-checks@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/flake-checks@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
         with:
           system: x86_64-linux
           checks-output: lintChecks
@@ -102,12 +102,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/setup-nix@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
         with:
           cache: 'false'
           cache-scope: ci-flake
       - name: Materialize discovered partitions
-        uses: nix-forge/ci/actions/materialize-partitions@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/materialize-partitions@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
       - env:
           TARGET_SYSTEM: ${{ matrix.system }}
         run: |
@@ -138,12 +138,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/setup-nix@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
         with:
           cache: 'false'
           cache-scope: ci-build
       - name: Build every declared native CI check
-        uses: nix-forge/ci/actions/flake-checks@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/flake-checks@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
         with:
           system: ${{ matrix.system }}
           checks-output: ciChecks
@@ -173,12 +173,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/setup-nix@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
         with:
           cache: 'false'
           cache-scope: ci-swift-quality
       - name: Materialize discovered partitions
-        uses: nix-forge/ci/actions/materialize-partitions@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/materialize-partitions@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
       - name: Compiler, lint, test, and dead-code checks
         env:
           OCR_CAPTURE_RUN_SANITIZERS: "0"
@@ -256,9 +256,9 @@ jobs:
       actions: write # Dispatch trusted queue validation.
     steps:
       - name: Notify trusted queue reconciler
-        uses: nix-forge/ci/actions/queue-completion@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+        uses: nix-forge/ci/actions/queue-completion@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
   nur:
     name: NUR compatibility
     permissions:
       contents: read
-    uses: nix-forge/ci/.github/workflows/nur.yml@8df2d2979c33ca75ddbd3a878c834ca96b01dc38 # v2.5.2
+    uses: nix-forge/ci/.github/workflows/nur.yml@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
