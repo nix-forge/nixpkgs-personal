@@ -14,7 +14,7 @@ int main() {
       {"music-tray", "/theme/apps/music-tray.svg"},
       {"/custom/icon.png", "/custom/icon.png"},
   };
-  auto lookup = [&icons](const std::string& name) {
+  auto lookup = [&icons](const std::string &name) {
     const auto found = icons.find(name);
     return found == icons.end() ? std::string{} : found->second;
   };
@@ -29,7 +29,7 @@ int main() {
   assert(bar_icons::isSymbolicPath("/icons/scalable/status/service-playing.svg"));
   assert(!bar_icons::isSymbolicPath("/nix/store/symbolic-package/icons/apps/editor.svg"));
   assert(!bar_icons::isSymbolicPath("/icons/apps/editor.png"));
-  auto sizedLookup = [](const std::string& name, int size) {
+  auto sizedLookup = [](const std::string &name, int size) {
     if (name == "missing") {
       return std::string{};
     }
@@ -42,5 +42,6 @@ int main() {
   assert(bar_icons::resolveStatus("bitmap", 16, 48, sizedLookup) == "/theme/48/panel/bitmap.png");
   assert(bar_icons::resolveStatus("app", 16, 48, sizedLookup) == "/theme/48/apps/app.svg");
   assert(bar_icons::resolveStatus("missing", 16, 48, sizedLookup).empty());
-  std::cout << "Symbolic selection, logical status size, artwork fallback, and opt-out checks passed\n";
+  std::cout
+      << "Symbolic selection, logical status size, artwork fallback, and opt-out checks passed\n";
 }

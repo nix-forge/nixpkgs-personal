@@ -14,6 +14,7 @@
           fonttools
           lxml
           pillow
+          pyyaml
           selenium
           uharfbuzz
           websocket-client
@@ -33,7 +34,7 @@
         text = ''
           cache="$(${lib.getExe' pkgs.coreutils "mktemp"} -d)"
           trap '${lib.getExe' pkgs.coreutils "rm"} -rf -- "$cache"' EXIT
-          PYTHONPYCACHEPREFIX="$cache" ${lib.getExe pkgs.python3} -m compileall -q scripts pkgs
+          PYTHONPYCACHEPREFIX="$cache" ${lib.getExe pkgs.python3} -m compileall -q .github scripts pkgs tests
         '';
       };
       # Xcode and SourceKit are supplied by the host and cannot run in a Nix sandbox.
@@ -133,6 +134,16 @@
             files = "^\\.github/workflows/.*\\.ya?ml$";
             after = [ "treefmt" ];
           };
+          oxlint = {
+            enable = true;
+            name = "Oxlint";
+            entry = "${lib.getExe pkgs.oxlint} --config .oxlintrc.json --deny-warnings .";
+            language = "system";
+            extraPackages = [ pkgs.oxlint ];
+            files = "(^\\.oxlintrc\\.json$|\\.[cm]?[jt]sx?$)";
+            pass_filenames = false;
+            after = [ "treefmt" ];
+          };
           ruff-format = {
             enable = true;
             entry = "${lib.getExe pkgs.ruff} format --check .";
@@ -159,7 +170,7 @@
           };
           python-compile = {
             enable = true;
-            # Compile every package updater as well as the top-level scripts.
+            # Compile every package updater, CI helper, and Python test.
             # compileall writes bytecode even with -B; use a temporary cache.
             entry = lib.getExe pythonCompile;
             language = "system";

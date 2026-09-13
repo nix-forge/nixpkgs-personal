@@ -1,27 +1,259 @@
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = [".github/tests", "tests"]
+python_files = ["test_*.py"]
+addopts = [
+  "--import-mode=importlib",
+  "--strict-config",
+  "--strict-markers",
+  "-ra",
+]
+xfail_strict = true
+
 [tool.ruff]
+fix = false
 preview = true
+target-version = "py314"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
-ignore = ["line-too-long"]
+preview = true
+future-annotations = true
+select = ["ALL"]
+ignore = [
+  # Ruff formatter owns these rules.
+  "tab-indentation",
+  "indentation-with-invalid-multiple",
+  "indentation-with-invalid-multiple-comment",
+  "over-indented",
+  "docstring-tab-indentation",
+  "triple-single-quotes",
+  "bad-quotes-inline-string",
+  "bad-quotes-multiline-string",
+  "bad-quotes-docstring",
+  "avoidable-escaped-quote",
+  "missing-trailing-comma",
+  "prohibited-trailing-comma",
+  "multi-line-implicit-string-concatenation",
+  "line-too-long",
+  "CPY",
+  "FBT",
+  "implicit-namespace-package",
+  "incorrect-blank-line-before-class",
+  "multi-line-summary-second-line",
+  # ty checks the complete package tree. Inference avoids redundant annotations
+  # on numerous tiny updater and fixture callbacks while retaining type safety.
+  "missing-type-function-argument",
+  "missing-type-args",
+  "missing-type-kwargs",
+  "missing-return-type-undocumented-public-function",
+  "missing-return-type-private-function",
+  "missing-return-type-special-method",
+  # Package helpers are internal CLIs, not a public Python API.
+  "undocumented-public-module",
+  "undocumented-public-class",
+  "undocumented-public-method",
+  "undocumented-public-function",
+  "undocumented-public-init",
+  # Direct exception text is the operator-facing diagnostic for one-shot CLIs.
+  "raw-string-in-exception",
+  "f-string-in-exception",
+  "raise-vanilla-args",
+]
+
+[tool.ruff.lint.flake8-bandit]
+check-typed-exception = true
+
+[tool.ruff.lint.flake8-builtins]
+strict-checking = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.ruff.lint.per-file-ignores]
+"**/test_*.py" = [
+  # Retained unittest suites exercise real updater scripts and private adapter
+  # state in disposable trees. Commands use argument lists without a shell.
+  "assert",
+  "complex-structure",
+  "docstring-missing-returns",
+  "import-outside-top-level",
+  "no-self-use",
+  "private-member-access",
+  "pytest-unittest-assertion",
+  "pytest-unittest-raises-assertion",
+  "start-process-with-partial-path",
+  "subprocess-run-without-check",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+  "too-many-branches",
+  "too-many-locals",
+  "too-many-statements",
+  "unused-function-argument",
+]
+"pkgs/by-name/**/update.py" = [
+  # Updaters fetch vendor metadata and invoke fixed Nix/package tools without a
+  # shell. URLs are constrained by each package's source implementation.
+  "print",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+  "suspicious-url-open-usage",
+]
+"pkgs/by-name/**/skills_updater.py" = [
+  # Skill catalog updaters fetch known repositories and invoke fixed Git tools.
+  "print",
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+  "suspicious-url-open-usage",
+]
+"pkgs/by-name/**/font_support.py" = [
+  # Font helpers invoke fixed local inspection tools without a shell.
+  "docstring-missing-exception",
+  "typing-only-standard-library-import",
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+]
+"pkgs/by-name/**/unpack.py" = [
+  # Vendor font archives are unpacked into disposable build directories and
+  # checked before installation; commands are fixed argument lists.
+  "complex-structure",
+  "hardcoded-temp-file",
+  "magic-value-comparison",
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+  "tarfile-unsafe-members",
+  "too-many-branches",
+]
+"pkgs/by-name/**/catalog.py" = [
+  "docstring-missing-exception",
+  "docstring-missing-returns",
+  "print",
+]
+"pkgs/by-name/ap/apple-color-emoji/check.py" = [
+  "complex-structure",
+  "magic-value-comparison",
+  "print",
+  "too-many-branches",
+  "too-many-locals",
+  "too-many-statements",
+]
+"pkgs/by-name/ap/apple-color-emoji/repair.py" = [
+  "complex-structure",
+  "too-many-locals",
+  "too-many-statements",
+]
+"pkgs/by-name/ap/apple-fonts/export.py" = [
+  "docstring-missing-exception",
+  "docstring-missing-returns",
+  "print",
+]
+"pkgs/by-name/ap/apple-fonts/update.py" = [
+  # Apple distributes trusted local plist metadata parsed by this updater.
+  "hashlib-insecure-hash-function",
+  "suspicious-xml-element-tree-usage",
+  "suspicious-xml-etree-import",
+]
+"pkgs/by-name/mu/mutant-standard-emoji/normalize-shaping.py" = [
+  "assert",
+  "complex-structure",
+  "magic-value-comparison",
+  "print",
+  "import-private-name",
+]
+"pkgs/by-name/**/check*.py" = [
+  # These files are Nix build-time assertions over installed package outputs.
+  "assert",
+  "magic-value-comparison",
+  "print",
+]
+"pkgs/by-name/op/openai-codex-desktop/check-sandbox.py" = [
+  "assert",
+  "docstring-missing-exception",
+  "print",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+]
+"pkgs/by-name/op/openai-codex-desktop/update.py" = [
+  # The appcast is size-bounded, fetched from the pinned HTTPS origin, and DTD
+  # and entity declarations are rejected before ElementTree parses it.
+  "suspicious-xml-element-tree-usage",
+  "suspicious-xml-etree-import",
+]
+"pkgs/by-name/t3/t3-code/farm-stage-deps.py" = [
+  "complex-structure",
+  "magic-value-comparison",
+  "print",
+  "too-many-branches",
+  "too-many-locals",
+  "too-many-statements",
+]
+"pkgs/by-name/tt/ttf-ms-win11-auto/font_manifest.py" = [
+  "docstring-missing-exception",
+  "docstring-missing-returns",
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+]
+"pkgs/by-name/vo/vorssaint/rebrand.py" = [
+  "complex-structure",
+  "magic-value-comparison",
+  "too-many-branches",
+  "too-many-statements",
+]
+"pkgs/by-name/bi/bitwarden-desktop/update.py" = ["complex-structure"]
+"pkgs/by-name/t3/t3-code/update.py" = [
+  "too-many-locals",
+  "too-many-statements-in-try-clause",
+]
+"scripts/*.py" = [
+  # Repository maintenance CLIs invoke fixed local tools and print results.
+  "docstring-missing-exception",
+  "docstring-missing-returns",
+  "invalid-module-name",
+  "print",
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+  "suspicious-xml-element-tree-usage",
+  "suspicious-xml-etree-import",
+  "too-many-locals",
+]
+"tests/*.py" = [
+  # Nix check entrypoints run fixed local commands and report their outcome.
+  "assert",
+  "print",
+  "subprocess-without-shell-equals-true",
+  "suspicious-subprocess-import",
+]
 
 [tool.ruff.format]
+docstring-code-format = true
 line-ending = "lf"
 preview = true
 
 [tool.ty.analysis]
-# uharfbuzz re-exports a Cython extension without .pyi files. Keep only this
-# native module opaque; font shaping is exercised by the native font checks.
 replace-imports-with-any = ["uharfbuzz"]
-# lxml.etree is also a compiled extension without shipped Python type stubs.
 allowed-unresolved-imports = ["lxml.etree"]
 
 [tool.ty.environment]
+python-version = "3.14"
 python-platform = "all"
 
 [tool.ty.src]
 include = ["**/*.py", "**/*.pyi"]
-exclude = [".git", ".direnv", ".ruff_cache", "**/__pycache__", "result"]
+exclude = [
+  ".git",
+  ".direnv",
+  ".ruff_cache",
+  ".pytest_cache",
+  "**/__pycache__",
+  "result",
+]
 
 [tool.ty.terminal]
 error-on-warning = true

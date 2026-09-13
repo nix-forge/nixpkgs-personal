@@ -23,10 +23,13 @@ license. This version narrows process scope, removes the unnecessary
 `cef_execute_process` hook and constructor, validates the complete scale
 string, fails open, enables linker hardening, and adds behavioral tests.
 
-Package checks run the mock CEF scenarios against the release library through
-`LD_PRELOAD` and against a separate ASan/UBSan build. The sanitizer executable,
-mock library, and interposer are all instrumented. The sanitizer executable links
-the interposer before the mock CEF library so the sanitizer runtime loads first.
+Meson defines the library, mock targets, installation, and tests. The Nixpkgs
+Meson and Ninja hooks provide an offline configure step, the Nix store prefix,
+and build parallelism from `NIX_BUILD_CORES`. Package checks run the mock CEF
+scenarios against the release library through `LD_PRELOAD` and against a separate
+ASan/UBSan Meson build. The sanitizer executable, mock library, and interposer are
+all instrumented. The sanitizer executable links the interposer before the mock
+CEF library so the sanitizer runtime loads first.
 Checks cover process scoping, valid boundary values, absent and malformed scales,
 and initialization failure. Sanitizer diagnostics fail the build; only the
 release library is installed.

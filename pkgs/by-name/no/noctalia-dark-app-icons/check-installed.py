@@ -14,11 +14,11 @@ assert theme["Icon Theme"]["Inherits"].split(",") == ["Papirus-Dark", "hicolor"]
 assert theme["scalable/apps"]["Context"] == "Applications"
 for icon in ("chatgpt", "zen-browser", "vscode"):
     for size in (16, 24, 32, 42, 84):
-        with Image.open(renders / f"{icon}-{size}.png") as image:
-            image = image.convert("RGBA")
+        with Image.open(renders / f"{icon}-{size}.png") as source_image:
+            image = source_image.convert("RGBA")
             assert image.size == (size, size)
             pixels = cast(
-                list[tuple[int, int, int, int]], list(image.get_flattened_data())
+                "list[tuple[int, int, int, int]]", list(image.get_flattened_data())
             )
             opaque = [(r, g, b) for r, g, b, a in pixels if a > 240]
             assert len(opaque) > size * size * 0.4, (icon, "missing artwork")

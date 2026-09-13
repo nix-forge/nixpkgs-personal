@@ -73,8 +73,10 @@ class BuildFetchRetryTests(unittest.TestCase):
             NETWORK_FAILURE + "\nld: undefined reference to missing_symbol\n"
             "error: Cannot build '/nix/store/compiler.drv'.\n"
             "Reason: builder failed with exit code 1.",
-            "curl: (6) Could not resolve host\ncurl: (22) HTTP 404\n"
-            "error: cannot download source from any mirror",
+            (
+                "curl: (6) Could not resolve host\ncurl: (22) HTTP 404\n"
+                "error: cannot download source from any mirror"
+            ),
         ):
             with self.subTest(message=message):
                 self.assertEqual(self.run_build(message, 9), (23, 1))

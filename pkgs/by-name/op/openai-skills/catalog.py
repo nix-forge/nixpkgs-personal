@@ -98,11 +98,10 @@ def install(source: Path, manifest: dict, names: list[str], output: Path) -> Non
                 text
                 + "\n<!-- Modified by nixpkgs-personal: namespace the skill name. -->\n"
             )
-        else:
-            # Namespace the enclosing directory only. Restricted contents stay
-            # byte-identical, including their original SKILL.md name.
-            if fingerprint(target / "SKILL.md") != item["skillHash"]:
-                raise ValueError(f"Changed restricted skill: {name}")
+        # Namespace the enclosing directory only. Restricted contents stay
+        # byte-identical, including their original SKILL.md name.
+        elif fingerprint(target / "SKILL.md") != item["skillHash"]:
+            raise ValueError(f"Changed restricted skill: {name}")
     docs = output / "share/doc" / f"{manifest['prefix']}-skills"
     docs.mkdir(parents=True)
     for name in manifest["rootNotices"]:

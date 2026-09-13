@@ -28,8 +28,13 @@ in
       pkgs.runCommand "package-unit-tests"
         {
           nativeBuildInputs = [
-            (pkgs.python3.withPackages (p: [ p.fonttools ]))
+            (pkgs.python3.withPackages (p: [
+              p.fonttools
+              p.pyyaml
+            ]))
             pkgs.fontconfig
+            pkgs.nodejs_24
+            pkgs.pnpm_11
           ];
         }
         ''

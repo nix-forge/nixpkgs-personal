@@ -259,30 +259,48 @@ def _validate_download_url(url: str, version: str) -> None:
         _fail(f"unexpected T3 Code download path: {url!r}")
 
 
-def _nixpkgs_expression() -> str:
-    # Keep copied package directories usable; in this repository use its
-    # locked upstream input rather than the caller's registry pin.
-    for directory in Path(__file__).resolve().parents:
-        if (directory / "flake.nix").is_file() and (directory / "flake.lock").is_file():
-            return "(builtins.getFlake flakeRef).inputs.nixpkgs"
-    return "builtins.getFlake flakeRef"
+def _nix_string(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False).replace("${", "\\${")
 
 
-def _nixpkgs_ref() -> str:
-    for directory in Path(__file__).resolve().parents:
-        if (directory / "flake.nix").is_file() and (directory / "flake.lock").is_file():
-            return str(directory)
-    return "nixpkgs"
+def _resolve_nixpkgs(selector: str) -> Path:
+    completed = subprocess.run(
+        [
+            _get_nix_binary(),
+            "flake",
+            "metadata",
+            "--json",
+            "--no-write-lock-file",
+            selector,
+        ],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if completed.returncode != 0:
+        _fail(
+            f"could not resolve upstream Nixpkgs {selector!r}:\n{completed.stderr.strip()}"
+        )
+    try:
+        metadata = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        _fail(f"could not parse Nixpkgs metadata: {exc}")
+    store_path = metadata.get("path") if isinstance(metadata, dict) else None
+    if not isinstance(store_path, str) or not Path(store_path).is_absolute():
+        _fail("Nixpkgs metadata did not include an absolute source path")
+    return Path(store_path)
 
 
-def _nix_build_fod_hash(*, attr: str, label: str) -> str:
+def _nix_build_fod_hash(
+    *, package_dir: Path, nixpkgs_path: Path, attr: str, label: str
+) -> str:
+    # Always instantiate Linux, even when the updater is run on Darwin.
+    # Dependency fetchers can use the caller's configured remote builders.
     expression = (
-        "{ packageDir, flakeRef }: let pkgs = import ("
-        + _nixpkgs_expression()
-        + ') { system = "x86_64-linux"; }; '
-        + "in (pkgs.callPackage (builtins.toPath packageDir + "
-        + '"/package.nix") { }).'
-        + attr
+        f"let pkgs = import (builtins.toPath {_nix_string(str(nixpkgs_path))}) "
+        '{ system = "x86_64-linux"; }; '
+        f"in (pkgs.callPackage (builtins.toPath "
+        f"{_nix_string(str(package_dir / 'package.nix'))}) {{ }}).passthru.{attr}"
     )
     completed = subprocess.run(
         [
@@ -293,12 +311,6 @@ def _nix_build_fod_hash(*, attr: str, label: str) -> str:
             "--impure",
             "--expr",
             expression,
-            "--argstr",
-            "packageDir",
-            str(Path(__file__).resolve().parent),
-            "--argstr",
-            "flakeRef",
-            _nixpkgs_ref(),
         ],
         capture_output=True,
         check=False,
@@ -362,8 +374,10 @@ def _electron_artifact_urls(electron_version: str) -> tuple[str, str, str]:
     return (
         f"{base}/electron-v{electron_version}-linux-x64.zip",
         f"{base}/SHASUMS256.txt",
-        f"https://{ELECTRON_HEADERS_HOST}/headers/v{electron_version}/"
-        f"node-v{electron_version}-headers.tar.gz",
+        (
+            f"https://{ELECTRON_HEADERS_HOST}/headers/v{electron_version}/"
+            f"node-v{electron_version}-headers.tar.gz"
+        ),
     )
 
 
@@ -528,7 +542,9 @@ def _build_diff(old: str, new: str, path: Path) -> str:
     )
 
 
-def _resolve_hashes(existing: _ExistingSource, release: _Release) -> _ResolvedSource:
+def _resolve_hashes(
+    existing: _ExistingSource, release: _Release, *, nixpkgs: str
+) -> _ResolvedSource:
     darwin_hash_sri = _prefetch_hash(release.darwin_url, label="T3 Code macOS archive")
     if darwin_hash_sri != release.darwin_hash_sri:
         _fail(
@@ -557,12 +573,10 @@ def _resolve_hashes(existing: _ExistingSource, release: _Release) -> _ResolvedSo
         "[update] resolving offline pnpm and cargo mirrors (this downloads "
         "the full dependency closures once per revision)..."
     )
-    # Seed the candidate pins so the fixed-output derivations below evaluate
-    # against the new revision, then read the fresh hashes from their mismatch
-    # errors. _nix_build_fod_hash always fails by design; it never produces
-    # output paths.
-    source_path = Path(__file__).with_name("source.nix")
-    old_content = source_path.read_text(encoding="utf-8")
+    # Seed only a temporary package copy. Preview, failure, and interruption
+    # must never expose placeholder hashes in the working package.
+    package_dir = Path(__file__).resolve().parent
+    nixpkgs_path = _resolve_nixpkgs(nixpkgs)
     seed = _render_source(
         _ResolvedSource(
             existing=existing,
@@ -576,12 +590,25 @@ def _resolve_hashes(existing: _ExistingSource, release: _Release) -> _ResolvedSo
             electron_headers_hash_sri=electron_headers_hash_sri,
         )
     )
-    _write_atomic(source_path, seed)
-    try:
-        pnpm_hash_sri = _nix_build_fod_hash(attr="pnpmDeps", label="pnpm mirror")
-        cargo_hash_sri = _nix_build_fod_hash(attr="cargoDeps", label="cargo vendor")
-    finally:
-        _write_atomic(source_path, old_content)
+    with tempfile.TemporaryDirectory(prefix="t3-code-update-") as temporary:
+        candidate = Path(temporary) / "t3-code"
+        shutil.copytree(package_dir, candidate)
+        # A preview may start from a read-only source, including a Nix store
+        # copy. Only the temporary candidate needs to accept replacement pins.
+        candidate.chmod(candidate.stat().st_mode | 0o700)
+        _write_atomic(candidate / "source.nix", seed)
+        pnpm_hash_sri = _nix_build_fod_hash(
+            package_dir=candidate,
+            nixpkgs_path=nixpkgs_path,
+            attr="pnpmDeps",
+            label="pnpm mirror",
+        )
+        cargo_hash_sri = _nix_build_fod_hash(
+            package_dir=candidate,
+            nixpkgs_path=nixpkgs_path,
+            attr="cargoDeps",
+            label="cargo vendor",
+        )
 
     return _ResolvedSource(
         existing=existing,
@@ -609,6 +636,11 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="re-download and verify every artifact even when release metadata is unchanged",
     )
+    parser.add_argument(
+        "--nixpkgs",
+        default="nixpkgs",
+        help="upstream Nixpkgs flake reference for dependency hashes (default: nixpkgs registry)",
+    )
     return parser.parse_args(list(argv))
 
 
@@ -619,7 +651,6 @@ def _quick_matches(existing: _ExistingSource, meta: _ReleaseMeta) -> bool:
         existing.version == meta.version
         and existing.app_name == EXPECTED_APP_NAME
         and existing.darwin_url == meta.darwin_url
-        and existing.darwin_hash == meta.darwin_hash_sri
         and existing.linux_rev == meta.linux_rev
     )
 
@@ -640,7 +671,7 @@ def _main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     release = _discover_release(meta)
-    resolved = _resolve_hashes(existing, release)
+    resolved = _resolve_hashes(existing, release, nixpkgs=args.nixpkgs)
     new_content = _render_source(resolved)
     diff_text = _build_diff(old_content, new_content, source_path)
     if diff_text:
