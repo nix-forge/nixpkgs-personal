@@ -4,6 +4,10 @@ Personal Nix packages published as a small, standalone flake. It has no
 dependency on the NixOS, nix-darwin, or Home Manager inputs from my personal
 configuration.
 
+Browse the [complete package catalog](docs/catalog.md) for build commands,
+platforms, source recipes, upstream links and licenses. Start with one package;
+you do not need the workstation configuration to use this collection.
+
 ## Use
 
 Add the flake and make its `nixpkgs` input follow yours:
@@ -41,7 +45,7 @@ are separately selectable. The full OpenAI catalog still requires unfree
 consent and also offers a free selection. The [metadata research](docs/package-metadata-research.md) explains
 license classification, source provenance and build settings. The
 [metadata audit](docs/package-audit.md#metadata-and-unfree-review-2026-09-08)
-records the classification of all 39 packages.
+records the reviewed package classifications.
 
 | Platform | Package coverage |
 | --- | --- |
@@ -83,7 +87,7 @@ packages follow the nixpkgs-style `pkgs/by-name/<prefix>/<name>` layout and must
 declare accurate metadata, platform support, tests where feasible, and an
 updater when upstream can be safely discovered.
 
-All 39 public packages have their own directory and can be instantiated with
+All public packages have their own directory and can be instantiated with
 upstream Nixpkgs using `pkgs.callPackage ./package.nix { }`. Package build files,
 helpers, tests, and updaters stay within that directory. Upstream Nixpkgs
 libraries and tools remain normal dependencies.

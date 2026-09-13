@@ -72,6 +72,8 @@ jobs:
         run: python3 -m unittest discover -s .github/tests
       - name: Test safe release archive inspection
         run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
+      - name: Check package discovery catalog
+        run: python3 scripts/package-catalog.py --check
       - name: Check shared workflow contracts
         uses: nix-forge/ci/actions/validate-workflows@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
       - name: Run repository hooks and publication checks
