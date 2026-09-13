@@ -31,7 +31,7 @@
                     test "$NIX_CFLAGS_COMPILE" = sentinel
                   }
                   source "$1"
-                ' launcher-check ${extraToolsDesktop}/bin/.chatgpt-wrapped \
+                ' launcher-check ${extraToolsDesktop}/libexec/.chatgpt-wrapped-wrapped \
                 "$(if [ "$toolPath" = ${pkgs.coreutils}/bin ]; then
                       echo ${optionalTool}/bin/chatgpt-optional-tool
                     else
@@ -95,14 +95,27 @@
               else
                 ''
                   test -x ${codexDesktop}/bin/chatgpt
-                  head -n 1 ${codexDesktop}/bin/.chatgpt-wrapped | \
+                  # The public launcher prepares the browser plugin without
+                  # changing caller command precedence before the app wrapper.
+                  env -i PATH=${pkgs.coreutils}/bin \
+                    CODEX_HOME="$TMPDIR/public-launcher-home" \
+                    ${pkgs.bash}/bin/bash -euc '
+                      originalPath="$PATH"
+                      exec() {
+                        if [ "$1" = -a ]; then shift 2; fi
+                        test "$1" = "${codexDesktop}/libexec/chatgpt-wrapped"
+                        test "$PATH" = "$originalPath"
+                      }
+                      source "$1"
+                    ' launcher-check ${codexDesktop}/bin/chatgpt
+                  head -n 1 ${codexDesktop}/libexec/.chatgpt-wrapped-wrapped | \
                     grep -E '^#! ?/nix/store/.+/bin/bash -e$'
-                  grep -F NIXOS_OZONE_WL ${codexDesktop}/bin/.chatgpt-wrapped
-                  grep -F WAYLAND_DISPLAY ${codexDesktop}/bin/.chatgpt-wrapped
+                  grep -F NIXOS_OZONE_WL ${codexDesktop}/libexec/.chatgpt-wrapped-wrapped
+                  grep -F WAYLAND_DISPLAY ${codexDesktop}/libexec/.chatgpt-wrapped-wrapped
                   grep -F -- '--ozone-platform=wayland' \
-                    ${codexDesktop}/bin/.chatgpt-wrapped
+                    ${codexDesktop}/libexec/.chatgpt-wrapped-wrapped
                   if grep -F -- '--ozone-platform-hint=auto' \
-                    ${codexDesktop}/bin/.chatgpt-wrapped; then
+                    ${codexDesktop}/libexec/.chatgpt-wrapped-wrapped; then
                     exit 1
                   fi
                   test -L ${codexDesktop}/bin/openai-codex-desktop
@@ -122,7 +135,7 @@
                   env -i PATH=${pkgs.coreutils}/bin ${pkgs.bash}/bin/bash -c '
                     exec() { bwrap --version; }
                     source "$1"
-                  ' wrapper-check ${codexDesktop}/bin/.chatgpt-wrapped | grep -F bubblewrap
+                  ' wrapper-check ${codexDesktop}/libexec/.chatgpt-wrapped-wrapped | grep -F bubblewrap
                   test -f ${codexDesktop}/share/applications/chatgpt.desktop
                   test -f ${codexDesktop}/share/pixmaps/chatgpt.png
                   desktop-file-validate ${codexDesktop}/share/applications/chatgpt.desktop

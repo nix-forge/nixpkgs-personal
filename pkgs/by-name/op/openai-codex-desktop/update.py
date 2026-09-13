@@ -163,7 +163,11 @@ def _fetch_bytes(url: str, *, label: str, timeout: int = 30) -> bytes:
 
 def _fetch_xml(url: str, *, label: str) -> ET.Element:
     try:
-        return ET.fromstring(_fetch_bytes(url, label=label))
+        payload = _fetch_bytes(url, label=label)
+        upper_payload = payload.upper()
+        if b"<!DOCTYPE" in upper_payload or b"<!ENTITY" in upper_payload:
+            _fail(f"unsafe XML declarations in {label} from {url}")
+        return ET.fromstring(payload)
     except ET.ParseError as exc:
         _fail(f"failed to parse XML for {label} from {url}: {exc}")
 

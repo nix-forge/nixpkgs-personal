@@ -1,4 +1,9 @@
-{ lib, stdenv }:
+{
+  lib,
+  meson,
+  ninja,
+  stdenv,
+}:
 
 stdenv.mkDerivation {
   pname = "steam-cef-scale-override";
@@ -10,6 +15,8 @@ stdenv.mkDerivation {
       ./steam-cef-scale-override.c
       ./test-libcef.c
       ./test-helper.c
+      ./meson.build
+      ./meson.options
       ./check-mock.sh
       ./check-elf.sh
       ./LICENSE
@@ -18,77 +25,48 @@ stdenv.mkDerivation {
   };
   strictDeps = true;
 
-  dontConfigure = true;
-
-  buildPhase = ''
-    runHook preBuild
-
-    $CC -std=c11 -O2 -fPIC -fvisibility=hidden \
-      -Wall -Wextra -Werror -Wformat=2 -Wshadow -Wstrict-prototypes \
-      -Wmissing-prototypes -Wconversion -Wsign-conversion -Wpedantic \
-      -shared -Wl,--no-undefined -Wl,-z,defs -Wl,-z,relro,-z,now \
-      -Wl,-z,noexecstack -Wl,-soname,libsteam-cef-scale-override.so \
-      steam-cef-scale-override.c -ldl -lm \
-      -o libsteam-cef-scale-override.so
-
-    runHook postBuild
-  '';
+  nativeBuildInputs = [
+    meson
+    ninja
+  ];
+  # Meson's release build type implies -O3. Keep the package's reviewed -O2
+  # policy while expressing the remaining release settings as built-in options.
+  mesonBuildType = "custom";
+  mesonFlags = [
+    "-Db_ndebug=true"
+    "-Doptimization=2"
+    "-Dtests=true"
+  ];
 
   doCheck = true;
-  checkPhase = ''
-    runHook preCheck
+  postCheck = ''
+    productionBuildDir="$PWD"
 
-    $CC -std=c11 -O2 -fPIC -Wall -Wextra -Werror -Wpedantic \
-      -shared test-libcef.c -o libcef-test.so
-    $CC -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic \
-      test-helper.c -L. -lcef-test -Wl,-rpath,"$PWD" -o steamwebhelper
-    bash check-mock.sh "$PWD" "$PWD/libsteam-cef-scale-override.so"
+    # Exercise Meson's sanitizer configuration separately so the installed
+    # release target retains undefined-symbol rejection and release settings.
+    meson setup "$NIX_BUILD_TOP/sanitized-build" "$NIX_BUILD_TOP/$sourceRoot" \
+      --buildtype=custom \
+      -Dauto_features=enabled \
+      -Db_asneeded=false \
+      -Ddebug=true \
+      -Db_lundef=false \
+      -Db_ndebug=false \
+      -Db_sanitize=address,undefined \
+      -Doptimization=1 \
+      -Dtests=true \
+      -Dwrap_mode=nodownload
+    meson compile -C "$NIX_BUILD_TOP/sanitized-build" -j "$NIX_BUILD_CORES"
+    meson test -C "$NIX_BUILD_TOP/sanitized-build" \
+      -j "$NIX_BUILD_CORES" --no-rebuild --print-errorlogs
 
-    # Instrument every mock component. Link the interposer before the mock CEF
-    # library so the executable loads ASan first without preloading a runtime
-    # from a compiler-specific path. The release lane above tests LD_PRELOAD.
-    mkdir sanitized
-    sanitizerFlags=(
-      -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined
-      -fno-sanitize-recover=all
-    )
-    $CC -std=c11 "''${sanitizerFlags[@]}" -fPIC -fvisibility=hidden \
-      -Wall -Wextra -Werror -Wformat=2 -Wshadow -Wstrict-prototypes \
-      -Wmissing-prototypes -Wconversion -Wsign-conversion -Wpedantic \
-      -shared steam-cef-scale-override.c -ldl -lm \
-      -o sanitized/libsteam-cef-scale-override.so
-    $CC -std=c11 "''${sanitizerFlags[@]}" -fPIC \
-      -Wall -Wextra -Werror -Wpedantic -shared test-libcef.c \
-      -o sanitized/libcef-test.so
-    $CC -std=c11 "''${sanitizerFlags[@]}" -Wall -Wextra -Werror -Wpedantic \
-      test-helper.c -Lsanitized -Wl,--no-as-needed \
-      -lsteam-cef-scale-override -lcef-test -Wl,-rpath,"$PWD/sanitized" \
-      -o sanitized/steamwebhelper
-    # Shared sanitizer objects intentionally omit -z defs/--no-undefined;
-    # sanitizer runtime symbols are resolved by the instrumented executable.
-    ASAN_OPTIONS=halt_on_error=1:exitcode=99:detect_leaks=1 \
-      UBSAN_OPTIONS=halt_on_error=1:exitcode=99:print_stacktrace=1 \
-      bash check-mock.sh "$PWD/sanitized" ""
-
-    runHook postCheck
-  '';
-
-  installPhase = ''
-    runHook preInstall
-
-    install -Dm755 libsteam-cef-scale-override.so \
-      "$out/lib/libsteam-cef-scale-override.so"
-    install -Dm644 LICENSE "$out/share/licenses/steam-cef-scale-override/LICENSE"
-    install -Dm644 README.md "$out/share/doc/steam-cef-scale-override/README.md"
-
-    runHook postInstall
+    cd "$productionBuildDir"
   '';
 
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
 
-    bash check-elf.sh "$out/lib/libsteam-cef-scale-override.so"
+    bash ../check-elf.sh "$out/lib/libsteam-cef-scale-override.so"
 
     runHook postInstallCheck
   '';

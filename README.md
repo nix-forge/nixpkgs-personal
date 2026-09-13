@@ -92,6 +92,14 @@ upstream Nixpkgs using `pkgs.callPackage ./package.nix { }`. Package build files
 helpers, tests, and updaters stay within that directory. Upstream Nixpkgs
 libraries and tools remain normal dependencies.
 
+Package small installed Bash commands with `writeShellApplication` and declare
+their command dependencies in `runtimeInputs`. Use `writers.writePython3Bin`
+for one executable Python file and `buildPythonApplication` for a distributable
+Python application. Patch unpacked upstream source with
+`substituteInPlace --replace-fail`. Use `replaceVars` or `replaceVarsWith` for
+complete `@name@` file templates, and keep `builtins.replaceStrings` for small
+evaluation-time string transformations.
+
 The overlay resolves direct and nested `callPackage` arguments against its
 incoming upstream scope. It does not inject this collection's outputs into
 another personal package. Explicit `.override` remains available.

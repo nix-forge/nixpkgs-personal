@@ -17,7 +17,7 @@ NUR_REVISION = "c9d28a9dc181899c9df1390804837b28cff3b0ae"
 
 def registration(path: Path) -> tuple[str, dict[str, str]]:
     """Validate the submission entry before testing its actual name and URL."""
-    entries = json.loads(path.read_text())
+    entries = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(entries, dict) or len(entries) != 1:
         raise ValueError("NUR registration must contain exactly one repository")
     name, entry = next(iter(entries.items()))
@@ -195,15 +195,19 @@ def main() -> None:
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))
     if "GITHUB_STEP_SUMMARY" in os.environ:
-        with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as output:
+        with Path(os.environ["GITHUB_STEP_SUMMARY"]).open(
+            "a", encoding="utf-8"
+        ) as output:
             output.write(
                 "### NUR compatibility\n\n"
                 f"{sum(counts.values())} package/platform evaluations passed "
                 f"against {args.nixpkgs} Nixpkgs.\n\n"
                 "| System | Evaluations |\n| --- | ---: |\n"
             )
-            for system, evaluated in counts.items():
-                output.write(f"| `{system}` | {evaluated} |\n")
+            output.writelines(
+                f"| `{system}` | {evaluated} |\n"
+                for system, evaluated in counts.items()
+            )
             output.write(f"| Total | {sum(counts.values())} |\n\n")
             source = metadata["locked"]
             output.write(

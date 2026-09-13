@@ -41,7 +41,7 @@ def normalize(path: Path, artwork: Path) -> None:
         if table.isUnicode() and table.format != 14:
             for sequence, glyph in mappings.items():
                 if len(sequence) == 1 and (
-                    sequence[0] <= 0xFFFF or table.format in (12, 13)
+                    sequence[0] <= 0xFFFF or table.format in {12, 13}
                 ):
                     table.cmap[sequence[0]] = glyph
     cmap = font.getBestCmap()

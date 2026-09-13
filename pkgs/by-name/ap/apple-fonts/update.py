@@ -10,6 +10,7 @@ import datetime
 import difflib
 import hashlib
 import json
+import operator
 import os
 import plistlib
 import re
@@ -137,12 +138,14 @@ def update(cache: Path, old: dict) -> dict:
                 f["PostScriptFontName"] for f in asset["FontInfo4"]
             ),
         })
-    for name in DEVELOPER:
-        entries.append({
+    entries.extend(
+        {
             "name": "apple-" + ("new-york" if name == "NY" else name.lower()),
             "kind": "dmg",
             "url": f"https://devimages-cdn.apple.com/design/resources/download/{name}.dmg",
-        })
+        }
+        for name in DEVELOPER
+    )
     names = [e["name"] for e in entries]
     if len(names) != len(set(names)):
         raise ValueError("Generated package names collide")
@@ -166,7 +169,7 @@ def update(cache: Path, old: dict) -> dict:
         "catalog": CATALOG,
         "catalogHash": catalog_hash,
         "selection": sorted(DELIVERY),
-        "sources": sorted(sources, key=lambda s: s["name"]),
+        "sources": sorted(sources, key=operator.itemgetter("name")),
     }
     comparable = {k: v for k, v in old.items() if k != "version"}
     result["version"] = (

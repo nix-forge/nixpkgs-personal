@@ -76,7 +76,7 @@
           inherit packages;
           apps.update = {
             type = "app";
-            program = "${update}/bin/update-packages";
+            program = pkgs.lib.getExe update;
           };
         };
     };

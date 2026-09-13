@@ -39,6 +39,7 @@
     };
 
     rustfmt.enable = true;
+    clang-format.enable = true;
     shfmt.enable = true;
     shellcheck.enable = true;
     taplo.enable = true;

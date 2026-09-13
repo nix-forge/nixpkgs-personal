@@ -12,10 +12,10 @@ APP_NAME = "PersonalMonitor"
 
 
 def replace_once(path: Path, old: str, new: str) -> None:
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     if text.count(old) != 1:
         raise ValueError(f"Review upstream change in {path.name}: {old}")
-    path.write_text(text.replace(old, new))
+    path.write_text(text.replace(old, new), encoding="utf-8")
 
 
 def rebrand(root: Path) -> None:
@@ -34,20 +34,21 @@ def rebrand(root: Path) -> None:
             originals[path] = old
             lines = []
             for line in old.splitlines(keepends=True):
+                updated_line = line
                 # Copyright credits continue identifying the original author.
                 if "copyright" not in line.lower() and "©" not in line:
-                    line = line.replace("com.vorssaint.utils", APP_ID)
-                    line = line.replace("com.vorssaint", APP_ID).replace(
-                        "org.vorssaint", APP_ID
-                    )
-                    line = line.replace("Vorssaint", APP_NAME)
-                    line = (
-                        line.replace("vorssaint-", "personalmonitor-")
+                    updated_line = updated_line.replace("com.vorssaint.utils", APP_ID)
+                    updated_line = updated_line.replace(
+                        "com.vorssaint", APP_ID
+                    ).replace("org.vorssaint", APP_ID)
+                    updated_line = updated_line.replace("Vorssaint", APP_NAME)
+                    updated_line = (
+                        updated_line.replace("vorssaint-", "personalmonitor-")
                         if "http" not in line
                         and "vorssaint/vorssaint-utils" not in line
-                        else line
+                        else updated_line
                     )
-                lines.append(line)
+                lines.append(updated_line)
             new = "".join(lines)
             if new != old:
                 path.write_text(new)

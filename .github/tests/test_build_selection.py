@@ -87,9 +87,9 @@ class BuildSelectionTests(unittest.TestCase):
         for case in cases:
             with (
                 self.subTest(case=case),
-                tempfile.TemporaryDirectory(prefix="ci-build-selection-") as temp,
+                tempfile.TemporaryDirectory(prefix="ci-build-selection-") as temp_dir,
             ):
-                temp = Path(temp)
+                temp = Path(temp_dir)
                 root = temp / "repo"
                 root.mkdir()
                 helper = root / ".github/scripts/build-with-fetch-retry.sh"

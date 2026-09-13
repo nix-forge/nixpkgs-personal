@@ -22,6 +22,8 @@
                 p.fonttools
                 p.lxml
                 p.pillow
+                p.pytest
+                p.pyyaml
                 p.uharfbuzz
               ]))
               cargo

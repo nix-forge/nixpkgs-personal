@@ -158,7 +158,7 @@ stdenv.mkDerivation (
       rustc
       pkg-config
       imagemagick
-      python3
+      (python3.withPackages (ps: [ ps.pyyaml ]))
       unzip
       _7zz
       copyDesktopItems
@@ -223,15 +223,15 @@ stdenv.mkDerivation (
       # offline: pnpm resolves from the vendored store and Electron artifacts
       # come from the pre-seeded @electron/get cache.
       ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
-      # electron-builder 26.15 downloads its archive tool separately from
-      # Electron. Use the Nixpkgs tool through its supported override.
+      # Electron Builder 26.15 downloads its own archiver unless this override
+      # points to an existing executable. Use Nixpkgs' native 7-Zip instead.
       ELECTRON_BUILDER_7ZIP_PATH = lib.getExe _7zz;
       CARGO_NET_OFFLINE = "true";
-      # pnpm 11 defaults to reinstalling before exec when a workspace has no
-      # lockfile. electron-builder probes the staged tree through pnpm exec;
-      # a reinstall would erase the materialized dependencies and try the
-      # registry. The staging helper already validates the pinned closure.
+      # Release preparation changes manifest versions after the frozen install.
+      # pnpm 11 otherwise tries to reinstall before run/exec. Dependencies are
+      # already locked and installed; the stage helper preserves that graph.
       pnpm_config_verify_deps_before_run = "false";
+      pnpm_config_offline = "true";
       # node-gyp rebuilds (notably node-pty, which ships no Linux prebuild)
       # compile against these headers instead of downloading them.
       npm_config_nodedir = "${finalAttrs.electronHeaders}";
@@ -293,6 +293,9 @@ stdenv.mkDerivation (
       # Compile the desktop renderer, the server bundle, and the native
       # helpers through the upstream workspace runner. Lifecycle scripts stay
       # skipped: native prebuilds ship inside the vendored pnpm store.
+      # Release tags retain development manifest versions; match upstream's
+      # release preparation before bundling server and renderer metadata.
+      node scripts/update-release-package-versions.ts ${commonAttrs.version}
       pnpm run build:desktop
 
       # The artifact script stages a lockfile-less workspace and installs it
@@ -300,9 +303,9 @@ stdenv.mkDerivation (
       # range resolution) and vp's own managed pnpm (a version download),
       # neither of which exists inside the sandbox. Route exactly that
       # invocation through farm-stage-deps.py instead: it verifies the
-      # staged specs against the main lockfile and materializes
-      # node_modules from the already installed, already patched main
-      # workspace tree, following the runtime closure to a fixpoint.
+      # staged specs against the main lockfile and copies the installed
+      # production closure, preserving peer contexts and relative links.
+      # Staged pnpm metadata lets electron-builder collect that same tree.
       # Skipping lifecycle scripts is safe here: native prebuilds ship
       # inside their tarballs, the Electron runtime comes from the
       # pre-seeded cache via electron-builder, and sharp (the one
@@ -365,6 +368,7 @@ stdenv.mkDerivation (
 
       install -d "$out/lib" "$out/bin" "$out/share/applications" "$out/share/icons/hicolor/512x512/apps"
       cp -a "$unpacked" "$out/lib/${commonAttrs.pname}"
+      install -Dm644 LICENSE "$out/share/doc/${commonAttrs.pname}/LICENSE"
       # The Nix desktop entry below is authoritative; drop any staged one so
       # two entries cannot compete for the same application id.
       find "$out/lib/${commonAttrs.pname}" -name '*.desktop' -delete
@@ -424,6 +428,12 @@ stdenv.mkDerivation (
       test -f "$out/lib/${commonAttrs.pname}/resources/app.asar"
       test -f "$out/share/applications/${commonAttrs.pname}.desktop"
       test -s "$out/share/icons/hicolor/512x512/apps/${commonAttrs.pname}.png"
+      ELECTRON_RUN_AS_NODE=1 "$out/lib/${commonAttrs.pname}/t3code" \
+        ${./check-runtime.cjs} "$out/lib/${commonAttrs.pname}/resources" ${commonAttrs.version}
+      serverVersion="$(T3CODE_HOME="$TMPDIR/t3-check" ELECTRON_RUN_AS_NODE=1 \
+        "$out/lib/${commonAttrs.pname}/t3code" \
+        "$out/lib/${commonAttrs.pname}/resources/app.asar/apps/server/dist/bin.mjs" --version)"
+      test "$serverVersion" = "t3 v${commonAttrs.version}"
       runHook postInstallCheck
     '';
   }
