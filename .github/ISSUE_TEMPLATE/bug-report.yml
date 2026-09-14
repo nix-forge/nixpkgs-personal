@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible problem in a package, overlay, or build.
+title: "[bug] "
+body:
+  - type: input
+    id: package
+    attributes:
+      label: Package or overlay
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Repository and nixpkgs revisions
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System architecture
+      placeholder: x86_64-linux or aarch64-linux
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the exact command and public configuration. Do not include credentials, private
+        paths, or personal data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result and diagnostics
+      description: Include the relevant redacted build or evaluation output.
+    validations:
+      required: true
