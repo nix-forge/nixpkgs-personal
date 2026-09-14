@@ -3,6 +3,9 @@ let
   manualChecks = builtins.mapAttrs (
     _: checks: builtins.intersectAttrs { mutant-standard-emoji = null; } checks
   ) self.checks;
+  localOnlyChecks = builtins.mapAttrs (
+    _: checks: builtins.intersectAttrs { apple-color-emoji = null; } checks
+  ) self.checks;
 in
 {
   flake = {
@@ -13,10 +16,16 @@ in
     # produces the same platform-independent font on every system. Keep its
     # exhaustive 7,829-glyph validation available through the manual CI audit.
     inherit manualChecks;
+    # Apple Color Emoji processing is intentionally excluded from hosted CI by
+    # repository policy until the third-party artwork permissions are resolved.
+    # The full check remains available to local, authorized builders.
+    inherit localOnlyChecks;
     ciChecks = builtins.mapAttrs (
       system: checks:
       removeAttrs checks (
-        builtins.attrNames self.lintChecks.${system} ++ builtins.attrNames manualChecks.${system}
+        builtins.attrNames self.lintChecks.${system}
+        ++ builtins.attrNames manualChecks.${system}
+        ++ builtins.attrNames localOnlyChecks.${system}
       )
     ) self.checks;
   };
