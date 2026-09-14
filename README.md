@@ -4,8 +4,9 @@ Personal Nix packages published as a small, standalone flake. It has no
 dependency on the NixOS, nix-darwin, or Home Manager inputs from my personal
 configuration.
 
-Browse the [complete package catalog](docs/catalog.md) for build commands,
-platforms, source recipes, upstream links and licenses. Start with one package;
+Browse the
+[complete package catalog](https://nix-forge.github.io/nixpkgs-personal/catalog/)
+for build commands, platforms, source recipes, upstream links and licenses. Start with one package;
 you do not need the workstation configuration to use this collection.
 
 ## Use

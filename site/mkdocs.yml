@@ -1,0 +1,46 @@
+site_name: nixpkgs-personal
+site_description: Maintained Nix packages and a direct flake package interface.
+site_url: https://nix-forge.github.io/nixpkgs-personal/
+repo_url: https://github.com/nix-forge/nixpkgs-personal
+repo_name: nix-forge/nixpkgs-personal
+edit_uri: edit/main/docs/
+docs_dir: ../docs
+site_dir: ../dist
+strict: true
+hooks:
+  - rewrite_source_links.py
+theme:
+  name: mkdocs
+  color_mode: auto
+  user_color_mode_toggle: true
+  locale: en
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+validation:
+  nav:
+    omitted_files: info
+    not_found: warn
+  links:
+    not_found: info
+    anchors: warn
+    unrecognized_links: info
+nav:
+  - Overview: index.md
+  - Package catalog: catalog.md
+  - Using the repository: nur.md
+  - Package standards:
+      - Package design: package-standard.md
+      - Licensing: package-licensing.md
+      - Metadata: package-metadata-research.md
+  - NUR:
+      - Readiness: nur-readiness.md
+      - Submission: nur-submission.md
+      - Assessment: nur-assessment.md
+  - Maintenance:
+      - Package audit: package-audit.md
+      - Design research: package-design-research.md
