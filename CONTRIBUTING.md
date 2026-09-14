@@ -13,6 +13,14 @@ Run the relevant commands from the README and confirm that the repository's CI
 passes. At minimum, run `nix flake check` for changes that affect the flake,
 package definitions, overlays, or update tooling.
 
+Pull requests and merge groups run formatting, repository hooks, dependency
+review, CodeQL, flake-lock health, NUR compatibility checks, and the package
+test or evaluation matrix. Every major package, overlay, source, metadata, or
+update-tool change must add or update an automated test or check. If an
+automated test is not practical, record the reason, manual evidence, and a
+follow-up plan in the pull request. Security and dependency findings follow
+the [dependency-management policy](docs/dependency-management.md).
+
 Do not commit secrets, generated credentials, or large binary artifacts. Use
 full immutable references for GitHub Actions and preserve the repository's
 least-privilege workflow permissions.
