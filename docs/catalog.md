@@ -245,6 +245,8 @@ Self-hosted music discovery and sonic analysis for media servers.
 
 - `x86_64-linux`: 3.6.0; [AGPL-3.0-only](https://spdx.org/licenses/AGPL-3.0-only.html).
 
+Hosted CI: Manual CI audit: the ML package requires a 1.1 GiB download, a 4 GiB unpacked closure, and tens of thousands of upstream dependency tests on x86 Linux.
+
 ```sh
 nix build github:nix-forge/nixpkgs-personal#audiomuse-ai
 ```
