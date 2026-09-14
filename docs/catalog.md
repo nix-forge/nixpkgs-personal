@@ -440,6 +440,8 @@ Mutant Standard emoji artwork compiled as a scalable COLRv1 font.
 - `aarch64-linux`: 2024.06; [CC-BY-NC-SA-4.0](https://spdx.org/licenses/CC-BY-NC-SA-4.0.html); includes unfree terms.
 - `x86_64-linux`: 2024.06; [CC-BY-NC-SA-4.0](https://spdx.org/licenses/CC-BY-NC-SA-4.0.html); includes unfree terms.
 
+Hosted CI: Manual CI audit: exhaustive generation and validation of 7,829 glyphs takes more than 54 minutes and produces a platform-independent font.
+
 ```sh
 nix build github:nix-forge/nixpkgs-personal#mutant-standard-emoji
 ```
