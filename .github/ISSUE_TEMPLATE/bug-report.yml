@@ -25,7 +25,8 @@ body:
     id: reproduction
     attributes:
       label: Minimal reproduction
-      description: Include the exact command and public configuration. Do not include credentials, private paths, or personal data.
+      description: Include the exact command and public configuration. Do not include credentials, private
+        paths, or personal data.
     validations:
       required: true
   - type: textarea
