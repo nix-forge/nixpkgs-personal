@@ -13,6 +13,11 @@ expressions and fixed hashes. A future source release would use an immutable
 tag, a change log, integrity evidence, security review, and the support policy
 recorded here.
 
+This repository is part of the related projects listed in the
+[nix-forge project security contract](https://github.com/nix-forge/.github/blob/main/PROJECTS.md).
+Related repositories enforce the same minimum security contract or a stricter
+one for their own code and release surfaces.
+
 ## Change and build controls
 
 Every commit must carry a matching Signed-off-by trailer. The DCO file defines
