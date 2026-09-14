@@ -32,3 +32,11 @@ jobs must not receive repository secrets.
 
 Review this model when changing source acquisition, package trust, evaluator
 behavior, CI permissions, or release automation.
+
+## Review cadence
+
+The maintainers review this model before each release and whenever source
+acquisition, package behavior, dependencies, CI permissions, Pages, or secret
+handling changes. A release candidate includes an explicit attack-surface
+review and records new trust boundaries and residual risk in its release
+notes. Incidents trigger an out-of-cycle review and a dated follow-up issue.
