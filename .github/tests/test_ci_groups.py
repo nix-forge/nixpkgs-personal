@@ -16,6 +16,7 @@ class CheckGroupTests(unittest.TestCase):
                     let
                         self = {
                             checks.test-system = {
+                                mutant-standard-emoji = null;
                                 pre-commit = null;
                                 treefmt = null;
                             } // native // extraLint;
@@ -26,6 +27,7 @@ class CheckGroupTests(unittest.TestCase):
                     in {
                         all = builtins.attrNames self.checks.test-system;
                         lint = builtins.attrNames self.lintChecks.test-system;
+                        manual = builtins.attrNames module.flake.manualChecks.test-system;
                         native = builtins.attrNames module.flake.ciChecks.test-system;
                     };
             in {
@@ -41,13 +43,18 @@ class CheckGroupTests(unittest.TestCase):
             )
         )
         self.assertEqual(result["before"]["native"], ["first"])
+        self.assertEqual(result["before"]["manual"], ["mutant-standard-emoji"])
         self.assertEqual(result["added"]["native"], ["first", "new-check"])
         self.assertEqual(result["removed"]["native"], ["new-check"])
         self.assertIn("new-lint-check", result["newOwner"]["lint"])
         self.assertNotIn("new-lint-check", result["newOwner"]["native"])
         for case in result.values():
-            self.assertEqual(set(case["all"]), set(case["lint"]) | set(case["native"]))
+            self.assertEqual(
+                set(case["all"]),
+                set(case["lint"]) | set(case["manual"]) | set(case["native"]),
+            )
             self.assertFalse(set(case["lint"]) & set(case["native"]))
+            self.assertFalse(set(case["manual"]) & set(case["native"]))
 
 
 if __name__ == "__main__":

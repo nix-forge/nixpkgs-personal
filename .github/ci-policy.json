@@ -9,6 +9,7 @@
   "apple-sf-hebrew": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
   "apple-sf-mono": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
   "apple-sf-pro": "Evaluation only: Apple developer-font terms; hosted CI extraction has not been reviewed.",
+  "mutant-standard-emoji": "Manual CI audit: exhaustive generation and validation of 7,829 glyphs takes more than 54 minutes and produces a platform-independent font.",
   "spotify-spotx": "Evaluation only: CI would execute Spotify modifications covered by the service's alteration and ad-blocking restrictions.",
   "ttf-ms-win11-auto": "Evaluation only: the evaluation ISO grant has not been established to cover standalone font extraction on hosted Linux runners."
 }
