@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a package, update, or overlay improvement.
+title: "[feature] "
+body:
+  - type: input
+    id: package
+    attributes:
+      label: Package or upstream project
+    validations:
+      required: true
+  - type: textarea
+    id: need
+    attributes:
+      label: Use case
+      description: What need would this change address for consumers?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the package metadata, interface, or overlay behavior you are proposing.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and upstream status
+      description: Mention existing packages, workarounds, or relevant upstream work.
