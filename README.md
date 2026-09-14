@@ -1,7 +1,7 @@
 # nixpkgs-personal
 
-Personal Nix packages published as a small, standalone flake. It has no
-dependency on the NixOS, nix-darwin, or Home Manager inputs from my personal
+Standalone Nix packages and overlays published as a small, reusable flake. It
+has no dependency on any consumer's NixOS, nix-darwin, or Home Manager
 configuration.
 
 Browse the
