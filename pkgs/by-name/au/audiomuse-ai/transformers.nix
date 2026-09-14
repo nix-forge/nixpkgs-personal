@@ -17,7 +17,7 @@ python313Packages.transformers.overridePythonAttrs (old: rec {
 
   postPatch = (old.postPatch or "") + ''
     substituteInPlace src/transformers/dependency_versions_table.py \
-      --replace-fail 'tokenizers>=0.22.0,<=0.23.0' 'tokenizers>=0.22.0,<=0.23.1'
+      --replace-fail 'tokenizers>=0.22.0,<=0.23.1' 'tokenizers>=0.22.0,<=0.23.2'
   '';
   dependencies = [
     python313Packages.filelock

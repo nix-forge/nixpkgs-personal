@@ -245,6 +245,8 @@ Self-hosted music discovery and sonic analysis for media servers.
 
 - `x86_64-linux`: 3.6.0; [AGPL-3.0-only](https://spdx.org/licenses/AGPL-3.0-only.html).
 
+Hosted CI: Manual CI audit: the ML package requires a 1.1 GiB download, a 4 GiB unpacked closure, and tens of thousands of upstream dependency tests on x86 Linux.
+
 ```sh
 nix build github:nix-forge/nixpkgs-personal#audiomuse-ai
 ```
@@ -439,6 +441,8 @@ Mutant Standard emoji artwork compiled as a scalable COLRv1 font.
 - `aarch64-darwin`: 2024.06; [CC-BY-NC-SA-4.0](https://spdx.org/licenses/CC-BY-NC-SA-4.0.html); includes unfree terms.
 - `aarch64-linux`: 2024.06; [CC-BY-NC-SA-4.0](https://spdx.org/licenses/CC-BY-NC-SA-4.0.html); includes unfree terms.
 - `x86_64-linux`: 2024.06; [CC-BY-NC-SA-4.0](https://spdx.org/licenses/CC-BY-NC-SA-4.0.html); includes unfree terms.
+
+Hosted CI: Manual CI audit: exhaustive generation and validation of 7,829 glyphs takes more than 54 minutes and produces a platform-independent font.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#mutant-standard-emoji
