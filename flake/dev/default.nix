@@ -2,6 +2,7 @@
   imports = [
     ./apple-fonts.nix
     ./codex-desktop.nix
+    ./documentation.nix
     ./emoji-fonts.nix
     ./font-packaging.nix
     ./formatter.nix
