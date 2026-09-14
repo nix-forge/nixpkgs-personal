@@ -284,6 +284,7 @@ jobs:
       - lint
       - flake
       - build
+      - expensive-font-audit
       - swift-quality
       - swift-sanitizers
       - swift-compiler-audits
