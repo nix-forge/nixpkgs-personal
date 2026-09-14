@@ -1,6 +1,6 @@
 # nixpkgs-personal
 
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14639/baseline)](https://www.bestpractices.dev/en/projects/14639/baseline-1)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14639/baseline)](https://www.bestpractices.dev/en/projects/14639/baseline-3)
 
 Standalone Nix packages and overlays published as a small, reusable flake. It
 has no dependency on any consumer's NixOS, nix-darwin, or Home Manager
