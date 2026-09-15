@@ -11,7 +11,8 @@ does not currently publish compiled GitHub release assets or official GitHub
 releases. Package outputs are built by consumers from reviewed source
 expressions and fixed hashes. A future source release would use an immutable
 tag, a change log, integrity evidence, security review, and the support policy
-recorded here.
+recorded here. The SLSA scope and future builder contract are documented in
+[docs/slsa.md](slsa.md).
 
 This repository is part of the related projects listed in the
 [nix-forge project security contract](https://github.com/nix-forge/.github/blob/main/PROJECTS.md).
