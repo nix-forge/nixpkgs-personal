@@ -40,28 +40,8 @@ HELPER_COPIES = {
         "openai-skills",
         "pstack-skills",
     ),
-    "unpack.py": (
-        "apple-fonts",
-        "apple-new-york",
-        "apple-sf-arabic",
-        "apple-sf-armenian",
-        "apple-sf-compact",
-        "apple-sf-georgian",
-        "apple-sf-hebrew",
-        "apple-sf-mono",
-        "apple-sf-pro",
-    ),
-    "font_support.py": (
-        "apple-fonts",
-        "apple-new-york",
-        "apple-sf-arabic",
-        "apple-sf-armenian",
-        "apple-sf-compact",
-        "apple-sf-georgian",
-        "apple-sf-hebrew",
-        "apple-sf-mono",
-        "apple-sf-pro",
-    ),
+    "unpack.py": ("apple-fonts",),
+    "font_support.py": ("apple-fonts",),
 }
 
 

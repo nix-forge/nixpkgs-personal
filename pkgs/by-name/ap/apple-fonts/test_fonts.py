@@ -3,22 +3,32 @@
 from __future__ import annotations
 
 import base64
+import bz2
 import hashlib
 import io
 import json
+import operator
 import os
+import struct
 import subprocess
 import tarfile
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET  # ruff: ignore[suspicious-xml-etree-import] - only constructs test fixtures
 import zipfile
+import zlib
 from pathlib import Path
 from unittest.mock import patch
 
 from export import export
 from font_support import install, inventory, sha256
-from unpack import unpack
-from update import inspect_source, select_assets
+from unpack import read_xar_toc, unpack, unpack_xar
+from update import (
+    developer_entries,
+    inspect_source,
+    select_assets,
+    update,
+)
 
 
 def asset(names: list[str], version: int, delivery: str = "macOS-download") -> dict:
@@ -62,6 +72,39 @@ class SelectionTests(unittest.TestCase):
             select_assets({"Assets": []})
 
 
+class UpdateTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def test_developer_only_skips_catalog_download(self):
+        old = {
+            "catalog": "https://example.test/catalog",
+            "catalogHash": "catalog-hash",
+            "selection": ["macOS"],
+            "sources": [
+                {
+                    "name": "catalog-asset",
+                    "kind": "zip",
+                    "url": "https://example.test/catalog-asset.zip",
+                }
+            ],
+        }
+        developer = developer_entries()
+        with (
+            patch("update.fetch") as fetch,
+            patch("update.inspect_sources", return_value=developer),
+        ):
+            result = update(self.root, old, developers_only=True)
+        fetch.assert_not_called()
+        self.assertEqual(result["catalogHash"], "catalog-hash")
+        self.assertEqual(
+            result["sources"],
+            sorted([old["sources"][0], *developer], key=operator.itemgetter("name")),
+        )
+
+
 class ArchiveTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -75,6 +118,69 @@ class ArchiveTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unsafe ZIP"):
             unpack(archive, self.root / "unpacked", "zip")
         self.assertFalse((self.root / "outside").exists())
+
+    def test_xar_toc_rejects_oversized_and_entity_content(self):
+        source = self.root / "package.pkg"
+        small = zlib.compress(b"<xar/>")
+        with self.assertRaisesRegex(ValueError, "too large"):
+            read_xar_toc(small, 16 * 1024 * 1024 + 1, source)
+        entity = b'<!DOCTYPE xar [<!ENTITY expanded "bad">]><xar>&expanded;</xar>'
+        with self.assertRaisesRegex(ValueError, "Invalid XAR"):
+            read_xar_toc(zlib.compress(entity), len(entity), source)
+
+    def test_xar_members_with_zero_inodes_keep_their_bytes(self):
+        toc = ET.Element("xar")
+        table = ET.SubElement(toc, "toc")
+        directory = ET.SubElement(table, "file", id="1")
+        ET.SubElement(directory, "name").text = "Package"
+        ET.SubElement(directory, "type").text = "directory"
+        heap = bytearray()
+        members = {
+            "PackageInfo": (b'<pkg-info version="2"/>', "application/octet-stream"),
+            "Payload": (b"payload bytes", "application/x-bzip2"),
+        }
+        for identifier, (name, (content, style)) in enumerate(members.items(), 2):
+            member = ET.SubElement(directory, "file", id=str(identifier))
+            ET.SubElement(member, "name").text = name
+            ET.SubElement(member, "type").text = "file"
+            data = ET.SubElement(member, "data")
+            archived = (
+                bz2.compress(content) if style == "application/x-bzip2" else content
+            )
+            ET.SubElement(data, "length").text = str(len(archived))
+            ET.SubElement(data, "offset").text = str(len(heap))
+            ET.SubElement(data, "size").text = str(len(content))
+            ET.SubElement(data, "encoding", style=style)
+            archived_checksum = hashlib.sha1(
+                archived, usedforsecurity=False
+            ).hexdigest()
+            extracted_checksum = hashlib.sha1(
+                content, usedforsecurity=False
+            ).hexdigest()
+            ET.SubElement(
+                data, "archived-checksum", style="sha1"
+            ).text = archived_checksum
+            ET.SubElement(
+                data, "extracted-checksum", style="sha1"
+            ).text = extracted_checksum
+            heap.extend(archived)
+        toc_bytes = ET.tostring(toc, encoding="utf-8")
+        compressed_toc = zlib.compress(toc_bytes)
+        archive = self.root / "package.pkg"
+        archive.write_bytes(
+            struct.pack(
+                ">4sHHQQI", b"xar!", 28, 1, len(compressed_toc), len(toc_bytes), 1
+            )
+            + compressed_toc
+            + heap
+        )
+        unpacked = self.root / "unpacked"
+        unpack_xar(archive, unpacked)
+        package_info = unpacked / "Package/PackageInfo"
+        payload = unpacked / "Package/Payload"
+        self.assertEqual(package_info.read_bytes(), members["PackageInfo"][0])
+        self.assertEqual(payload.read_bytes(), members["Payload"][0])
+        self.assertNotEqual(package_info.stat().st_ino, payload.stat().st_ino)
 
     def test_mutable_download_keeps_old_cached_bytes(self):
         entry = {"name": "test", "kind": "dmg", "url": "https://example.test/font.dmg"}

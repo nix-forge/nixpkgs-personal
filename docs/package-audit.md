@@ -1,8 +1,9 @@
 # Package audit
 
-Reviewed 2026-09-07. The [research](package-design-research.md) explains the
+Reviewed 2026-09-14. The [research](package-design-research.md) explains the
 layout and language choices; the [standard](package-standard.md) defines the
-contract checked by CI.
+contract checked by CI. The current inventory consolidates Apple's developer
+font distributions into `apple-fonts`.
 
 ## Findings addressed
 
@@ -12,8 +13,9 @@ contract checked by CI.
   Their inspectors and Fontconfig configuration now live inside each package.
 - Nineteen updaters imported repository-root helpers or delegated to a root
   script. Each now carries its own required helpers and runs outside the checkout.
-- Eight public Apple developer font outputs were aliases. They now have separate
-  package directories and manifests, with explicit manual update policies.
+- Apple developer fonts are consolidated into `apple-fonts`; its manifest keeps
+  the per-distribution source and inventory checks without separate public
+  package directories.
 - An inherited overlay `callPackage` could resolve through the final package
   scope. Direct and nested calls now use the supplied upstream scope.
 - The registry duplicated platform metadata in manual package groups.
@@ -54,14 +56,6 @@ claim macOS builds or GUI tests were run from the Linux review host.
 | `anthropic-skills` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Package installation checks |
 | `apple-color-emoji` | Linux ARM64, Linux x64 | Local Python updater | Source identity, repaired glyph checks and 3 updater tests |
 | `apple-fonts` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Per-file hash and face verification during installation |
-| `apple-new-york` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Per-file hash and face verification during installation |
-| `apple-sf-arabic` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Per-file hash and face verification during installation |
-| `apple-sf-armenian` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Per-file hash and face verification during installation |
-| `apple-sf-compact` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Per-file hash and face verification during installation |
-| `apple-sf-georgian` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Per-file hash and face verification during installation |
-| `apple-sf-hebrew` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Per-file hash and face verification during installation |
-| `apple-sf-mono` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Per-file hash and face verification during installation |
-| `apple-sf-pro` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Per-file hash and face verification during installation |
 | `bibata-cursors-hyprcursor` | Linux ARM64, Linux x64 | Manual review | Package installation checks |
 | `bitwarden-desktop` | macOS ARM64 | Local Python updater | Package installation checks |
 | `claude-desktop` | macOS ARM64 | Local Python updater | Package installation checks |
@@ -93,10 +87,10 @@ claim macOS builds or GUI tests were run from the Linux review host.
 
 ## Validation
 
-- All 39 package directories pass the independence contract on their supported
-  flake systems: 27 x86_64 Linux, 25 ARM64 Linux and 34 ARM64 macOS evaluations.
-- Platform metadata is readable for all 39 packages on all three flake systems.
-  Automatic discovery preserves all 86 public and 86 supported overlay
+- All 36 package directories pass the independence contract on their supported
+  flake systems: 25 x86_64 Linux, 21 ARM64 Linux and 27 ARM64 macOS evaluations.
+- Platform metadata is readable for all 36 packages on all three flake systems.
+  Automatic discovery preserves all 73 public and 73 supported overlay
   derivations from the manual registry. Upstream Linux Steam, LibreOffice and
   Bitwarden remain unchanged when their personal overrides are unsupported.
 - Evaluation also passes with import-from-derivation disabled.
@@ -164,14 +158,6 @@ classifications, not an audit of every dependency's copyright notices.
 | `anthropic-skills` | Apache-2.0, OFL-1.1 by default | No | Source, Font binary |
 | `apple-color-emoji` | unfree, OFL-1.1 | Yes | Font binary |
 | `apple-fonts` | unfree | Yes | Font binary |
-| `apple-new-york` | unfree | Yes | Font binary |
-| `apple-sf-arabic` | unfree | Yes | Font binary |
-| `apple-sf-armenian` | unfree | Yes | Font binary |
-| `apple-sf-compact` | unfree | Yes | Font binary |
-| `apple-sf-georgian` | unfree | Yes | Font binary |
-| `apple-sf-hebrew` | unfree | Yes | Font binary |
-| `apple-sf-mono` | unfree | Yes | Font binary |
-| `apple-sf-pro` | unfree | Yes | Font binary |
 | `bibata-cursors-hyprcursor` | GPL-3.0-or-later | No | Source |
 | `bitwarden-desktop` | GPL-3.0-only | No | Native binary |
 | `claude-desktop` | unfree | Yes | Native binary |
@@ -206,9 +192,9 @@ classifications, not an audit of every dependency's copyright notices.
 - The regression check failed on the original Anthropic classification.
   The original Windows font allowlist also failed on its restricted ISO.
   Both now pass, while unrelated unfree packages remain rejected.
-- `just check` evaluates all 39 package recipes on all three supported systems
-  with metadata type checks and import-from-derivation disabled. It forces 86
-  supported derivations, 27 Linux x64, 25 Linux ARM64 and 34 macOS ARM64, and
+- `just check` evaluates all 36 package recipes on all three supported systems
+  with metadata type checks and import-from-derivation disabled. It forces 73
+  supported derivations, 25 Linux x64, 21 Linux ARM64 and 27 macOS ARM64, and
   their overlay counterparts. The policy check covers default rejection,
   selected unfree consent and independent source-provenance restrictions.
 - `just test` passes the independence, package policy and Python suites.

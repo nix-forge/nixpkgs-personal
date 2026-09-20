@@ -17,11 +17,10 @@ import re
 import sys
 import tempfile
 import urllib.request
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from font_support import inventory, sha256
-from unpack import unpack
+from unpack import parse_xml, unpack
 from update_support import HTTPS_CONTEXT
 
 CATALOG = "https://mesu.apple.com/assets/macos/com_apple_MobileAsset_Font8/com_apple_MobileAsset_Font8.xml"
@@ -71,6 +70,18 @@ def select_assets(catalog: dict) -> list[dict]:
     return chosen
 
 
+def package_versions(root: Path) -> list[str]:
+    versions = []
+    for path in root.rglob("PackageInfo"):
+        if path.stat().st_size > 1024 * 1024:
+            raise ValueError(f"Installer metadata is too large: {path}")
+        package = parse_xml(path.read_bytes(), path)
+        version = package.attrib.get("version")
+        if version:
+            versions.append(version)
+    return sorted(set(versions))
+
+
 def inspect_source(entry: dict, cache: Path, previous: dict | None) -> dict:
     key = hashlib.sha256(entry["url"].encode()).hexdigest()
     cached = cache / key
@@ -101,10 +112,7 @@ def inspect_source(entry: dict, cache: Path, previous: dict | None) -> dict:
         root = unpack(cached, Path(directory), entry["kind"])
         entry["files"] = inventory(root)
         if entry["kind"] == "dmg":
-            versions = sorted({
-                ET.parse(p).getroot().attrib["version"]
-                for p in root.rglob("PackageInfo")
-            })
+            versions = package_versions(root)
             if not versions:
                 raise ValueError("No developer installer version")
             entry["version"] = "+".join(versions)
@@ -117,40 +125,21 @@ def inspect_source(entry: dict, cache: Path, previous: dict | None) -> dict:
     return entry
 
 
-def update(cache: Path, old: dict) -> dict:
-    content = fetch(CATALOG)
-    catalog = plistlib.loads(content)
-    catalog_hash = hashlib.sha256(content).hexdigest()
-    entries = []
-    for asset in select_assets(catalog):
-        if asset["_MeasurementAlgorithm"] != "SHA-1":
-            raise ValueError("Unsupported Apple asset measurement algorithm")
-        first_name = asset["FontInfo4"][0]["PostScriptFontName"]
-        slug = re.sub(r"[^a-z0-9]+", "-", first_name.lower()).strip("-")
-        entries.append({
-            "name": "apple-asset-" + slug,
-            "kind": "zip",
-            "version": asset["Build"],
-            "url": asset["__BaseURL"] + asset["__RelativePath"],
-            "size": asset["_DownloadSize"],
-            "measurement": asset["_Measurement"].hex(),
-            "expectedFaces": sorted(
-                f["PostScriptFontName"] for f in asset["FontInfo4"]
-            ),
-        })
-    entries.extend(
+def developer_entries() -> list[dict]:
+    return [
         {
             "name": "apple-" + ("new-york" if name == "NY" else name.lower()),
             "kind": "dmg",
             "url": f"https://devimages-cdn.apple.com/design/resources/download/{name}.dmg",
         }
         for name in DEVELOPER
-    )
-    names = [e["name"] for e in entries]
-    if len(names) != len(set(names)):
-        raise ValueError("Generated package names collide")
-    previous = {e["url"]: e for e in old.get("sources", [])}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+    ]
+
+
+def inspect_sources(
+    entries: list[dict], cache: Path, previous: dict[str, dict], max_workers: int = 4
+) -> list[dict]:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
             executor.submit(inspect_source, e, cache, previous.get(e["url"]))
             for e in entries
@@ -164,11 +153,58 @@ def update(cache: Path, old: dict) -> dict:
                     file=sys.stderr,
                     flush=True,
                 )
+    return sources
+
+
+def update(cache: Path, old: dict, developers_only: bool = False) -> dict:
+    developer = developer_entries()
+    developer_names = {entry["name"] for entry in developer}
+    previous = {e["url"]: e for e in old.get("sources", [])}
+    if developers_only:
+        if not old.get("sources"):
+            raise ValueError("--developers-only requires an existing sources.json")
+        catalog = [
+            entry for entry in old["sources"] if entry["name"] not in developer_names
+        ]
+        sources = catalog + inspect_sources(developer, cache, previous, max_workers=1)
+        catalog_url = old.get("catalog", CATALOG)
+        catalog_hash = old.get("catalogHash")
+        selection = old.get("selection", sorted(DELIVERY))
+    else:
+        content = fetch(CATALOG)
+        catalog_data = plistlib.loads(content)
+        catalog_url = CATALOG
+        catalog_hash = hashlib.sha256(content).hexdigest()
+        catalog = []
+        for asset in select_assets(catalog_data):
+            if asset["_MeasurementAlgorithm"] != "SHA-1":
+                raise ValueError("Unsupported Apple asset measurement algorithm")
+            first_name = asset["FontInfo4"][0]["PostScriptFontName"]
+            slug = re.sub(r"[^a-z0-9]+", "-", first_name.lower()).strip("-")
+            catalog.append({
+                "name": "apple-asset-" + slug,
+                "kind": "zip",
+                "version": asset["Build"],
+                "url": asset["__BaseURL"] + asset["__RelativePath"],
+                "size": asset["_DownloadSize"],
+                "measurement": asset["_Measurement"].hex(),
+                "expectedFaces": sorted(
+                    f["PostScriptFontName"] for f in asset["FontInfo4"]
+                ),
+            })
+        names = [entry["name"] for entry in catalog + developer]
+        if len(names) != len(set(names)):
+            raise ValueError("Generated package names collide")
+        # Developer DMGs are much larger than catalog ZIPs. Keep their
+        # extraction serial so a full refresh does not exhaust TMPDIR.
+        sources = inspect_sources(catalog, cache, previous)
+        sources += inspect_sources(developer, cache, previous, max_workers=1)
+        selection = sorted(DELIVERY)
     result = {
         "schema": 1,
-        "catalog": CATALOG,
+        "catalog": catalog_url,
         "catalogHash": catalog_hash,
-        "selection": sorted(DELIVERY),
+        "selection": selection,
         "sources": sorted(sources, key=operator.itemgetter("name")),
     }
     comparable = {k: v for k, v in old.items() if k != "version"}
@@ -180,10 +216,29 @@ def update(cache: Path, old: dict) -> dict:
     return result
 
 
+def replace_files(updates: dict[Path, str]) -> None:
+    temporary = []
+    try:
+        for path, content in updates.items():
+            target = path.with_name(f".{path.name}.tmp")
+            target.write_text(content)
+            temporary.append((target, path))
+        for target, path in temporary:
+            target.replace(path)
+    finally:
+        for target, _ in temporary:
+            target.unlink(missing_ok=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--developers-only",
+        action="store_true",
+        help="refresh mutable developer DMGs without querying the Font8 catalog",
+    )
     parser.add_argument(
         "--source-file", type=Path, default=Path(__file__).with_name("sources.json")
     )
@@ -196,31 +251,40 @@ def main() -> int:
     args = parser.parse_args()
     args.cache_dir.mkdir(parents=True, exist_ok=True)
     original = args.source_file.read_text() if args.source_file.exists() else ""
-    updated = (
-        json.dumps(
-            update(args.cache_dir, json.loads(original or "{}")),
-            ensure_ascii=False,
-            indent=2,
-        )
-        + "\n"
+    original_data = json.loads(original or "{}")
+    result = update(
+        args.cache_dir,
+        original_data,
+        developers_only=args.developers_only,
     )
-    if original == updated:
+    updated = (
+        original
+        if original and original_data == result
+        else json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+    )
+    updates = {args.source_file: updated}
+    changes = {
+        path: (path.read_text() if path.exists() else "", content)
+        for path, content in updates.items()
+    }
+    changed = {path: pair for path, pair in changes.items() if pair[0] != pair[1]}
+    if not changed:
         print("Apple font sources are up to date")
         return 0
     if args.check or args.dry_run:
-        sys.stdout.writelines(
-            difflib.unified_diff(
-                original.splitlines(True),
-                updated.splitlines(True),
-                fromfile=str(args.source_file),
-                tofile=str(args.source_file),
+        for path, (before, after) in changed.items():
+            sys.stdout.writelines(
+                difflib.unified_diff(
+                    before.splitlines(True),
+                    after.splitlines(True),
+                    fromfile=str(path),
+                    tofile=str(path),
+                )
             )
-        )
         return int(args.check)
-    temporary = args.source_file.with_suffix(".json.tmp")
-    temporary.write_text(updated)
-    temporary.replace(args.source_file)
-    print(f"Updated {args.source_file}")
+    replace_files({path: after for path, (_, after) in changed.items()})
+    for path in changed:
+        print(f"Updated {path}")
     return 0
 
 

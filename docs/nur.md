@@ -83,7 +83,8 @@ terms. No cache publication is enabled by this NUR integration.
 The Windows ISO fetcher shares the `ttf-ms-win11-auto` policy name, so the
 example covers both the package and its download. `apple-fonts` is a composite;
 its predicate must also permit the selected `apple-asset-*` names from
-`apple-fonts.assets`. Individual developer-font packages use their public names.
+`apple-fonts.assets`; the Apple developer-font distributions are included in
+that consolidated output and have no separate public attributes.
 The direct flake `packages` and `legacyPackages` interfaces enable unfree
 internally; use an import or overlay when the caller must enforce a narrower
 policy. See the [metadata research](package-metadata-research.md).
