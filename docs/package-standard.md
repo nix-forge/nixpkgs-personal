@@ -1,7 +1,7 @@
 # Package standard
 
 This repository uses the official guidance linked in [the research](package-design-research.md).
-The additional independence requirement applies to all 39 public outputs.
+The additional independence requirement applies to all 36 public outputs.
 
 ## Directory and dependency contract
 
@@ -24,8 +24,9 @@ Adding a package requires no registry edit or separate platform list.
 
 A public output must not be an alias that
 requires another package directory. Internal build stages and compatibility
-passthru attributes are allowed. Existing `apple-fonts.developerFonts` passthru
-attributes remain available, while public developer-font outputs are independent.
+passthru attributes are allowed. The consolidated `apple-fonts` package keeps
+its developer-distribution entries internal; it is the only public Apple
+developer-font output.
 
 Use `source.nix` for ordinary release pins. Use JSON manifests when the build
 validates structured payload inventories. Keep existing SwiftPM `Sources/` and
@@ -93,7 +94,7 @@ passing a single store copy of `update.py` would lose its helpers and metadata.
 Font update wrappers additionally declare extraction and inspection tools.
 
 Historical emoji releases and reviewed source compositions keep manual update
-policies. Independent Apple developer font manifests also require manual source
+policies. The consolidated Apple developer-font entries require manual source
 and inventory review. A package without an updater must document that choice.
 
 Run `just check`, `just lint`, and `just test`. The contract check evaluates

@@ -37,7 +37,7 @@ make similar distinctions. Package-manager acceptance is not legal clearance.
 
 ## Hosted builds
 
-CI evaluates all 39 recipes and their supported derivations. The affected-package
+CI evaluates all 36 recipes and their supported derivations. The affected-package
 build selector reads [.github/ci-policy.json](../.github/ci-policy.json) before
 running a package build. The selector stops before building if the policy is
 missing or malformed, a reason is blank, or an exclusion names no package in the
@@ -107,7 +107,7 @@ limits; it is not a legal opinion or a promise of immunity for maintainers or us
 
 ## Verification
 
-All 39 recipes evaluate on their declared supported systems, and all 27 Linux
+All 36 recipes evaluate on their declared supported systems, and all 25 Linux
 x64 outputs build or reuse successfully. Selection variants, content-preservation
 checks, package independence, policy tests, CI selection, linting, formatting,
 and repository secret scanning pass. See the [audit](package-audit.md#validation-and-limits)

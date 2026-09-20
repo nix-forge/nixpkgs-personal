@@ -7892,56 +7892,56 @@
       "name": "apple-sf-compact",
       "kind": "dmg",
       "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Compact.dmg",
-      "hash": "sha256-LIkAOWe+WaaGeqXeEgZjUtmmtEt4XPK5/4jvDXf/KPw=",
+      "hash": "sha256-wdDjROut1m62LwP4I3hMzknxeH9WVj+wmPygH8VUE1w=",
       "files": [
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Black.otf",
-          "sha256": "1fd5ade36dbfed44e49d38068b6a506c25b4c920da5d372f3c7a0e879fc31201",
+          "sha256": "ed17d1019911a04241f47b7ccd2865b52f1165cc21b6a593916265d400d2fdc7",
           "faces": ["SFCompactDisplay-Black"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Bold.otf",
-          "sha256": "fd702e81baf998869f0cbff345d646ac8d0e6def914a4bdf6a33ece1a5de5f99",
+          "sha256": "bc111eaa6c8ae0d377488e8c6ab18a0a25b57a70b0fffe799446378c4a8cde49",
           "faces": ["SFCompactDisplay-Bold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Heavy.otf",
-          "sha256": "996bf014ef12ca2ec450968f60c2ff4c9710ed2300608e519191bf1a9672308b",
+          "sha256": "91e3c5798a4797a7835bf2f5b76e400ec8869223842a6145a493124049a9b9e6",
           "faces": ["SFCompactDisplay-Heavy"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Light.otf",
-          "sha256": "6ff1f7ba5f5eea624e19d6817094a31da9170de1ac49c4e8746acd9c28c00575",
+          "sha256": "2117c85ff84583ef9cd475efeb2af8674d946775037f2c4b455cbc8f1aeb15de",
           "faces": ["SFCompactDisplay-Light"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Medium.otf",
-          "sha256": "5d20ec7fa29a1834d5c26a730a2bab5443394ebb8307a54e41e19e629559148d",
+          "sha256": "a8423425d72482f1c24b71577754d23b3ada817f6ce5851bcb6f6368c7f02b1f",
           "faces": ["SFCompactDisplay-Medium"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Regular.otf",
-          "sha256": "e468fcc23b0907c76d92b27ff9311dd47660c46ac18f44708817f585f42facb7",
+          "sha256": "77af20cb328f7149164751b87ada652cc2c5ac2a1fac0d36ddc1f10a90b7592e",
           "faces": ["SFCompactDisplay-Regular"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Semibold.otf",
-          "sha256": "cc5d2b07fb920ea9e01cbb056d89d69b7708bcd86f5019f8a547b8a09602de29",
+          "sha256": "4335a0de416e27387e901476ed43ecc4b35d3571597e879b6afbb82f3609f953",
           "faces": ["SFCompactDisplay-Semibold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Thin.otf",
-          "sha256": "7e4e51ccbc787e29e7014e7b2be314bb7d066ec49b53891d1da7b342ea2727a3",
+          "sha256": "12d02b5e6336bac6371bc889ac1f4c9d2e1da96881d396cf29332404686b3084",
           "faces": ["SFCompactDisplay-Thin"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Display-Ultralight.otf",
-          "sha256": "c1e4e86ac48c39d6b6789856d5ea8f982ad89ea408d2f6769be41e2c018888af",
+          "sha256": "3391f1da2f0b225c32b39f5eeea70a1347be561b6c09bc45dc031dd0738c3f49",
           "faces": ["SFCompactDisplay-Ultralight"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Italic.ttf",
-          "sha256": "69d44b6b4590de02b6b4ce3d5ebbbad52ce0f24765a0d9edbe6ff2eeaa5a408d",
+          "sha256": "0d1a0ce052d959b12d334fef65fe20e079991fde248886cd3d6d530efe7f0c47",
           "faces": [
             "SFCompact-BlackItalic",
             "SFCompact-BoldItalic",
@@ -7956,142 +7956,142 @@
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Black.otf",
-          "sha256": "32685c67520ae859f650d4106c9ce1486f205435e0e035a8a78d5b18f30dfdcc",
+          "sha256": "f009bd20d4a0c5c5ae729ba7b96e29ceefaa3d7dc5ec1bd93a8b280f38e5782c",
           "faces": ["SFCompactRounded-Black"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Bold.otf",
-          "sha256": "269b90ddacc465567e52e3cf10adf46818452261aaf0e7c40ebcc77a34234d6f",
+          "sha256": "4885c76eeb4960335fc8424a7537ca8ea94348ff65940f65a47cb53a4e529a7b",
           "faces": ["SFCompactRounded-Bold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Heavy.otf",
-          "sha256": "56f01c1807eb357930aaf851e019063d6487ff7f74ceaef283e9d838ee9ddd26",
+          "sha256": "5eaf4261a63990a4247406513acefa134f9ae31857b430c4d69cd8545c78893e",
           "faces": ["SFCompactRounded-Heavy"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Light.otf",
-          "sha256": "29cc5c868e63bc0bffead2c4e9f7f874fc16ed6201efc920a0c22a528acc486e",
+          "sha256": "d71608149b4e4f92b65735aace17186c96a2033efea7a82d17f89db514100300",
           "faces": ["SFCompactRounded-Light"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Medium.otf",
-          "sha256": "6564fe997dadcbadfa098a464ca8177a058ddd76b8309c5789177fa76bd8ac92",
+          "sha256": "31e19ea93fc2fdc417bf0a9364e0c29d7ae1c9ab25074f938e7f8345e83ad3b8",
           "faces": ["SFCompactRounded-Medium"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Regular.otf",
-          "sha256": "75997e5c7d8fa99965f903cebc0ed8c3140dd5f8a15257b6f33864ebf8c51bc0",
+          "sha256": "352525ad26c0cead07890428a1fb9c5e2ce957636945e3a9ac2c629e3359ba3d",
           "faces": ["SFCompactRounded-Regular"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Semibold.otf",
-          "sha256": "b70e4350818f192c4387da11c5a7cc4112c792e8028660df0192cc74dd859d63",
+          "sha256": "2a2d3e818b7801702178c180eb7f1d585556f5c3b5c4928eb635199142645e57",
           "faces": ["SFCompactRounded-Semibold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Thin.otf",
-          "sha256": "414d7d69b266d5acaa778858ec62cba13f88fd06be2b3654e93296febb995d6f",
+          "sha256": "c381a826a9f33f5f0a32e5a5008faadcb804a4ecb9ac1cce146194f749733bc0",
           "faces": ["SFCompactRounded-Thin"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Rounded-Ultralight.otf",
-          "sha256": "e059200d2122f183db479da12ad1ddc9296613567aac595ae77c17dfb290eb71",
+          "sha256": "135bc2393792e83eab45978f8336ee6c358dcb9e1112b262aca5b0e56ad369b5",
           "faces": ["SFCompactRounded-Ultralight"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Black.otf",
-          "sha256": "c5e9ae3fba59973db1e841cec7dded138d1f69b9230c0f07ca93ba2e09452bbe",
+          "sha256": "aba6d0301eddbf4699b31e522d0b97be8c294f24b3aa47f004a275a1485185ac",
           "faces": ["SFCompactText-Black"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-BlackItalic.otf",
-          "sha256": "12102d60622035518985d02eae090c27120cb6bba8d23c473475cde5c784d292",
+          "sha256": "97506630b96dd03f266b8d7022b65869ae501101a4e48e5e192fe5249ef8a19d",
           "faces": ["SFCompactText-BlackItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Bold.otf",
-          "sha256": "9940da1813fea443363da99324051d86f08ae825873ec89683abac6cdfb72d7b",
+          "sha256": "13b3e6281d0ccfb58f65eece3f2b2c51a466037692e712e8207e2fca46b4ef18",
           "faces": ["SFCompactText-Bold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-BoldItalic.otf",
-          "sha256": "1a50b82bceabfe4e44c3ff758363a81b5236495fa4a8f059a39e0868b16500b1",
+          "sha256": "909e302f16256f48bf4f99c0a96673faaa1270f067eb909c845e5425c21986db",
           "faces": ["SFCompactText-BoldItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Heavy.otf",
-          "sha256": "a3f36f4599ce2074e4ea04bf67a0488cc49a46885cd4ef90130af1b145b6bbbd",
+          "sha256": "927a01058350ef0383c59d8915d912febf73ec390b26c91e01d0875b83d4e2e6",
           "faces": ["SFCompactText-Heavy"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-HeavyItalic.otf",
-          "sha256": "052c8ba8980ff79cf410190100c08c42aff6cb5d19e73118db6e73fbf1faaa82",
+          "sha256": "a65605e4eda8194017d6e7b879a540541fa021d7187e000f2ccd80790cd24b92",
           "faces": ["SFCompactText-HeavyItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Light.otf",
-          "sha256": "d3f7b27d7fed42b4612e03f0afe77503d5c7895503f3efc01054e5a06fa17523",
+          "sha256": "f8c8e1afa5573f5ed4fee9690a0c2a962ca19a4ec0ea20307d04e6c14300d208",
           "faces": ["SFCompactText-Light"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-LightItalic.otf",
-          "sha256": "b028dca6603363738c8b0355b41baa394c1e4569c3bc3b8e1b4b8709bd2bcfc0",
+          "sha256": "c834101e83b662c88b28e1463125403f52d5ea903517a5da8bb51948c38d4d10",
           "faces": ["SFCompactText-LightItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Medium.otf",
-          "sha256": "d424438e5431c4acc546251daa59e1a569cc637ae33cdcd6d705e643f4fd954b",
+          "sha256": "7c74343faf6cfbe82d8e3da1d0ee7ae1f7104e258e7d537a008abb5fcf7cd18f",
           "faces": ["SFCompactText-Medium"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-MediumItalic.otf",
-          "sha256": "6f02012ab8a6f93181034dde25d5d97bd8301119ecc23ec7737f5dc3a1ece657",
+          "sha256": "21caea3dc1b320f2a23eedd2abba71dc89f01bdf03e8a17e5b39beafad6d586c",
           "faces": ["SFCompactText-MediumItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Regular.otf",
-          "sha256": "e045507c3364b5cec087e5e2e16f94bd2f491413d525d0fae06657f60b615b6d",
+          "sha256": "a6527220ef9a610be5c24c798b3bfd9b80d060a99bd284edada50c073f104956",
           "faces": ["SFCompactText-Regular"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-RegularItalic.otf",
-          "sha256": "e7a821531c14fad025869b49938031bffe38bdd4095c30dd476f7dbf721b3448",
+          "sha256": "0c0778e8fec0c2b5934abdd294ae382ef3b32b48c48c0bf35cc2a299497ae571",
           "faces": ["SFCompactText-Italic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Semibold.otf",
-          "sha256": "5648deeae44c081eb798072f5f0662148ecdc03e689dac737a5a14ff354c3bb5",
+          "sha256": "2ddf04caebad56f16389ae5f1376d4194783b267cb6df6815320140395c76d57",
           "faces": ["SFCompactText-Semibold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-SemiboldItalic.otf",
-          "sha256": "da56caa205a2c35571fa4551ac94fa768279e423e2fd6615fd56124a809925fe",
+          "sha256": "6135e0b49e316f1380c86d6ee4beac2c42772849b6e6e03466dcad23f76e9f84",
           "faces": ["SFCompactText-SemiboldItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Thin.otf",
-          "sha256": "e584d93b87e76db28c914fde866926c76e0641b21d005d2f555d61606dc26018",
+          "sha256": "3d604ef40509c1c24c8a8162748842d7ca97ea50b5b5644b9483d4777641c022",
           "faces": ["SFCompactText-Thin"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-ThinItalic.otf",
-          "sha256": "fe6e85a508ab14967dec18a084c80978cc4b99f371a3b9755e0dcfaab43f5852",
+          "sha256": "bc348b9c76916655898d98c962b95981d20dec95ac879b9e5195db1b9d819ef2",
           "faces": ["SFCompactText-ThinItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-Ultralight.otf",
-          "sha256": "e5337f33e2527f281be8289044e5ccac449e82cd362b871a7f9328e09699ef11",
+          "sha256": "4379d5ad0940fb86263eeb38df63c8902fad73b850c8e25535194755e389477a",
           "faces": ["SFCompactText-Ultralight"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact-Text-UltralightItalic.otf",
-          "sha256": "90f9f5129dccf7b483a0603389dd70750bf6bccd65d05f9cac59c3f1a4e1b610",
+          "sha256": "0469cd97aa2f23fa365c01514531394c9b2e913022c67a711ec4c915d2d4381c",
           "faces": ["SFCompactText-UltralightItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Compact.ttf",
-          "sha256": "d590236801e377d8dc45f2d5cf3f29d52e68f23103ef9679386e1483f55cf5f9",
+          "sha256": "094b75421d988b883519d56d2ff0809ec1855c7bc9b379105e83b31b2971b7a8",
           "faces": [
             "SFCompact-Black",
             "SFCompact-Bold",
@@ -8105,7 +8105,7 @@
           ]
         }
       ],
-      "version": "8.0.1.1784315035"
+      "version": "27.0.1789118124"
     },
     {
       "name": "apple-sf-georgian",
@@ -8258,101 +8258,101 @@
       "name": "apple-sf-pro",
       "kind": "dmg",
       "url": "https://devimages-cdn.apple.com/design/resources/download/SF-Pro.dmg",
-      "hash": "sha256-qQlPDem3idc1RO5Q/FKgiE1Kn3/PYt5Sl04yBPOnSmI=",
+      "hash": "sha256-loqzuLH5LC2K9h6waA9cIiTE541ZuYa/AEUCp/wBKRg=",
       "files": [
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Black.otf",
-          "sha256": "887d16c8097cd8f56cedd203719b5e7f6a9f0c276b312e0b64d43338bc15f231",
+          "sha256": "c95a31e3c127fcc832b3ed9e4aa0290a261207e486d49a38543c9f53c0a14ea7",
           "faces": ["SFProDisplay-Black"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-BlackItalic.otf",
-          "sha256": "9d394da254d2bc753ffb103c25d1c15c802190025c63e1f749635c1ff8e9e857",
+          "sha256": "2959367002e387a2c823a894ef8610dfa46302430ea85116b2b5a90aaf2d41b3",
           "faces": ["SFProDisplay-BlackItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Bold.otf",
-          "sha256": "d9b90a6639037ced25b26be7d4e884fb5f52854a1a9d8c4c7f8d4094b8780d4a",
+          "sha256": "4572cbf9d57a279eb1b9e5cf02f556083352af102036067d7ed936ba2c237281",
           "faces": ["SFProDisplay-Bold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-BoldItalic.otf",
-          "sha256": "18808c94d1cfda849e30f692c1b0e3c7752fb598b446f9ddf9f2c1b4419f4134",
+          "sha256": "18606b375c776bf712a0a00a0e224385126c09dc1c4a81c37ff4f40f1a766fa8",
           "faces": ["SFProDisplay-BoldItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Heavy.otf",
-          "sha256": "2cbeb3a5fe05cd0211223e8f76b4d5bd9ae672f4d9a046aa55affbf67c02649e",
+          "sha256": "cb402177c68d4ebc1349d814e262f4878ebd343577b65654edf27870ddb0005b",
           "faces": ["SFProDisplay-Heavy"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-HeavyItalic.otf",
-          "sha256": "54e7c2c60d4e19ec404e6bfa699f8cdd86931c2b41dbfd564c23ad4fe9373019",
+          "sha256": "b201edae2a606bf8b937b3dd7a97a7c1e5199039eb6a5458af03227d2e17c2c7",
           "faces": ["SFProDisplay-HeavyItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Light.otf",
-          "sha256": "f5c4fe8b41dde1d516c9e49a00ecbbc3798c70c89a313e03e71aec230c73aab2",
+          "sha256": "b9f125dd23adb32e2d621c70d79c8e507def6fae7ecf869b94c1187909d753cc",
           "faces": ["SFProDisplay-Light"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-LightItalic.otf",
-          "sha256": "d8f47c70e131c100e9f605635b57c3e04deca072f3a5f6df7e0e875aafac57a7",
+          "sha256": "c7fa1b4737689f9258e0457940f1ce52cb4d80d9602bd3e13d719fb2d8e48ec9",
           "faces": ["SFProDisplay-LightItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Medium.otf",
-          "sha256": "837625e77fde0a5a55a4d38c016b001f217ed2234ab36a6302ceddf9978aea97",
+          "sha256": "984687a2c53b36703c6a93fb20c2cf6a85df0f6a94da6b8e61401bc7b2085f65",
           "faces": ["SFProDisplay-Medium"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-MediumItalic.otf",
-          "sha256": "1c5ad464b76ac27cd11597b8c2104785af42649200aa1dc6fa12230f9b26e0e1",
+          "sha256": "ae604d8cdb0f5b791cf8d143bc1ab6c37f4f733b5b2b3ac65375f6e564039359",
           "faces": ["SFProDisplay-MediumItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Regular.otf",
-          "sha256": "569752285a0b63728a16d2e1b2ba6fa9c8ddb3bbaeeac0f77adac64a47a02785",
+          "sha256": "f1782b0e2b9be92a80d706926cda0cc36726853010a15a450e0d4aeaf5a319c8",
           "faces": ["SFProDisplay-Regular"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-RegularItalic.otf",
-          "sha256": "b6e69239ee361c9c5b48fd748b88d12d702fef360fdaf4c1056857546a76b5ee",
+          "sha256": "7d6ea83982e41ad912fcb637b3346640e779be03628ca23df3451064517f3750",
           "faces": ["SFProDisplay-RegularItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Semibold.otf",
-          "sha256": "8311e0518388b9b1bfe3f545f1aef1daad6b6a8d7a19ec475c134535f825f66f",
+          "sha256": "ff3e08c5c9086c10bd76aa822e8456804e6e920211ad573c3320784f9a87168b",
           "faces": ["SFProDisplay-Semibold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-SemiboldItalic.otf",
-          "sha256": "75ecf67948c90f060cd7bc413886d31f94a109bc3f6fa25d9023b0e75a43d710",
+          "sha256": "a28e44ee2f6caac22647bb6da84a8b10b7a3c627a79b4eeb2ee60f6a8ab62a09",
           "faces": ["SFProDisplay-SemiboldItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Thin.otf",
-          "sha256": "396eab147d84c4f5eeca7badf10a5908b2a76f38f11253edef287b124b674ef6",
+          "sha256": "a40f590669004dd8677fec49c5f5dfc7f9476814847989b4426fd1f7dad7420c",
           "faces": ["SFProDisplay-Thin"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-ThinItalic.otf",
-          "sha256": "e6a99af28dcff7add782c7f7827fe1dfdf85dec94faae2f491e5c56bb2617bcf",
+          "sha256": "3551c43faef8b5df7889b8d86585c1312a365d81e6ecb91da4b6eb798ffa8950",
           "faces": ["SFProDisplay-ThinItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-Ultralight.otf",
-          "sha256": "72c0665e84340cf719db28b2ef36eb3d373cda3c217f927a9277fd3a73c1d542",
+          "sha256": "53b5806f6e98bdf6c543838eec0203ad9ac972f99754d2e7b3728d4f58027e78",
           "faces": ["SFProDisplay-Ultralight"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Display-UltralightItalic.otf",
-          "sha256": "5e879334814202089ae48225816bdcde4c55ffd79e72643a4d24fcaeb93ba32f",
+          "sha256": "350fe076562579fa69eb4c3cfd48a609d920cc858222de9c6946eab071f834dc",
           "faces": ["SFProDisplay-UltralightItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Italic.ttf",
-          "sha256": "bf45ba36c9d3d623c374d41c95d2cea0b6f845690df0a6422b98c714a20896a0",
+          "sha256": "9c80b0d5ec685fc6408c40f8698f7c5f6f8115be3981a5c23e00f11726b20c5f",
           "faces": [
             "SFPro-BlackItalic",
             "SFPro-BoldItalic",
@@ -8367,142 +8367,142 @@
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Black.otf",
-          "sha256": "94c2a687119a8751255886065a879c2d50e6d9092aa3578b60b1f6c28fe22e03",
+          "sha256": "5188e0994505bd7eda73f37a6ba05a2828beb161f50dd2baffcfce05708fb322",
           "faces": ["SFProRounded-Black"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Bold.otf",
-          "sha256": "a387c36fbb58ef88c44e4474133bbaf8fee626c6cbcc235bcdebaf3467218e9a",
+          "sha256": "1d401b5a88c9b34fc3e9ff50e417ef5001e2c8c478a322949fe190213d75425d",
           "faces": ["SFProRounded-Bold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Heavy.otf",
-          "sha256": "fbe67bccd28c81a430a53a8f150c1dd4ccb2858c7e6150cfe17e38c1a98955e5",
+          "sha256": "7ac80cefecf89e3dbdde0c60311574e4599a815184212069b8f9e2b71dde05e3",
           "faces": ["SFProRounded-Heavy"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Light.otf",
-          "sha256": "82b7a4b6dd9e340d1708c57c418f4a836c68b1f7f70933d8c2cc0aef3423a7bf",
+          "sha256": "5f94eaf31bf725322711d009a564225eee17c1754252f5bac97ad4f2ba0c4742",
           "faces": ["SFProRounded-Light"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Medium.otf",
-          "sha256": "0f26a96fa528bcc43ed5ad54b1e741b454c479ed63e941a7557d070d6335b52e",
+          "sha256": "b771b2b38cc32d4f6c4c37115387133514151ca8b1cc5ac1867aa2ec04212995",
           "faces": ["SFProRounded-Medium"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Regular.otf",
-          "sha256": "71839907c1efc9cd08329ebd510b3f070efc27b8893a414f2391ff92dad5e636",
+          "sha256": "86c58dce768ee5ef36d646425f1cea4e0a2b280bfaf767fc1c04af86d2195f97",
           "faces": ["SFProRounded-Regular"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Semibold.otf",
-          "sha256": "450d49de852874c1b3ec53bebb9f67a885a909cc81333e86db9ba60c2a82f20d",
+          "sha256": "e6cafa76734967d8b5c885c5336fef73c31ee37341fd8226753c729396c75cc0",
           "faces": ["SFProRounded-Semibold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Thin.otf",
-          "sha256": "5b708f1906e85a2c06d9fbe2e94e5ac56618b4121ee5492e386e9f7ce7517bbd",
+          "sha256": "249bf55627d05b6fc57e7b24fd08dfa1eede8bfb0cffcac1be33abb2904ef6d2",
           "faces": ["SFProRounded-Thin"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Rounded-Ultralight.otf",
-          "sha256": "a2af5d4519ee4a279c7fceada2aa0b9816ef23b1b9070320b8869297d8cf3795",
+          "sha256": "41e1a145b399bf7282d426eeaff1cea912ae63fd2a74ca2432473e3535e4d056",
           "faces": ["SFProRounded-Ultralight"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Black.otf",
-          "sha256": "6964a437b23e3b1b22244a547b9396cc372067987bc80585834d70cbe65d0cdb",
+          "sha256": "b10adcc3fdea250c2c5debc41a8ae52ebf1834666cd629f137d2ee04704d8c5a",
           "faces": ["SFProText-Black"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-BlackItalic.otf",
-          "sha256": "3525c9c69d22f2737a7a6aba9cd125662a2833c136b517847cea57e90958b1e3",
+          "sha256": "026a29437962c2b0c9b5717e97d40d39bc1a3d3ee789c1909b4f409d87023034",
           "faces": ["SFProText-BlackItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Bold.otf",
-          "sha256": "dd73883d094a45b9f8207961168d687796c2f670d982d416c443516bfe54a9e6",
+          "sha256": "f583819129aabfa2fdc7ca88f53011c610fc3325141d33e041abb8af912a6d46",
           "faces": ["SFProText-Bold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-BoldItalic.otf",
-          "sha256": "f7114b8ce80624d653564441b33b1d98299904253302f3e5803a8e28e54f81cc",
+          "sha256": "b60008700ecf3548a301d4fdc057be35c3a5daf6eb4cf5cacc17cc642b71d949",
           "faces": ["SFProText-BoldItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Heavy.otf",
-          "sha256": "ef1b47fef93edf3e76950cf558b9c0604d6f21df36ab3e652723ba27dde29e6d",
+          "sha256": "2df9a6a6afe0fd1f4a6abfa49858b62d83f55f5d1cfd51e5d2ab03d94b33c8ed",
           "faces": ["SFProText-Heavy"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-HeavyItalic.otf",
-          "sha256": "b844d728a0e29f280d7bcea693dffb00f86b84478f1184ffba62a095260dea0b",
+          "sha256": "d007cea4ab1c5b586c9ebd3cddd319ded14464ef15e6e74052044979e05e7978",
           "faces": ["SFProText-HeavyItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Light.otf",
-          "sha256": "0756b1ed840318ca0a0a22731c7750b34ca7331bbfdf35f703b56fb22ba7e4af",
+          "sha256": "673c3613d006010a6114d2dae35649ce8702438ed41482e52e858e0d762960d4",
           "faces": ["SFProText-Light"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-LightItalic.otf",
-          "sha256": "5e18bc120ef8592aa771a00cdd61116e229dec454fd67aade0924b1670311217",
+          "sha256": "70f695b6281572925b61a2d400743acde487ee10b4204d6211d7cf027a390db4",
           "faces": ["SFProText-LightItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Medium.otf",
-          "sha256": "87be8b81201b7ca5c631036dfb7f9dcbfa25896dec6ecb08e8d0fafebb7b9afa",
+          "sha256": "d239ef176b8c0c5cd7aaaefc94380d91a157a4a0972b718d9e0fd907bff2f950",
           "faces": ["SFProText-Medium"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-MediumItalic.otf",
-          "sha256": "203654ea81c6736583fe5d367bce1bebdb2721e88aa47dff3599e0e1fb8a7227",
+          "sha256": "0872663842b338ae0ed4255e7448a634ce4ff5ebeab5b10f58309891706d887a",
           "faces": ["SFProText-MediumItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Regular.otf",
-          "sha256": "2da7e3fdb744566f9c96a9a3e48949e8b24209fc0b9bcf1d101f5dc88359f065",
+          "sha256": "eabf0a67833bbe3c80c800e6ce3f36b65e92f3b6ac1d6226ba2981e5cb3a74a5",
           "faces": ["SFProText-Regular"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-RegularItalic.otf",
-          "sha256": "2117689003424414912655a75b03af55c8978141d7a348656b6c2ab0c9ea48d4",
+          "sha256": "ecef4504096d125490168eb9d9545a12d2d27c3dc1ee891ed8d24f16f7830833",
           "faces": ["SFProText-RegularItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Semibold.otf",
-          "sha256": "1314411ab8c720273a9b57a6ad1d51888bd14ec6db3569970078bfb27c002bd9",
+          "sha256": "047aaed48e041497c75ae39329dec6ee8456d8bfbbfad4f5b67ebcd5867a2024",
           "faces": ["SFProText-Semibold"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-SemiboldItalic.otf",
-          "sha256": "24d184c33b1a415e75153612770be4c09567f33757edc2d0a00f1f98c2260e87",
+          "sha256": "a5364c578808b176e7f908ccf42df0b4ddb80965979c96989e960e15f22c9263",
           "faces": ["SFProText-SemiboldItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Thin.otf",
-          "sha256": "abd9bd2767f1767e7c980f3a7621d2a77b775ea455a7d57524dfab5b24d3b3b2",
+          "sha256": "9b046de17ea950096cda1a122f5760bf042ff5fea0e3bd4b13d1c2813235fc81",
           "faces": ["SFProText-Thin"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-ThinItalic.otf",
-          "sha256": "c499c7881b287c380e8e5fcf584e0143771d0452125d7c6d65d72edbff9f95df",
+          "sha256": "d2663c7991ff0980ff997f436147c0f9de9330cc151482c839b6ac990797ab49",
           "faces": ["SFProText-ThinItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-Ultralight.otf",
-          "sha256": "fc8060db212a919b397cd724511384341a051c3613fee8960d659f5ad79a3ebb",
+          "sha256": "4fbff1fb48ce0887f54fa28f2d82efbb3148cbd8fd43184967a3601c735e0d55",
           "faces": ["SFProText-Ultralight"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro-Text-UltralightItalic.otf",
-          "sha256": "3a1207ff9241cb44fdc9f6a66283d69e1a4a674c4eb8e6a6658de362d2aac126",
+          "sha256": "309c8a7d50ff2b5923d429f331e4e72c94a0ea1ef5878be14cedb02630ac990d",
           "faces": ["SFProText-UltralightItalic"]
         },
         {
           "path": "payload-0/Library/Fonts/SF-Pro.ttf",
-          "sha256": "26e2ab7338d25b79276b9363f22bb7576850f7f326a8fb97ba2419cf0f923012",
+          "sha256": "7270e1593be7b88597d8ab302e4d156a33084c85b8161e042ff6510cdaf10e10",
           "faces": [
             "SFPro-Black",
             "SFPro-Bold",
@@ -8543,8 +8543,8 @@
           ]
         }
       ],
-      "version": "8.0.1.1784315035"
+      "version": "27.0.1789118100"
     }
   ],
-  "version": "2026-09-06"
+  "version": "2026-09-14"
 }

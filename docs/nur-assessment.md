@@ -14,7 +14,7 @@ NUR registers repositories under `nur.repos.<name>`, while maintainers retain re
 
 The local license scan found the root MIT license, MIT licenses for the three bundled native utilities, and the retained MIT license for the vendored Noctalia expression. No committed font or image binaries were found. This supports the submission declaration; it is not a substitute for verifying ownership of every contributed file. Downloaded upstream programs and artwork retain their own licenses.
 
-The concrete metadata gap is source provenance: the eight standalone Apple developer font packages, `apple-fonts`, and `apple-color-emoji` omit it. Review the prebuilt historical emoji fonts too. Use provenance that reflects the actual inputs; extracting or modifying a compiled font does not make its original source available. Most vendor application wrappers already declare binary native code. Nixpkgs defines provenance independently of licensing. [Nixpkgs metadata reference](https://github.com/NixOS/nixpkgs/blob/master/doc/stdenv/meta.chapter.md#sourceprovenance-var-meta-sourceprovenance)
+The concrete metadata gap is source provenance: `apple-fonts` and `apple-color-emoji` omit it. Review the prebuilt historical emoji fonts too. Use provenance that reflects the actual inputs; extracting or modifying a compiled font does not make its original source available. Most vendor application wrappers already declare binary native code. Nixpkgs defines provenance independently of licensing. [Nixpkgs metadata reference](https://github.com/NixOS/nixpkgs/blob/master/doc/stdenv/meta.chapter.md#sourceprovenance-var-meta-sourceprovenance)
 
 ## Compatibility and CI
 

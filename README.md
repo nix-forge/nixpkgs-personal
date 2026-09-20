@@ -181,14 +181,15 @@ nix build .#mutant-standard-emoji
 
 ## Apple fonts
 
-`apple-fonts` provides a pinned selection of macOS Font8 catalog assets.
+`apple-fonts` provides a pinned selection of macOS Font8 catalog assets and all
+eight Apple developer-font distributions in one consolidated output.
 The separate `apple-color-emoji` package provides a versioned, SHA-256-pinned
 Linux conversion with its own source verification and installer. It is an optional
 family and installs no Fontconfig overrides. See its
 [source and compatibility notes](pkgs/by-name/ap/apple-color-emoji/README.md).
-Individual assets are available through `apple-fonts.assets`. Eight separate
-`apple-sf-*` and `apple-new-york` packages provide Apple's developer fonts.
-The developer fonts each have an independent package directory and source manifest.
+Individual assets are available through `apple-fonts.assets`. The developer
+distributions are internal sources of the consolidated output and do not have
+separate public package attributes.
 These packages are unfree and opt-in; they do not change font defaults.
 
 The package includes a catalog/DMG updater, verified payload inventories, and

@@ -4,12 +4,15 @@ These packages fetch fonts directly from Apple and preserve their bytes. They
 are opt-in. Adding them to the personal package collection does not install
 fonts or change Fontconfig aliases, fallback, or the native macOS system fonts.
 
-`apple-fonts` contains the selected macOS Font8 catalog assets. The updater
-selects assets advertised for macOS installation, download, or document
-autoactivation. It retains complete collections, including internal faces in
-the same file. Installing the aggregate makes these files available together;
-it does not reproduce Apple's on-demand activation policy. Prefer individual
-assets when you only need a family.
+`apple-fonts` contains the selected macOS Font8 catalog assets and all eight
+Apple developer-font distributions. That includes the four families shipped
+by the Arch AUR package with the same name, plus SF Arabic, SF Armenian, SF
+Georgian, and SF Hebrew. The updater selects catalog assets advertised for
+macOS installation, download, or document autoactivation. It retains complete
+collections, including internal faces in the same file. Installing the
+aggregate makes these files available together; it does not reproduce Apple's
+on-demand activation policy. Prefer an individual catalog asset when you only
+need one family.
 
 The updater resolves duplicate asset revisions by their numeric mastered
 version. A replacement must contain every face of the superseded asset.
@@ -28,14 +31,11 @@ From this package repository:
 ```sh
 nix build .#apple-fonts
 nix build .#apple-fonts.assets.apple-asset-albayan
-nix build .#apple-sf-mono
 ```
 
-The eight independent developer packages are `apple-sf-pro`, `apple-sf-compact`,
-`apple-sf-mono`, `apple-new-york`, `apple-sf-arabic`, `apple-sf-armenian`,
-`apple-sf-georgian`, and `apple-sf-hebrew`. They are outside the catalog aggregate.
-Their original DMG URLs are mutable. A pinned hash detects replacement but
-cannot make Apple retain old downloads.
+The eight developer distributions are included in the consolidated
+`apple-fonts` output. Their original DMG URLs are mutable. A pinned hash
+detects replacement but cannot make Apple retain old downloads.
 
 With the personal overlay enabled, use an explicit package selection:
 
@@ -58,8 +58,11 @@ Run the updater from a shell containing Python 3.12 or newer, Fontconfig, and
 7-Zip with its `7zz` executable. The dedicated development shell provides them:
 
 ```sh
-nix develop .#apple-fonts -c python pkgs/by-name/ap/apple-fonts/update.py --check
+nix develop .#apple-fonts -c python pkgs/by-name/ap/apple-fonts/update.py \
+  --check
 nix develop .#apple-fonts -c python pkgs/by-name/ap/apple-fonts/update.py
+nix develop .#apple-fonts -c python pkgs/by-name/ap/apple-fonts/update.py \
+  --developers-only
 ```
 
 The repository dispatcher also discovers this updater:
@@ -72,8 +75,9 @@ nix develop .#apple-fonts -c python scripts/update-packages.py --package apple-f
 without writing. Both can download new sources into the local cache.
 `--cache-dir` selects that cache. Catalog assets must match Apple's advertised
 size and SHA-1, and every archive gets an independent SHA256 pin. Developer
-DMGs are checked again on every update. Normal package builds never query the
-live catalog.
+DMGs are checked again on every update. `--developers-only` refreshes the
+mutable DMGs without querying or downloading the Font8 catalog.
+Normal package builds never query the live catalog.
 
 `sources.json` records the catalog digest, collection snapshot date,
 per-source URL/build/hash, expected payload paths, file hashes, and named
@@ -82,10 +86,11 @@ replacing the manifest. Each build checks its complete payload inventory,
 then verifies installed bytes and face names. Original license and notice
 files are copied into `share/doc`. No installer scripts execute.
 
-The first update downloads approximately 1.4 GB. Subsequent checks reuse
-unchanged catalog archives. Retain the source cache if you need to rebuild a
-developer release after Apple replaces its public DMG. Do not publish the
-cache or package outputs without redistribution rights.
+The first full update downloads approximately 1.4 GB for the current Font8
+catalog, plus the developer DMGs. Subsequent checks reuse unchanged catalog
+archives. Retain the source cache if you need to rebuild a developer release
+after Apple replaces its public DMG. Do not publish the cache or package
+outputs without redistribution rights.
 
 The cache retains content-addressed files named `<sha256-hex>.dmg` or `.zip`
 alongside its URL lookup entries. To restore an old source into the store, use

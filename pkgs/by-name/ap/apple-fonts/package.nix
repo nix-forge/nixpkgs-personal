@@ -94,7 +94,7 @@ let
     }) manifest.sources
   );
   assets = lib.filterAttrs (name: _: lib.hasPrefix "apple-asset-" name) packages;
-  developerFonts = lib.filterAttrs (name: _: !lib.hasPrefix "apple-asset-" name) packages;
+  developerSources = lib.filterAttrs (name: _: !lib.hasPrefix "apple-asset-" name) packages;
   fromSource =
     { manifestFile }:
     let
@@ -133,7 +133,8 @@ in
 buildEnv {
   pname = "apple-fonts";
   inherit (manifest) version;
-  paths = lib.attrValues assets;
+  # Keep every tracked Apple developer distribution in the consolidated output.
+  paths = lib.attrValues assets ++ lib.attrValues developerSources;
   ignoreCollisions = false;
   checkCollisionContents = true;
   derivationArgs = {
@@ -144,7 +145,6 @@ buildEnv {
   passthru = {
     inherit
       assets
-      developerFonts
       fromArchive
       fromSource
       updateScript
@@ -153,7 +153,7 @@ buildEnv {
   };
   meta = {
     sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
-    description = "Selected macOS Font8 catalog assets with pinned sources";
+    description = "Selected macOS Font8 catalog assets and Apple developer fonts with pinned sources";
     homepage = "https://support.apple.com/en-ie/122869";
     license = lib.licenses.unfree;
     platforms = lib.platforms.unix;

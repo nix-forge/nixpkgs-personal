@@ -21,14 +21,6 @@ let
   unfreeNames = [
     "apple-color-emoji"
     "apple-fonts"
-    "apple-new-york"
-    "apple-sf-arabic"
-    "apple-sf-armenian"
-    "apple-sf-compact"
-    "apple-sf-georgian"
-    "apple-sf-hebrew"
-    "apple-sf-mono"
-    "apple-sf-pro"
     "claude-desktop"
     "microsoft-teams"
     "mutant-standard-emoji"
@@ -64,7 +56,6 @@ let
           "anthropic-skills"
           "openai-skills"
           "ttf-ms-win11-auto"
-          "apple-sf-pro"
           "mutant-standard-emoji"
         ];
     };
@@ -75,7 +66,6 @@ let
     "anthropic-skills"
     "openai-skills"
     "ttf-ms-win11-auto"
-    "apple-sf-pro"
     "mutant-standard-emoji"
   ];
   allowed = map (
@@ -150,7 +140,7 @@ assert lib.assertMsg (lib.all (value: value) (
   builtins.attrValues variants
 )) "Selected skill variants must preserve license and provenance policy";
 assert lib.assertMsg (
-  !succeeds selected.apple-sf-mono && !succeeds selectedOverlay.apple-sf-mono
+  !succeeds selected.apple-fonts && !succeeds selectedOverlay.apple-fonts
 ) "A selective predicate must still reject unrelated unfree packages";
 builtins.deepSeq defaultPolicy (
   builtins.deepSeq allowed (
