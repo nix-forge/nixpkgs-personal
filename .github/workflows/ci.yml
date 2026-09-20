@@ -82,6 +82,8 @@ jobs:
         run: python3 -m unittest discover -s .github/tests
       - name: Test safe release archive inspection
         run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
+      - name: Test AudioMuse AI dependency updater
+        run: python3 -B -m unittest discover -s pkgs/by-name/au/audiomuse-ai -p 'test_*.py'
       - name: Check package discovery catalog
         run: python3 scripts/package-catalog.py --check
       - name: Check shared workflow contracts

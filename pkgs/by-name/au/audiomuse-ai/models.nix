@@ -7,22 +7,23 @@
 }:
 let
   source = import ./source.nix;
+  modelSource = source.models;
   fromAudioMuse =
     name: hash:
     fetchurl {
-      url = "https://github.com/NeptuneHub/AudioMuse-AI/releases/download/${source.modelRelease}/${name}";
+      url = "https://github.com/NeptuneHub/AudioMuse-AI/releases/download/${modelSource.release}/${name}";
       inherit hash;
     };
   fromDclap =
     name: hash:
     fetchurl {
-      url = "https://github.com/NeptuneHub/AudioMuse-AI-DCLAP/releases/download/${source.dclapRelease}/${name}";
+      url = "https://github.com/NeptuneHub/AudioMuse-AI-DCLAP/releases/download/${modelSource.dclapRelease}/${name}";
       inherit hash;
     };
   fromSae =
     name: hash:
     fetchurl {
-      url = "https://github.com/NeptuneHub/AudioMuse-AI-SAE/releases/download/${source.saeRelease}/${name}";
+      url = "https://github.com/NeptuneHub/AudioMuse-AI-SAE/releases/download/${modelSource.saeRelease}/${name}";
       inherit hash;
     };
   files = {
@@ -54,7 +55,7 @@ let
 in
 stdenvNoCC.mkDerivation {
   pname = "audiomuse-ai-models";
-  inherit (source) version;
+  inherit (source.app) version;
 
   dontUnpack = true;
   strictDeps = true;

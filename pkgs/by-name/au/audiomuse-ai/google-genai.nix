@@ -2,14 +2,17 @@
   lib,
   fetchFromGitHub,
   python313Packages,
+  source ? import ./source.nix,
 }:
-python313Packages.google-genai.overridePythonAttrs (_old: rec {
-  version = "1.57.0";
+let
+  upstream = source.python.googleGenai;
+in
+python313Packages.google-genai.overridePythonAttrs (_old: {
+  inherit (upstream) version;
   src = fetchFromGitHub {
     owner = "googleapis";
     repo = "python-genai";
-    tag = "v${version}";
-    hash = "sha256-hDoiUOghzgPHfNh26Yz9gHkyiez6B2QfbboN8uc+Smc=";
+    inherit (upstream) rev hash;
   };
 
   doCheck = false;
@@ -19,7 +22,7 @@ python313Packages.google-genai.overridePythonAttrs (_old: rec {
   meta = {
     description = "Google Generative AI Python SDK";
     homepage = "https://github.com/googleapis/python-genai";
-    changelog = "https://github.com/googleapis/python-genai/blob/v${version}/CHANGELOG.md";
+    changelog = "https://github.com/googleapis/python-genai/blob/v${upstream.version}/CHANGELOG.md";
     license = lib.licenses.asl20;
     sourceProvenance = [ lib.sourceTypes.fromSource ];
   };
