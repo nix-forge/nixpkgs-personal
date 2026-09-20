@@ -480,8 +480,8 @@ Noctalia with themed bar icons, readable control colors, and landscape media pla
 
 [Recipe](../pkgs/by-name/no/noctalia-personal/package.nix) · [Package guide](../pkgs/by-name/no/noctalia-personal/README.md) · [Upstream](https://github.com/noctalia-dev/noctalia)
 
-- `aarch64-linux`: 5.0.0; [MIT](https://spdx.org/licenses/MIT.html), [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html).
-- `x86_64-linux`: 5.0.0; [MIT](https://spdx.org/licenses/MIT.html), [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html).
+- `aarch64-linux`: 5.1.0; [MIT](https://spdx.org/licenses/MIT.html), [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html).
+- `x86_64-linux`: 5.1.0; [MIT](https://spdx.org/licenses/MIT.html), [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#noctalia-personal
@@ -505,9 +505,9 @@ OpenAI desktop app with ChatGPT, Work, and Codex.
 
 [Recipe](../pkgs/by-name/op/openai-codex-desktop/package.nix) · [Package guide](../pkgs/by-name/op/openai-codex-desktop/README.md) · [Upstream](https://chatgpt.com/download/)
 
-- `aarch64-darwin`: 26.901.51231; unfree; includes unfree terms.
-- `aarch64-linux`: 26.901.51231; unfree; includes unfree terms.
-- `x86_64-linux`: 26.901.51231; unfree; includes unfree terms.
+- `aarch64-darwin`: 26.911.61220; unfree; includes unfree terms.
+- `aarch64-linux`: 26.911.61220; unfree; includes unfree terms.
+- `x86_64-linux`: 26.911.61220; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#openai-codex-desktop
