@@ -2,45 +2,65 @@
   lib,
   fetchFromGitHub,
   python313Packages,
+  source ? import ./source.nix,
   huggingfaceHub,
   safetensors,
   tokenizers,
 }:
-python313Packages.transformers.overridePythonAttrs (old: rec {
-  version = "4.57.6";
+let
+  upstream = source.python.transformers;
+in
+python313Packages.buildPythonPackage (finalAttrs: {
+  pname = "transformers";
+  inherit (upstream) version;
+  pyproject = true;
+
   src = fetchFromGitHub {
     owner = "huggingface";
     repo = "transformers";
-    tag = "v${version}";
-    hash = "sha256-a78ornUAYlOpr30iFdq1oUiWQTm6GeT0iq8ras5i3DQ=";
+    inherit (upstream) rev hash;
   };
 
-  postPatch = (old.postPatch or "") + ''
-    substituteInPlace src/transformers/dependency_versions_table.py \
-      --replace-fail 'tokenizers>=0.22.0,<=0.23.1' 'tokenizers>=0.22.0,<=0.23.2'
-  '';
-  dependencies = [
-    python313Packages.filelock
+  build-system = [ python313Packages.setuptools ];
+
+  dependencies = with python313Packages; [
+    filelock
     huggingfaceHub
-    python313Packages.numpy
-    python313Packages.packaging
-    python313Packages.pyyaml
-    python313Packages.regex
-    python313Packages.requests
+    numpy
+    packaging
+    pyyaml
+    regex
+    requests
     safetensors
     tokenizers
-    python313Packages.tqdm
+    tqdm
   ];
   optional-dependencies = { };
+
+  # Transformers generates dependency_versions_table.py from _deps in
+  # setup.py. Patch the source of truth and regenerate the derived file in the
+  # same phase. This avoids coupling the recipe to Nixpkgs' generated-table
+  # patch and makes an upstream layout change fail loudly.
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace-fail '${upstream.upstreamTokenizersRequirement}' '${upstream.tokenizersRequirement}'
+    python setup.py deps_table_update
+    grep -Fq '"tokenizers": "${upstream.tokenizersRequirement}",' \
+      src/transformers/dependency_versions_table.py
+  '';
+
+  # Nixpkgs' tokenizers is newer than Transformers' release metadata allows,
+  # but the reviewed compatibility ceiling is the currently packaged 0.23.2.
+  # This relaxes wheel metadata; the generated runtime table above still
+  # enforces the reviewed range at import time.
   pythonRelaxDeps = [ "tokenizers" ];
   doCheck = false;
-  nativeCheckInputs = [ ];
   pythonImportsCheck = [ "transformers" ];
 
   meta = {
     description = "Machine-learning model and tokenizer library";
     homepage = "https://github.com/huggingface/transformers";
-    changelog = "https://github.com/huggingface/transformers/releases/tag/v${version}";
+    changelog = "https://github.com/huggingface/transformers/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.asl20;
     sourceProvenance = [ lib.sourceTypes.fromSource ];
   };

@@ -2,17 +2,20 @@
   lib,
   fetchFromGitHub,
   python313Packages,
+  source ? import ./source.nix,
 }:
-python313Packages.buildPythonPackage rec {
+let
+  upstream = source.python.mistralai;
+in
+python313Packages.buildPythonPackage {
   pname = "mistralai";
-  version = "1.12.4";
+  inherit (upstream) version;
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mistralai";
     repo = "client-python";
-    tag = "v${version}";
-    hash = "sha256-gkxjEVLsW8mC94lk0DwC7KWJDskMUMl3AqCjEvmyEGg=";
+    inherit (upstream) rev hash;
   };
 
   build-system = [ python313Packages.hatchling ];
@@ -38,7 +41,7 @@ python313Packages.buildPythonPackage rec {
   meta = {
     description = "Python client library for the Mistral AI platform";
     homepage = "https://github.com/mistralai/client-python";
-    changelog = "https://github.com/mistralai/client-python/releases/tag/v${version}";
+    changelog = "https://github.com/mistralai/client-python/releases/tag/v${upstream.version}";
     license = lib.licenses.asl20;
     sourceProvenance = [ lib.sourceTypes.fromSource ];
   };

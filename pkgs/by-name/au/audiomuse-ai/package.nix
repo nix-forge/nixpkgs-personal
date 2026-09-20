@@ -10,10 +10,11 @@
 }:
 let
   source = import ./source.nix;
+  appSource = source.app;
   audiomuse-ai-models = callPackage ./models.nix { };
-  googleGenai = callPackage ./google-genai.nix { };
-  huggingfaceHub = callPackage ./huggingface-hub.nix { };
-  mistralai = callPackage ./mistralai.nix { };
+  googleGenai = callPackage ./google-genai.nix { inherit source; };
+  huggingfaceHub = callPackage ./huggingface-hub.nix { inherit source; };
+  mistralai = callPackage ./mistralai.nix { inherit source; };
   safetensors = python313Packages.safetensors.overridePythonAttrs (_old: {
     doCheck = false;
     nativeCheckInputs = [ ];
@@ -25,7 +26,14 @@ let
         doCheck = false;
         nativeCheckInputs = [ ];
       });
-  transformers = callPackage ./transformers.nix { inherit huggingfaceHub safetensors tokenizers; };
+  transformers = callPackage ./transformers.nix {
+    inherit
+      source
+      huggingfaceHub
+      safetensors
+      tokenizers
+      ;
+  };
   # Narwhals includes every optional dataframe backend in its Nixpkgs check
   # closure. One of those reaches a terminal-width documentation test in
   # inline-snapshot that fails non-interactively. AudioMuse reaches Narwhals
@@ -42,6 +50,11 @@ let
   umapLearn = python313Packages.umap-learn.override {
     inherit pynndescent;
     scikit-learn = scikitLearn;
+  };
+  appSourcePath = fetchFromGitHub {
+    owner = "NeptuneHub";
+    repo = "AudioMuse-AI";
+    inherit (appSource) rev hash;
   };
   python = python313.withPackages (p: [
     p.argon2-cffi
@@ -110,13 +123,9 @@ let
 in
 python313Packages.buildPythonApplication (_finalAttrs: {
   pname = "audiomuse-ai";
-  inherit (source) version;
+  inherit (appSource) version;
 
-  src = fetchFromGitHub {
-    owner = "NeptuneHub";
-    repo = "AudioMuse-AI";
-    inherit (source) rev hash;
-  };
+  src = appSourcePath;
 
   strictDeps = true;
   format = "other";
@@ -162,6 +171,7 @@ python313Packages.buildPythonApplication (_finalAttrs: {
   nativeInstallCheckInputs = [ python ];
   installCheckPhase = ''
     runHook preInstallCheck
+    export DATABASE_URL=
     cd ${appDir}
     python -m compileall -q .
     for program in "$out"/bin/audiomuse-ai-*; do
@@ -172,17 +182,37 @@ python313Packages.buildPythonApplication (_finalAttrs: {
 
     sys.path.insert(0, "native-build")
     import flask
+    import google.genai
+    import importlib.metadata
+    import huggingface_hub
     import librosa
+    import mistralai
     import mutagen
     import numkong
     import onnxruntime
     import psycopg2
     import sentencepiece
+    import tokenizers
+    import transformers
     import app_auth
-    import database
     import numeric_bootstrap
     import service_roles
+    from packaging.requirements import Requirement
+    from packaging.version import Version
+    from transformers.dependency_versions_table import deps
     from linux import launcher
+
+    package_version = importlib.metadata.version
+    assert package_version("google-genai") == "${source.python.googleGenai.version}"
+    assert package_version("mistralai") == "${source.python.mistralai.version}"
+    assert package_version("transformers") == "${source.python.transformers.version}"
+    assert package_version("huggingface-hub") == "${source.python.huggingfaceHub.version}"
+    tokenizers_requirement = Requirement(deps["tokenizers"])
+    assert deps["tokenizers"] == "${source.python.transformers.tokenizersRequirement}"
+    assert tokenizers_requirement.specifier.contains(
+        package_version("tokenizers"), prereleases=True
+    )
+    assert Version(package_version("tokenizers")) >= Version("0.22.0")
     assert service_roles.ROLE_FLASK == "flask"
     assert launcher.WEB_URL == "http://127.0.0.1:8000"
     PY
@@ -190,14 +220,20 @@ python313Packages.buildPythonApplication (_finalAttrs: {
   '';
 
   passthru = {
+    applicationSource = appSourcePath;
     models = audiomuse-ai-models;
-    upstreamRevision = source.rev;
+    pythonEnvironment = python;
+    updateScript = [
+      "python3"
+      "pkgs/by-name/au/audiomuse-ai/update.py"
+    ];
+    upstreamRevision = appSource.rev;
   };
 
   meta = {
     description = "Self-hosted music discovery and sonic analysis for media servers";
     homepage = "https://github.com/NeptuneHub/AudioMuse-AI";
-    changelog = "https://github.com/NeptuneHub/AudioMuse-AI/releases/tag/${source.rev}";
+    changelog = "https://github.com/NeptuneHub/AudioMuse-AI/releases/tag/${appSource.tag}";
     license = lib.licenses.agpl3Only;
     mainProgram = "audiomuse-ai-web";
     # pynndescent is disabled on aarch64-linux in the pinned Nixpkgs revision.

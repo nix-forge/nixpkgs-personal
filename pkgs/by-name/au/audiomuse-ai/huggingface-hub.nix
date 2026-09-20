@@ -2,14 +2,17 @@
   lib,
   fetchFromGitHub,
   python313Packages,
+  source ? import ./source.nix,
 }:
-python313Packages.huggingface-hub.overridePythonAttrs (_old: rec {
-  version = "0.36.2";
+let
+  upstream = source.python.huggingfaceHub;
+in
+python313Packages.huggingface-hub.overridePythonAttrs (_old: {
+  inherit (upstream) version;
   src = fetchFromGitHub {
     owner = "huggingface";
     repo = "huggingface_hub";
-    tag = "v${version}";
-    hash = "sha256-cUp5Mm8vgJI/0N/9inQVedGWRde8lioduFoccq6b7UE=";
+    inherit (upstream) rev hash;
   };
 
   dependencies = with python313Packages; [
@@ -31,7 +34,7 @@ python313Packages.huggingface-hub.overridePythonAttrs (_old: rec {
   meta = {
     description = "Client library for the Hugging Face Hub";
     homepage = "https://github.com/huggingface/huggingface_hub";
-    changelog = "https://github.com/huggingface/huggingface_hub/releases/tag/v${version}";
+    changelog = "https://github.com/huggingface/huggingface_hub/releases/tag/v${upstream.version}";
     license = lib.licenses.asl20;
     sourceProvenance = [ lib.sourceTypes.fromSource ];
   };
