@@ -9,6 +9,8 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "build-affected.sh"
 RETRY = SCRIPT.with_name("build-with-fetch-retry.sh")
+PARTITION = SCRIPT.with_name("partition-packages.py")
+WEIGHTS = SCRIPT.parents[1] / "ci-package-weights.json"
 
 
 def command(args, root):
@@ -54,6 +56,38 @@ def flake(root, name, empty=False, invalid=False):
 
 
 class BuildSelectionTests(unittest.TestCase):
+    def test_weighted_partition_scales_with_new_packages(self):
+        names = ["maintainerr", "alpha", "beta", "gamma", "future"]
+        for count in (1, 2, 3):
+            shards = []
+            for index in range(count):
+                result = subprocess.run(
+                    [
+                        "python3",
+                        str(PARTITION),
+                        "--count",
+                        str(count),
+                        "--index",
+                        str(index),
+                        "--weights",
+                        str(WEIGHTS),
+                    ],
+                    input="\n".join(names),
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                )
+                shards.append(result.stdout.splitlines())
+            self.assertEqual(
+                sorted(name for shard in shards for name in shard), sorted(names)
+            )
+            self.assertEqual(
+                len({name for shard in shards for name in shard}), len(names)
+            )
+            self.assertEqual(
+                shards[-1], ["maintainerr"] if count > 1 else sorted(names)
+            )
+
     def test_real_evaluation(self):
         real_nix = shutil.which("nix")
         real_git = shutil.which("git")
@@ -71,6 +105,7 @@ class BuildSelectionTests(unittest.TestCase):
             "new-package",
             "base-eval-failure",
             "no-base",
+            "partitioned-maintainerr",
             "zero-base",
             "missing-base",
             "diff-failure",
@@ -95,6 +130,8 @@ class BuildSelectionTests(unittest.TestCase):
                 helper = root / ".github/scripts/build-with-fetch-retry.sh"
                 helper.parent.mkdir(parents=True)
                 helper.write_text(RETRY.read_text())
+                (helper.parent / PARTITION.name).write_text(PARTITION.read_text())
+                (helper.parents[1] / WEIGHTS.name).write_text(WEIGHTS.read_text())
                 policy = root / ".github/ci-policy.json"
                 policy.write_text(
                     '{"demo": "Evaluation only: fixture restriction"}'
@@ -106,7 +143,11 @@ class BuildSelectionTests(unittest.TestCase):
                 command(["git", "config", "user.email", "ci@example.invalid"], root)
                 command(["git", "config", "core.hooksPath", "/dev/null"], root)
                 name = (
-                    "openai-codex-desktop" if case == "unchanged-contracts" else "demo"
+                    "openai-codex-desktop"
+                    if case == "unchanged-contracts"
+                    else "maintainerr"
+                    if case == "partitioned-maintainerr"
+                    else "demo"
                 )
                 source = root / "pkgs/by-name" / name[:2] / name / "package.nix"
                 package(source, name)
@@ -199,7 +240,7 @@ exec "$REAL_GIT" "$@"
 """)
                 git.chmod(0o755)
                 log = temp / "build.log"
-                if case == "no-base":
+                if case in {"no-base", "partitioned-maintainerr"}:
                     base = ""
                 elif case == "zero-base":
                     base = "0" * 40
@@ -270,15 +311,46 @@ exec "$REAL_GIT" "$@"
                     full_rebuild = case in {
                         "base-eval-failure",
                         "no-base",
+                        "partitioned-maintainerr",
                         "zero-base",
                         "missing-base",
                         "diff-failure",
                     }
                     self.assertEqual(len(builds), 2 if full_rebuild else 1, builds)
-                    self.assertIn(".#demo", builds[0])
+                    self.assertIn(f".#{name}", builds[0])
                     if full_rebuild:
                         self.assertIn(".#other", builds[1])
                         self.assertIn("unavailable", result.stdout)
+                if case in {"no-base", "partitioned-maintainerr"}:
+                    partition_builds = []
+                    for index in (0, 1):
+                        log.unlink()
+                        partition_result = subprocess.run(
+                            ["bash", str(SCRIPT)],
+                            cwd=root,
+                            env=env
+                            | {"PARTITION_COUNT": "2", "PARTITION_INDEX": str(index)},
+                            text=True,
+                            capture_output=True,
+                        )
+                        self.assertEqual(
+                            partition_result.returncode,
+                            0,
+                            partition_result.stdout + partition_result.stderr,
+                        )
+                        partition_builds.append(
+                            log.read_text().splitlines() if log.exists() else []
+                        )
+                    self.assertEqual(
+                        sorted(partition_builds[0] + partition_builds[1]),
+                        sorted(builds),
+                    )
+                    self.assertFalse(
+                        set(partition_builds[0]) & set(partition_builds[1])
+                    )
+                    if case == "partitioned-maintainerr":
+                        self.assertEqual(len(partition_builds[1]), 1)
+                        self.assertIn(".#maintainerr", partition_builds[1][0])
 
 
 if __name__ == "__main__":
