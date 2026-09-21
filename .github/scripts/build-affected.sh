@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+partition_count=${PARTITION_COUNT:-1}
+partition_index=${PARTITION_INDEX:-0}
+if [[ ! $partition_count =~ ^[1-9][0-9]*$ || ! $partition_index =~ ^(0|[1-9][0-9]*)$ ]] ||
+  ((partition_index >= partition_count)); then
+  echo '::error::Invalid package partition count or index.'
+  exit 1
+fi
+
 # Check every exclusion against the complete package tree, including packages
 # unavailable on this runner. A typo must not silently enable a hosted build.
 policy=.github/ci-policy.json
@@ -41,6 +49,14 @@ fi
 
 if [[ -z $targets ]]; then
   echo "No packages for $SYSTEM were affected."
+  exit 0
+fi
+
+targets=$(printf '%s\n' "$targets" | python3 .github/scripts/partition-packages.py \
+  --count "$partition_count" --index "$partition_index" \
+  --weights .github/ci-package-weights.json)
+if [[ -z $targets ]]; then
+  echo "No packages for $SYSTEM were assigned to partition $partition_index."
   exit 0
 fi
 
