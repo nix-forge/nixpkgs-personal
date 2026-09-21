@@ -21,7 +21,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from export import export
-from font_support import install, inventory, sha256
+from font_support import install, inventory, safe_path, sha256
 from unpack import read_xar_toc, unpack, unpack_xar
 from update import (
     developer_entries,
@@ -39,6 +39,19 @@ def asset(names: list[str], version: int, delivery: str = "macOS-download") -> d
             {"PostScriptFontName": n, "PlatformDelivery": [delivery]} for n in names
         ],
     }
+
+
+class SafePathTests(unittest.TestCase):
+    def test_intermediate_symlink_cannot_escape_payload_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "payload"
+            outside = base / "outside"
+            root.mkdir()
+            outside.mkdir()
+            (root / "link").symlink_to(outside, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "Unsafe payload path"):
+                safe_path(root, "link/font.otf")
 
 
 class SelectionTests(unittest.TestCase):

@@ -73,6 +73,10 @@ ban-relative-imports = "all"
 strict = true
 
 [tool.ruff.lint.per-file-ignores]
+"fuzz/*.py" = [
+  # Fuzzer properties deliberately use assertions to signal a crash.
+  "assert",
+]
 "**/test_*.py" = [
   # Retained unittest suites exercise real updater scripts and private adapter
   # state in disposable trees. Commands use argument lists without a shell.
@@ -238,7 +242,7 @@ preview = true
 
 [tool.ty.analysis]
 replace-imports-with-any = ["uharfbuzz"]
-allowed-unresolved-imports = ["lxml.etree"]
+allowed-unresolved-imports = ["atheris", "lxml.etree"]
 
 [tool.ty.environment]
 python-version = "3.14"

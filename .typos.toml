@@ -1,6 +1,7 @@
 files.extend-exclude = ["flake.lock", "flake/dev/flake.lock", ".git/**"]
 
 [default.extend-words]
+intoto = "intoto" # SLSA provenance asset filename suffix.
 # The MPRIS signal name is fixed by its D-Bus interface.
 Seeked = "Seeked"
 Produkt = "Produkt" # Apple-distributed font family and its PostScript identifiers.

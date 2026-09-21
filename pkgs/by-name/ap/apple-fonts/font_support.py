@@ -48,11 +48,16 @@ def inventory(root: Path) -> list[dict]:
 
 def safe_path(root: Path, name: str) -> Path:
     path = root / name
-    if (
-        Path(name).is_absolute()
-        or ".." in Path(name).parts
-        or not path.is_relative_to(root)
-    ):
+    try:
+        safe = (
+            not Path(name).is_absolute()
+            and ".." not in Path(name).parts
+            and path.is_relative_to(root)
+            and path.resolve().is_relative_to(root.resolve())
+        )
+    except OSError, RuntimeError:
+        safe = False
+    if not safe:
         raise ValueError(f"Unsafe payload path: {name}")
     return path
 
