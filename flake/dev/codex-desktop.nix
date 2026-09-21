@@ -152,8 +152,21 @@
                   grep -E '^unpack[[:space:]]*: .*@parcel/watcher-.*/watcher\.node$' asar-files
                   asar extract ${codexDesktop}/lib/chatgpt/resources/app.asar app-asar
                   detect_libc=app-asar/node_modules/@parcel/watcher/node_modules/detect-libc/lib/filesystem.js
-                  grep -F "const LDD_PATH = '${pkgs.stdenv.cc.libc.bin}/bin/ldd';" \
-                    "$detect_libc"
+                  python - "$detect_libc" <<'PY'
+                  import os
+                  import re
+                  import sys
+                  from pathlib import Path
+
+                  source = Path(sys.argv[1]).read_text()
+                  ldd_paths = re.findall(
+                      r"^const LDD_PATH = '(/nix/store/[a-z0-9]{32}-glibc-[^']+-bin/bin/ldd)';$",
+                      source,
+                      re.MULTILINE,
+                  )
+                  assert len(ldd_paths) == 1, f"expected one Nix glibc ldd path, got {ldd_paths!r}"
+                  assert os.access(ldd_paths[0], os.X_OK), f"ldd is not executable: {ldd_paths[0]}"
+                  PY
                   if grep -F "const LDD_PATH = '/usr/bin/ldd';" "$detect_libc"; then
                     exit 1
                   fi
