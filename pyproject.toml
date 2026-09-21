@@ -242,7 +242,7 @@ preview = true
 
 [tool.ty.analysis]
 replace-imports-with-any = ["uharfbuzz"]
-allowed-unresolved-imports = ["lxml.etree"]
+allowed-unresolved-imports = ["atheris", "lxml.etree"]
 
 [tool.ty.environment]
 python-version = "3.14"

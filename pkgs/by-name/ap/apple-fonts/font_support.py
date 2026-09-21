@@ -55,7 +55,7 @@ def safe_path(root: Path, name: str) -> Path:
             and path.is_relative_to(root)
             and path.resolve().is_relative_to(root.resolve())
         )
-    except (OSError, RuntimeError):
+    except OSError, RuntimeError:
         safe = False
     if not safe:
         raise ValueError(f"Unsafe payload path: {name}")
