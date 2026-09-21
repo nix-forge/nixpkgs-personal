@@ -129,7 +129,7 @@ jobs:
             --apply 'builtins.mapAttrs (_: check: check.drvPath)' > /dev/null
           nix flake check --keep-going --show-trace --print-build-logs --no-build --option allow-import-from-derivation false --system "$TARGET_SYSTEM"
   build:
-    name: Build (${{ matrix.system }})
+    name: ${{ matrix.name }}
     needs: [lint, flake]
     strategy:
       fail-fast: false
@@ -137,13 +137,32 @@ jobs:
         include:
           - system: x86_64-linux
             runner: ubuntu-24.04
+            name: Build (x86_64-linux)
+            partition-count: 2
+            partition-index: 0
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 2/2)
+            partition-count: 2
+            partition-index: 1
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux)
+            partition-count: 2
+            partition-index: 0
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 2/2)
+            partition-count: 2
+            partition-index: 1
           - system: aarch64-darwin
             runner: macos-26
+            name: Build (aarch64-darwin)
+            partition-count: 1
+            partition-index: 0
     runs-on: ${{ matrix.runner }}
-    # Full cold builds include font compilation and a multi-gigabyte ISO fetch.
-    timeout-minutes: 120
+    # A single uncached Node.js dependency can exceed two hours on hosted runners.
+    timeout-minutes: 180
     permissions:
       contents: read
     steps:
@@ -161,11 +180,16 @@ jobs:
         with:
           system: ${{ matrix.system }}
           checks-output: ciChecks
+          partition-count: ${{ matrix.partition-count }}
+          partition-index: ${{ matrix.partition-index }}
+          weights-file: .github/ci-check-weights.json
       - name: Build affected packages
         env:
           BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha
             || github.event.before }}
           SYSTEM: ${{ matrix.system }}
+          PARTITION_COUNT: ${{ matrix.partition-count }}
+          PARTITION_INDEX: ${{ matrix.partition-index }}
         shell: bash
         run: bash .github/scripts/build-affected.sh
   expensive-font-audit:
