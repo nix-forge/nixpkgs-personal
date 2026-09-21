@@ -3,6 +3,7 @@
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14639/baseline)](https://www.bestpractices.dev/en/projects/14639/baseline-3)
 [![OpenSSF Developer Best Practices](https://www.bestpractices.dev/projects/14639/badge)](https://www.bestpractices.dev/en/projects/14639/passing)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nix-forge/nixpkgs-personal/badge)](https://scorecard.dev/viewer/?uri=github.com/nix-forge/nixpkgs-personal)
+[![SLSA status](https://img.shields.io/badge/SLSA-status-blue)](https://github.com/nix-forge/.github/blob/main/docs/slsa.md)
 
 Standalone Nix packages and overlays published as a small, reusable flake. It
 has no dependency on any consumer's NixOS, nix-darwin, or Home Manager
