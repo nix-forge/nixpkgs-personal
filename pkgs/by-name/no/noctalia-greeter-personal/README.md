@@ -1,6 +1,6 @@
 # Noctalia greeter with authentication feedback
 
-This variant of Nixpkgs' Noctalia Greeter 1.3.1 adds a clock and date, keyboard
+This variant of Nixpkgs' Noctalia Greeter 1.5.0 adds a clock and date, keyboard
 layout and Caps Lock feedback, stable authentication-status space, and explicit
 confirmation before shutdown, restart, or firmware restart. Cancel receives
 initial keyboard focus in the confirmation dialog. PAM and greetd remain the
