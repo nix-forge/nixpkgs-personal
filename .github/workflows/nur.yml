@@ -9,7 +9,7 @@ jobs:
     name: NUR compatibility
     permissions:
       contents: read
-    uses: nix-forge/ci/.github/workflows/nur.yml@a53126de1b983ccdb5ab7b1ab9989ef921a880d5 # v2.5.3
+    uses: nix-forge/ci/.github/workflows/nur.yml@bb1b39a9082f72dc6c7ce596103ce7a5e4d29b01 # v2.8.0
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
