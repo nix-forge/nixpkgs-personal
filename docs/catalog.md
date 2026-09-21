@@ -331,8 +331,8 @@ Noctalia greeter with keyboard status, clock, and confirmed power actions.
 
 [Recipe](../pkgs/by-name/no/noctalia-greeter-personal/package.nix) · [Package guide](../pkgs/by-name/no/noctalia-greeter-personal/README.md) · [Upstream](https://github.com/noctalia-dev/noctalia-greeter)
 
-- `aarch64-linux`: 1.3.1; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: 1.3.1; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: 1.5.0; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: 1.5.0; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#noctalia-greeter-personal
