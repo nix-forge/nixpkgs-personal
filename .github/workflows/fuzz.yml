@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   font-path:
+    name: Fuzz font path validation
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
