@@ -1,8 +1,8 @@
 diff --git a/examples/greeter.toml b/examples/greeter.toml
-index 95e4e9c40ec7..29404d3af3f8 100644
+index 8b4ae686cb29..01d7a0793a92 100644
 --- a/examples/greeter.toml
 +++ b/examples/greeter.toml
-@@ -30,6 +30,16 @@ theme_mode = "dark"
+@@ -35,6 +35,16 @@ theme_mode = "dark"
  corner_radius_scale = 1.0
  # Optional; empty / omit keeps the greeter default font.
  font_family = "Inter"
@@ -20,13 +20,13 @@ index 95e4e9c40ec7..29404d3af3f8 100644
  # Required for a declarative Synced look (same keys Sync writes under [appearance.palette]).
  # When complete, this wins over Sync's sync.toml appearance.
 diff --git a/meson.build b/meson.build
-index a117480d30dc..8f5e4da4185e 100644
+index 89e2f121f960..4175073d03f3 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -293,3 +293,19 @@ executable('noctalia-greeter-compositor',
-   ],
-   install: true,
+@@ -349,3 +349,19 @@ legacy_staging_compatibility_test = executable(
  )
+ 
+ test('legacy-staging-compatibility', legacy_staging_compatibility_test)
 +
 +# Confirmation must never execute an action before explicit acceptance.
 +power_confirmation_test = executable('power-confirmation-test',
@@ -63,10 +63,10 @@ index 36601373d27e..f738571c8872 100644
      while (wl_display_prepare_read(display) != 0) {
        if (wl_display_dispatch_pending(display) < 0) {
 diff --git a/src/greeter/greeter_config_io.cpp b/src/greeter/greeter_config_io.cpp
-index 1722a169d2bd..af64fde9abc2 100644
+index ada1c279b5b2..755716f68835 100644
 --- a/src/greeter/greeter_config_io.cpp
 +++ b/src/greeter/greeter_config_io.cpp
-@@ -60,6 +60,11 @@ namespace {
+@@ -65,6 +65,11 @@ namespace {
      return key == "scheme"
          || key == "password_style"
          || key == "hide_logo"
@@ -78,7 +78,7 @@ index 1722a169d2bd..af64fde9abc2 100644
          || key == "power_buttons_position"
          || key == "scheme_selector_position"
          || key == "theme_mode"
-@@ -222,6 +227,25 @@ namespace {
+@@ -227,6 +232,25 @@ namespace {
              if (const auto value = entryNode.value<bool>()) {
                config.appearanceHideLogo = *value;
              }
@@ -104,7 +104,7 @@ index 1722a169d2bd..af64fde9abc2 100644
            } else if (entryView == "power_buttons_position") {
              config.appearancePowerButtonsPosition = stringValue(entryNode);
            } else if (entryView == "scheme_selector_position") {
-@@ -480,6 +504,16 @@ namespace {
+@@ -485,6 +509,16 @@ namespace {
            table.insert_or_assign(std::string(key), value);
          }
      );
@@ -138,10 +138,10 @@ index 9a9ff5c989f7..924fed9f950a 100644
      std::optional<std::string> appearancePowerButtonsPosition;
      std::optional<std::string> appearanceSchemeSelectorPosition;
 diff --git a/src/greeter/greeter_preferences.cpp b/src/greeter/greeter_preferences.cpp
-index 6525ee24e24d..205a017b2e9c 100644
+index eaa8cdd18306..65860715b89d 100644
 --- a/src/greeter/greeter_preferences.cpp
 +++ b/src/greeter/greeter_preferences.cpp
-@@ -445,6 +445,11 @@ namespace greeter {
+@@ -453,6 +453,11 @@ namespace greeter {
      if (file.appearanceHideLogo.has_value()) {
        prefs.hideLogo = *file.appearanceHideLogo;
      }
@@ -154,7 +154,7 @@ index 6525ee24e24d..205a017b2e9c 100644
      prefs.schemeSelectorPosition = file.appearanceSchemeSelectorPosition;
      if (file.authAllowEmptyPassword.has_value()) {
 diff --git a/src/greeter/greeter_preferences.h b/src/greeter/greeter_preferences.h
-index b9b00c9d4e51..9a6f3f9febec 100644
+index 9b53a891f4f8..a180ccb0a12f 100644
 --- a/src/greeter/greeter_preferences.h
 +++ b/src/greeter/greeter_preferences.h
 @@ -33,6 +33,12 @@ namespace greeter {

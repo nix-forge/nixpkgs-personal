@@ -4,7 +4,7 @@ noctalia-greeter.overrideAttrs (old: {
   patches = (old.patches or [ ]) ++ [ ./authentication-ux.patch ];
   doCheck = true;
   prePatch = (old.prePatch or "") + ''
-    if [ "$version" != 1.3.1 ]; then
+    if [ "$version" != 1.5.0 ]; then
       echo "Review the authentication UX patch for noctalia-greeter $version" >&2
       exit 1
     fi
