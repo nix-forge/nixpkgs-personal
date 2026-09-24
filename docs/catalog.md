@@ -464,7 +464,7 @@ Process-scoped CEF scale override for Steam's desktop UI.
 
 [Recipe](../pkgs/by-name/st/steam-cef-scale-override/package.nix) · [Package guide](../pkgs/by-name/st/steam-cef-scale-override/README.md) · [Upstream](https://github.com/IanHollow/steam-cef-scale-override)
 
-- `x86_64-linux`: 1.0.0; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: 1.0.1; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#steam-cef-scale-override
