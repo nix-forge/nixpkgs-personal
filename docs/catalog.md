@@ -170,7 +170,7 @@ nix build github:nix-forge/nixpkgs-personal#emojione-legacy
 
 Transactional declarative manager for macOS Finder Favorites.
 
-[Recipe](../pkgs/by-name/fi/finder-favorites/package.nix) · [Package guide](../pkgs/by-name/fi/finder-favorites/README.md) · [Upstream](https://github.com/nix-forge/nixpkgs-personal)
+[Recipe](../pkgs/by-name/fi/finder-favorites/package.nix) · [Package guide](../pkgs/by-name/fi/finder-favorites/README.md) · [Upstream](https://github.com/IanHollow/finder-favorites)
 
 - `aarch64-darwin`: 0.1.0; [MIT](https://spdx.org/licenses/MIT.html).
 
@@ -355,7 +355,7 @@ nix build github:nix-forge/nixpkgs-personal#noctalia-personal
 
 Native macOS region-screenshot OCR tool.
 
-[Recipe](../pkgs/by-name/oc/ocr-capture/package.nix) · [Package guide](../pkgs/by-name/oc/ocr-capture/README.md) · [Upstream](https://github.com/nix-forge/nixpkgs-personal)
+[Recipe](../pkgs/by-name/oc/ocr-capture/package.nix) · [Package guide](../pkgs/by-name/oc/ocr-capture/README.md) · [Upstream](https://github.com/IanHollow/ocr-capture)
 
 - `aarch64-darwin`: 0.1.0; [MIT](https://spdx.org/licenses/MIT.html).
 
@@ -462,7 +462,7 @@ nix build github:nix-forge/nixpkgs-personal#steam
 
 Process-scoped CEF scale override for Steam's desktop UI.
 
-[Recipe](../pkgs/by-name/st/steam-cef-scale-override/package.nix) · [Package guide](../pkgs/by-name/st/steam-cef-scale-override/README.md) · [Upstream](https://github.com/nix-forge/nixpkgs-personal)
+[Recipe](../pkgs/by-name/st/steam-cef-scale-override/package.nix) · [Package guide](../pkgs/by-name/st/steam-cef-scale-override/README.md) · [Upstream](https://github.com/IanHollow/steam-cef-scale-override)
 
 - `x86_64-linux`: 1.0.0; [MIT](https://spdx.org/licenses/MIT.html).
 

@@ -37,85 +37,7 @@
           PYTHONPYCACHEPREFIX="$cache" ${lib.getExe pkgs.python3} -m compileall -q .github scripts pkgs tests
         '';
       };
-      # Xcode and SourceKit are supplied by the host and cannot run in a Nix sandbox.
-      # Keep these hooks in local Git workflows and the required native Swift jobs.
-      xcodeHooks = {
-        ocr-capture-swift-format = {
-          enable = pkgs.stdenv.hostPlatform.isDarwin;
-          name = "OCR Capture swift-format";
-          entry = "xcrun swift-format lint --configuration pkgs/by-name/oc/ocr-capture/.swift-format --parallel --strict --recursive pkgs/by-name/oc/ocr-capture/Sources pkgs/by-name/oc/ocr-capture/Tests";
-          language = "system";
-          files = "^pkgs/by-name/oc/ocr-capture/(\\.swift-format|.*\\.swift)$";
-          pass_filenames = false;
-          after = [ "treefmt" ];
-        };
-        ocr-capture-swiftlint = {
-          enable = pkgs.stdenv.hostPlatform.isDarwin;
-          name = "OCR Capture SwiftLint";
-          entry = "${lib.getExe pkgs.swiftlint} lint --no-cache --strict --config pkgs/by-name/oc/ocr-capture/.swiftlint.yml";
-          language = "system";
-          extraPackages = [ pkgs.swiftlint ];
-          files = "^pkgs/by-name/oc/ocr-capture/(\\.swiftlint\\.yml|.*\\.swift)$";
-          pass_filenames = false;
-          after = [ "ocr-capture-swift-format" ];
-        };
-        ocr-capture-quality = {
-          enable = pkgs.stdenv.hostPlatform.isDarwin;
-          name = "OCR Capture Swift quality suite";
-          entry = "pkgs/by-name/oc/ocr-capture/Scripts/check-quality.sh";
-          language = "system";
-          extraPackages = [
-            pkgs.periphery
-            pkgs.swiftlint
-          ];
-          files = "^pkgs/by-name/oc/ocr-capture/";
-          pass_filenames = false;
-          stages = [ "pre-push" ];
-          after = [ "ocr-capture-swiftlint" ];
-        };
-        finder-favorites-swiftlint = {
-          enable = pkgs.stdenv.hostPlatform.isDarwin;
-          name = "Finder Favorites SwiftLint";
-          entry = "${lib.getExe pkgs.swiftlint} lint --no-cache --strict --config pkgs/by-name/fi/finder-favorites/.swiftlint.yml";
-          language = "system";
-          extraPackages = [ pkgs.swiftlint ];
-          files = "^pkgs/by-name/fi/finder-favorites/(\\.swiftlint\\.yml|.*\\.swift)$";
-          pass_filenames = false;
-          after = [ "finder-favorites-swift-format" ];
-        };
-        finder-favorites-quality = {
-          enable = pkgs.stdenv.hostPlatform.isDarwin;
-          name = "Finder Favorites all-language quality suite";
-          entry = "pkgs/by-name/fi/finder-favorites/Scripts/check-quality.sh";
-          language = "system";
-          extraPackages = with pkgs; [
-            clang-tools
-            deadnix
-            jq
-            nixf-diagnose
-            nixfmt
-            periphery
-            prettier
-            rumdl
-            shellcheck
-            shfmt
-            statix
-            swift-format
-            swiftlint
-            typos
-            yamlfmt
-            yamllint
-          ];
-          files = "^pkgs/by-name/fi/finder-favorites/";
-          pass_filenames = false;
-          stages = [ "pre-push" ];
-          after = [
-            "finder-favorites-c-format"
-            "finder-favorites-swiftlint"
-          ];
-        };
-      };
-      hookSettings = withXcode: {
+      hookSettings = {
         package = pkgs.prek;
         hooks = {
           treefmt = {
@@ -178,26 +100,6 @@
             pass_filenames = false;
             after = [ "ty" ];
           };
-          finder-favorites-swift-format = {
-            enable = true;
-            name = "Finder Favorites swift-format";
-            entry = "${lib.getExe pkgs.swift-format} lint --configuration pkgs/by-name/fi/finder-favorites/.swift-format --parallel --strict --recursive pkgs/by-name/fi/finder-favorites/Sources pkgs/by-name/fi/finder-favorites/Tests pkgs/by-name/fi/finder-favorites/Package.swift";
-            language = "system";
-            extraPackages = [ pkgs.swift-format ];
-            files = "^pkgs/by-name/fi/finder-favorites/(Package\\.swift|\\.swift-format|.*\\.swift)$";
-            pass_filenames = false;
-            after = [ "treefmt" ];
-          };
-          finder-favorites-c-format = {
-            enable = true;
-            name = "Finder Favorites clang-format";
-            entry = "${lib.getExe' pkgs.clang-tools "clang-format"} --dry-run --Werror --style=file";
-            language = "system";
-            extraPackages = [ pkgs.clang-tools ];
-            files = "^pkgs/by-name/fi/finder-favorites/.*\\.(c|h)$";
-            after = [ "treefmt" ];
-          };
-
           end-of-file-fixer.enable = true;
           trim-trailing-whitespace = {
             enable = true;
@@ -251,18 +153,17 @@
             pass_filenames = false;
             stages = [ "pre-push" ];
           };
-        }
-        // lib.optionalAttrs withXcode xcodeHooks;
+        };
       };
     in
     {
       pre-commit = {
         # Export the sandbox-specific configuration below; retain every local hook.
         check.enable = false;
-        settings = hookSettings true;
+        settings = hookSettings;
       };
       checks.pre-commit = inputs.git-hooks-nix.lib.${system}.run (
-        (hookSettings false) // { src = inputs.self.outPath; }
+        hookSettings // { src = inputs.self.outPath; }
       );
     };
 }

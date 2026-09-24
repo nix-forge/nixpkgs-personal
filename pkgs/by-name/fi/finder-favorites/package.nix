@@ -4,6 +4,7 @@
   findutils,
   gnugrep,
   lib,
+  fetchFromGitHub,
   rcodesign,
   swiftPackages,
 }:
@@ -19,23 +20,12 @@ stdenv.mkDerivation {
   pname = "finder-favorites";
   inherit version;
 
-  src = lib.fileset.toSource {
-    root = ./.;
-    fileset = lib.fileset.unions [
-      ./Package.swift
-      ./.clang-format
-      ./.clang-tidy
-      ./.periphery.yml
-      ./.swift-format
-      ./.swiftlint.yml
-      ./LICENSE
-      ./README.md
-      ./Scripts
-      ./Sources
-      ./Tests
-    ];
+  src = fetchFromGitHub {
+    owner = "IanHollow";
+    repo = "finder-favorites";
+    rev = "bd42779b3766ca7444a160d1ff8c3b30bf2a5d7a";
+    hash = "sha256-SMLmT1N22QZYX0db8ENc9vnK/uS47mIigMcUzHmWWJc=";
   };
-
   nativeBuildInputs = [
     coreutils
     file
@@ -157,7 +147,7 @@ stdenv.mkDerivation {
 
   meta = {
     description = "Transactional declarative manager for macOS Finder Favorites";
-    homepage = "https://github.com/nix-forge/nixpkgs-personal";
+    homepage = "https://github.com/IanHollow/finder-favorites";
     license = lib.licenses.mit;
     mainProgram = "finder-favorites";
     platforms = [ "aarch64-darwin" ];

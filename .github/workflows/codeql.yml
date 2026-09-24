@@ -35,7 +35,7 @@ jobs:
       languages: ${{ matrix.language }}
   analyze:
     name: analyze
-    needs: [analyze-actions, analyze-python, analyze-swift]
+    needs: [analyze-actions, analyze-python]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -45,39 +45,14 @@ jobs:
         env:
           ACTIONS_RESULT: ${{ needs.analyze-actions.result }}
           PYTHON_RESULT: ${{ needs.analyze-python.result }}
-          SWIFT_RESULT: ${{ needs.analyze-swift.result }}
         run: >-
-          test "$ACTIONS_RESULT" = success && test "$PYTHON_RESULT" = success && test "$SWIFT_RESULT"
-          = success
-  analyze-swift:
-    name: Analyze (swift)
-    runs-on: macos-26
-    # Successful instrumented Swift builds took 24-28 minutes in recent runs.
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      security-events: write # Upload code scanning results.
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
-        with:
-          build-mode: manual
-          languages: swift
-      - name: Build OCR Capture
-        run: >-
-          swift build --package-path pkgs/by-name/oc/ocr-capture --arch arm64 -Xswiftc -warnings-as-errors
-      - name: Build Finder Favorites
-        run: >-
-          swift build --package-path pkgs/by-name/fi/finder-favorites --arch arm64 -Xswiftc -warnings-as-errors
-      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+          test "$ACTIONS_RESULT" = success && test "$PYTHON_RESULT" = success
   queue-completion:
     continue-on-error: true
     name: Queue completion callback
     if: always() && github.event_name == 'workflow_dispatch' && startsWith(github.ref, format('refs/heads/gh-readonly-queue/{0}/',
       github.event.repository.default_branch))
-    needs: [analyze-actions, analyze-python, analyze, analyze-swift]
+    needs: [analyze-actions, analyze-python, analyze]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
