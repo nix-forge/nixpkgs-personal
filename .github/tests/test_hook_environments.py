@@ -1,4 +1,4 @@
-"""Keep Xcode hooks on the host while retaining portable sandbox coverage."""
+"""Keep local and sandbox hook sets aligned after upstream extraction."""
 
 import json
 import subprocess
@@ -46,21 +46,13 @@ class HookEnvironmentTests(unittest.TestCase):
                 ["nix", "eval", "--impure", "--json", "--expr", expression], text=True
             )
         )
-        xcode_hooks = {
-            "ocr-capture-swift-format",
-            "ocr-capture-swiftlint",
-            "ocr-capture-quality",
-            "finder-favorites-swiftlint",
-            "finder-favorites-quality",
-        }
         darwin = result["darwin"]
-        self.assertEqual(set(darwin["local"]) - set(darwin["sandbox"]), xcode_hooks)
+        self.assertEqual(darwin["local"], darwin["sandbox"])
         self.assertEqual(result["linux"]["local"], result["linux"]["sandbox"])
         for system in result.values():
             self.assertTrue(system["sandbox"])
             for name, command in system["sandbox"].items():
                 self.assertEqual(command, system["local"][name])
-            self.assertIn("finder-favorites-swift-format", system["sandbox"])
             self.assertIn("treefmt", system["sandbox"])
 
 

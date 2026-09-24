@@ -1,5 +1,6 @@
 {
   lib,
+  fetchFromGitHub,
   meson,
   ninja,
   stdenv,
@@ -9,19 +10,11 @@ stdenv.mkDerivation {
   pname = "steam-cef-scale-override";
   version = "1.0.0";
 
-  src = lib.fileset.toSource {
-    root = ./.;
-    fileset = lib.fileset.unions [
-      ./steam-cef-scale-override.c
-      ./test-libcef.c
-      ./test-helper.c
-      ./meson.build
-      ./meson.options
-      ./check-mock.sh
-      ./check-elf.sh
-      ./LICENSE
-      ./README.md
-    ];
+  src = fetchFromGitHub {
+    owner = "IanHollow";
+    repo = "steam-cef-scale-override";
+    rev = "f5dc905f1e683a8f7eab5275c9d74c0c0cf4174a";
+    hash = "sha256-AKG6jxcYJeKi1fYHWwzxSres6UqQ/GW6LHALJoNHeyM=";
   };
   strictDeps = true;
 
@@ -73,7 +66,7 @@ stdenv.mkDerivation {
 
   meta = {
     description = "Process-scoped CEF scale override for Steam's desktop UI";
-    homepage = "https://github.com/nix-forge/nixpkgs-personal";
+    homepage = "https://github.com/IanHollow/steam-cef-scale-override";
     license = lib.licenses.mit;
     platforms = [ "x86_64-linux" ];
   };

@@ -4,6 +4,7 @@
   findutils,
   gnugrep,
   lib,
+  fetchFromGitHub,
   rcodesign,
   re-plistbuddy,
   swiftPackages,
@@ -41,21 +42,12 @@ stdenv.mkDerivation {
   pname = "ocr-capture";
   inherit version;
 
-  src = lib.fileset.toSource {
-    root = ./.;
-    fileset = lib.fileset.unions [
-      ./Package.swift
-      ./.periphery.yml
-      ./.swift-format
-      ./.swiftlint.yml
-      ./LICENSE
-      ./Scripts
-      ./Sources
-      ./Tests
-      ./README.md
-    ];
+  src = fetchFromGitHub {
+    owner = "IanHollow";
+    repo = "ocr-capture";
+    rev = "8cb0bc8107245d1659667a383d84f4cc27d0b5e6";
+    hash = "sha256-Vt+nrKMgzlDzDg+Vyg/5qcSrxZfW1hlmzgJ5XXJdA4k=";
   };
-
   nativeBuildInputs = [
     coreutils
     file
@@ -189,7 +181,7 @@ stdenv.mkDerivation {
 
   meta = {
     description = "Native macOS region-screenshot OCR tool";
-    homepage = "https://github.com/nix-forge/nixpkgs-personal";
+    homepage = "https://github.com/IanHollow/ocr-capture";
     license = lib.licenses.mit;
     mainProgram = "hm-ocr-capture";
     platforms = [ "aarch64-darwin" ];

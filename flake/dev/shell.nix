@@ -58,24 +58,7 @@
               yamllint
               zizmor
             ])
-            ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-              pkgs.clang-tools
-              pkgs.libiconv
-              pkgs.periphery
-              pkgs.swift-format
-              pkgs.swiftlint
-            ];
-        };
-      }
-      // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-        swift-quality = pkgs.mkShellNoCC {
-          packages = [
-            pkgs.periphery
-            pkgs.swiftlint
-          ];
-        };
-        finder-favorites-quality = pkgs.mkShellNoCC {
-          packages = config.pre-commit.settings.hooks.finder-favorites-quality.extraPackages;
+            ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.libiconv ];
         };
       };
     };
