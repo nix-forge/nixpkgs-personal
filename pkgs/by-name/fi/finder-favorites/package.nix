@@ -23,8 +23,8 @@ stdenv.mkDerivation {
   src = fetchFromGitHub {
     owner = "IanHollow";
     repo = "finder-favorites";
-    rev = "bd42779b3766ca7444a160d1ff8c3b30bf2a5d7a";
-    hash = "sha256-SMLmT1N22QZYX0db8ENc9vnK/uS47mIigMcUzHmWWJc=";
+    rev = "d35623e32ee6597d2018dd0d9c80ecb09db360cf";
+    hash = "sha256-oTWZoFPBg2jpBQai1RUpapuGme+yRRmpvOgNdAwjyzE=";
   };
   nativeBuildInputs = [
     coreutils

@@ -45,8 +45,8 @@ stdenv.mkDerivation {
   src = fetchFromGitHub {
     owner = "IanHollow";
     repo = "ocr-capture";
-    rev = "8cb0bc8107245d1659667a383d84f4cc27d0b5e6";
-    hash = "sha256-Vt+nrKMgzlDzDg+Vyg/5qcSrxZfW1hlmzgJ5XXJdA4k=";
+    rev = "2557e8fd4bfc2865cb5ca68d99b73d8518fb881e";
+    hash = "sha256-O733558BPDHg5lK76vhaUsWIOfLYQRmTyWvw1HTwXEE=";
   };
   nativeBuildInputs = [
     coreutils
