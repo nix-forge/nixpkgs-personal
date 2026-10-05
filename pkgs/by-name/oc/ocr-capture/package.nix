@@ -59,6 +59,9 @@ stdenv.mkDerivation {
   ];
   strictDeps = true;
   MACOSX_DEPLOYMENT_TARGET = minimumMacOS;
+  # Swift's explicit deployment target matches the target verified below.
+  # cc-wrapper's generic multi-target warning does not account for this case.
+  NIX_CC_WRAPPER_SUPPRESS_TARGET_WARNING = 1;
 
   dontConfigure = true;
 
