@@ -59,10 +59,6 @@ stdenv.mkDerivation {
   ];
   strictDeps = true;
   MACOSX_DEPLOYMENT_TARGET = minimumMacOS;
-  # The wrapper injects this exact host-architecture deployment target. Its
-  # generic multi-target warning is therefore a false positive, not a cross
-  # compilation warning.
-  NIX_CC_WRAPPER_SUPPRESS_TARGET_WARNING = 1;
 
   dontConfigure = true;
 
@@ -83,7 +79,8 @@ stdenv.mkDerivation {
     if printf '%s\n' \
       'import Vision' \
       '@available(macOS 26.0, *) func probe() { var request = RecognizeDocumentsRequest(); request.textRecognitionOptions.maximumCandidateCount = 3; _ = request.supportedRecognitionLanguages }' \
-      | swiftc -swift-version ${swiftLanguageVersion} -typecheck - >/dev/null 2>&1
+      | swiftc -target ${stdenv.hostPlatform.darwinArch}-apple-macosx${minimumMacOS} \
+          -swift-version ${swiftLanguageVersion} -typecheck - >/dev/null 2>&1
     then
       featureFlags+=(-D OCR_CAPTURE_HAS_DOCUMENT_RECOGNITION)
       printf 'OCR Capture: enabling macOS 26 structured document recognition\n'
@@ -93,6 +90,7 @@ stdenv.mkDerivation {
     # WMO reduced executable size with both 5.10 and 6.3; see the native
     # benchmark script and README for the measured scope.
     swiftc \
+      -target ${stdenv.hostPlatform.darwinArch}-apple-macosx${minimumMacOS} \
       -O \
       -whole-module-optimization \
       -swift-version ${swiftLanguageVersion} \
