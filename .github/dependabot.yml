@@ -25,7 +25,9 @@ updates:
           - minor
           - patch
   - package-ecosystem: nix
-    directory: "/"
+    directories:
+      - "/"
+      - "/flake/dev"
     schedule:
       interval: weekly
       day: monday
