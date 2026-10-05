@@ -1,5 +1,5 @@
 diff --git a/examples/greeter.toml b/examples/greeter.toml
-index 8b4ae686cb29..01d7a0793a92 100644
+index cdda2f59916b..1a5504462c7c 100644
 --- a/examples/greeter.toml
 +++ b/examples/greeter.toml
 @@ -35,6 +35,16 @@ theme_mode = "dark"
@@ -20,13 +20,13 @@ index 8b4ae686cb29..01d7a0793a92 100644
  # Required for a declarative Synced look (same keys Sync writes under [appearance.palette]).
  # When complete, this wins over Sync's sync.toml appearance.
 diff --git a/meson.build b/meson.build
-index 89e2f121f960..4175073d03f3 100644
+index 60e9c846636a..feb429bbd70b 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -349,3 +349,19 @@ legacy_staging_compatibility_test = executable(
+@@ -437,3 +437,19 @@ test(
+   wallpaper_program_pixel_test,
+   env: ['LIBGL_ALWAYS_SOFTWARE=1'],
  )
- 
- test('legacy-staging-compatibility', legacy_staging_compatibility_test)
 +
 +# Confirmation must never execute an action before explicit acceptance.
 +power_confirmation_test = executable('power-confirmation-test',
@@ -44,10 +44,10 @@ index 89e2f121f960..4175073d03f3 100644
 +)
 +test('style', style_test)
 diff --git a/src/greeter/greeter.cpp b/src/greeter/greeter.cpp
-index 36601373d27e..f738571c8872 100644
+index e8179e4b0d9f..ad8a0d18775a 100644
 --- a/src/greeter/greeter.cpp
 +++ b/src/greeter/greeter.cpp
-@@ -161,7 +161,13 @@ int Greeter::run(WaylandClient& client, const std::atomic<bool>& shutdownRequest
+@@ -162,7 +162,13 @@ int Greeter::run(WaylandClient& client, const std::atomic<bool>& shutdownRequest
  
      const int repeatMs = client.repeatPollTimeoutMs();
      const int requestMs = m_greetdClient.requestPollTimeoutMs();
@@ -63,7 +63,7 @@ index 36601373d27e..f738571c8872 100644
      while (wl_display_prepare_read(display) != 0) {
        if (wl_display_dispatch_pending(display) < 0) {
 diff --git a/src/greeter/greeter_config_io.cpp b/src/greeter/greeter_config_io.cpp
-index ada1c279b5b2..755716f68835 100644
+index e1cf03f563a2..a38922ceaec2 100644
 --- a/src/greeter/greeter_config_io.cpp
 +++ b/src/greeter/greeter_config_io.cpp
 @@ -65,6 +65,11 @@ namespace {
@@ -78,7 +78,7 @@ index ada1c279b5b2..755716f68835 100644
          || key == "power_buttons_position"
          || key == "scheme_selector_position"
          || key == "theme_mode"
-@@ -227,6 +232,25 @@ namespace {
+@@ -228,6 +233,25 @@ namespace {
              if (const auto value = entryNode.value<bool>()) {
                config.appearanceHideLogo = *value;
              }
@@ -104,7 +104,7 @@ index ada1c279b5b2..755716f68835 100644
            } else if (entryView == "power_buttons_position") {
              config.appearancePowerButtonsPosition = stringValue(entryNode);
            } else if (entryView == "scheme_selector_position") {
-@@ -485,6 +509,16 @@ namespace {
+@@ -494,6 +518,16 @@ namespace {
            table.insert_or_assign(std::string(key), value);
          }
      );
@@ -122,7 +122,7 @@ index ada1c279b5b2..755716f68835 100644
        appearance.insert_or_assign("hide_logo", *config.appearanceHideLogo);
      }
 diff --git a/src/greeter/greeter_config_store.h b/src/greeter/greeter_config_store.h
-index 9a9ff5c989f7..924fed9f950a 100644
+index 919522dfeeb5..766f1f8a60a9 100644
 --- a/src/greeter/greeter_config_store.h
 +++ b/src/greeter/greeter_config_store.h
 @@ -46,6 +46,11 @@ namespace greeter::config {
@@ -138,10 +138,10 @@ index 9a9ff5c989f7..924fed9f950a 100644
      std::optional<std::string> appearancePowerButtonsPosition;
      std::optional<std::string> appearanceSchemeSelectorPosition;
 diff --git a/src/greeter/greeter_preferences.cpp b/src/greeter/greeter_preferences.cpp
-index eaa8cdd18306..65860715b89d 100644
+index 6641f4173a16..f945fc2a64e3 100644
 --- a/src/greeter/greeter_preferences.cpp
 +++ b/src/greeter/greeter_preferences.cpp
-@@ -453,6 +453,11 @@ namespace greeter {
+@@ -421,6 +421,11 @@ namespace greeter {
      if (file.appearanceHideLogo.has_value()) {
        prefs.hideLogo = *file.appearanceHideLogo;
      }
@@ -171,7 +171,7 @@ index 9b53a891f4f8..a180ccb0a12f 100644
      std::optional<std::string> powerButtonsPosition;
      std::optional<std::string> schemeSelectorPosition;
 diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
-index 3552e9b1af29..078716ff09c7 100644
+index 1e709b1e196e..d9d1499e65ca 100644
 --- a/src/greeter/greeter_surface.cpp
 +++ b/src/greeter/greeter_surface.cpp
 @@ -38,7 +38,9 @@
@@ -184,7 +184,7 @@ index 3552e9b1af29..078716ff09c7 100644
  #include <linux/input-event-codes.h>
  #include <nlohmann/json.hpp>
  #include <pwd.h>
-@@ -226,6 +228,19 @@ void GreeterSurface::initialize(RenderContext* context) {
+@@ -231,6 +233,19 @@ void GreeterSurface::initialize(RenderContext* context) {
    m_bottomBrandLogo = bottomLogo.get();
    m_root.addChild(std::move(bottomLogo));
  
@@ -204,7 +204,7 @@ index 3552e9b1af29..078716ff09c7 100644
    auto formSubtitle = std::make_unique<Label>();
    formSubtitle->setFontSize(Style::fontSizeTitle());
    formSubtitle->setBold(true);
-@@ -299,7 +314,13 @@ void GreeterSurface::initialize(RenderContext* context) {
+@@ -304,7 +319,13 @@ void GreeterSurface::initialize(RenderContext* context) {
    pwField->setPlaceholder("Type password");
    pwField->setPasswordMode(true);
    pwField->setControlHeight(Style::controlHeight());
@@ -219,7 +219,7 @@ index 3552e9b1af29..078716ff09c7 100644
    pwField->setOnSubmit([this](const std::string&) { tryAuthenticate(); });
    m_passwordField = pwField.get();
    m_passwordField->setZIndex(6);
-@@ -529,6 +550,44 @@ void GreeterSurface::initialize(RenderContext* context) {
+@@ -534,6 +555,44 @@ void GreeterSurface::initialize(RenderContext* context) {
    m_configErrorLabel->setZIndex(10);
    m_root.addChild(std::move(configError));
  
@@ -264,7 +264,7 @@ index 3552e9b1af29..078716ff09c7 100644
    m_canRebootToFirmware = power::canRebootToFirmwareSetup();
  
    const auto makePowerButton =
-@@ -545,13 +604,18 @@ void GreeterSurface::initialize(RenderContext* context) {
+@@ -550,13 +609,18 @@ void GreeterSurface::initialize(RenderContext* context) {
      return ptr;
    };
  
@@ -287,7 +287,7 @@ index 3552e9b1af29..078716ff09c7 100644
      m_firmwareButton->setTooltip("Restart to UEFI firmware setup");
    }
  
-@@ -703,6 +767,14 @@ bool GreeterSurface::ownsInputArea(const InputArea* area) const {
+@@ -708,6 +772,14 @@ bool GreeterSurface::ownsInputArea(const InputArea* area) const {
  }
  
  void GreeterSurface::reconcileKeyboardFocus() {
@@ -302,7 +302,7 @@ index 3552e9b1af29..078716ff09c7 100644
    InputArea* focused = InputArea::getFocused();
    if (focused != nullptr && ownsInputArea(focused)) {
      syncFocusIndexFromFocused();
-@@ -983,18 +1055,28 @@ void GreeterSurface::syncScaledTypography() {
+@@ -988,18 +1060,28 @@ void GreeterSurface::syncScaledTypography() {
      m_headerUserGlyph->setGlyphSize(Style::scaled(kHeaderUserIconBase));
    }
    m_formSubtitleLabel->setFontSize(Style::fontSizeTitle());
@@ -338,7 +338,7 @@ index 3552e9b1af29..078716ff09c7 100644
  }
  
  void GreeterSurface::enterPasswordStep(std::size_t userIndex) {
-@@ -1006,8 +1088,7 @@ void GreeterSurface::enterPasswordStep(std::size_t userIndex) {
+@@ -1011,8 +1093,7 @@ void GreeterSurface::enterPasswordStep(std::size_t userIndex) {
    m_userMenuOpen = false;
    m_userMenuSearchQuery.clear();
    m_passwordVisible = true;
@@ -348,7 +348,7 @@ index 3552e9b1af29..078716ff09c7 100644
    if (m_passwordField->inputArea() != nullptr) {
      m_inputDispatcher.setFocus(m_passwordField->inputArea());
    }
-@@ -1076,7 +1157,10 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1081,7 +1162,10 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
      }
    }
  
@@ -360,7 +360,7 @@ index 3552e9b1af29..078716ff09c7 100644
    const float rowHeight = Style::controlHeightLg();
    const float rowGap = Style::spaceSm();
    const float panelPadding = Style::spaceLg();
-@@ -1094,9 +1178,11 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1099,9 +1183,11 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
    if (m_formSubtitleLabel->visible()) {
      m_formSubtitleLabel->measure(*renderer);
    }
@@ -373,7 +373,7 @@ index 3552e9b1af29..078716ff09c7 100644
    const float headerTopPadding = Style::spaceSm();
    const float headerGlyphBlock = headerGlyphSize + Style::spaceMd();
    const float headerToContentGap = Style::spaceLg();
-@@ -1107,19 +1193,20 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1112,19 +1198,20 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
  
    const float userBlockHeight = showsUserDropdown() ? rowHeight : 0.0f;
    const float userPickerContentHeight = userBlockHeight + sessionRowGap + sessionRowH;
@@ -397,7 +397,7 @@ index 3552e9b1af29..078716ff09c7 100644
    const float panelTopPadding = panelPadding;
    const float panelBottomPadding = panelPadding;
    const float panelInnerHeight = headerBlockHeight + contentBlockHeight + statusBlockHeight;
-@@ -1189,7 +1276,8 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1194,7 +1281,8 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
  
    if (m_formSubtitleLabel->visible()) {
      m_formSubtitleLabel->setPosition(
@@ -407,7 +407,7 @@ index 3552e9b1af29..078716ff09c7 100644
      );
      headerY += subtitleGap;
    }
-@@ -1207,11 +1295,11 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1212,11 +1300,11 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
            .fillMode = FillMode::Solid,
            .radius = Style::scaledRadiusXl(),
            .softness = 1.0f,
@@ -421,7 +421,7 @@ index 3552e9b1af29..078716ff09c7 100644
    const float gap = Style::spaceSm();
    const float inputWidth = std::max(120.0f, contentWidth - buttonWidth - gap);
  
-@@ -1298,7 +1386,7 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1303,7 +1391,7 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
      m_passwordField->setPosition((contentLeft), (contentTop));
      m_passwordField->layout(*renderer);
  
@@ -430,7 +430,7 @@ index 3552e9b1af29..078716ff09c7 100644
      m_loginButton->setPosition((contentLeft + inputWidth + gap), (contentTop));
      m_loginButton->layout(*renderer);
      if (Glyph* loginGlyph = m_loginButton->glyph()) {
-@@ -1306,7 +1394,7 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1311,7 +1399,7 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
        const auto glyphMetrics = renderer->measureGlyph(loginGlyph->codepoint(), loginGlyph->fontSize());
        const float glyphW = glyphMetrics.right - glyphMetrics.left;
        const float glyphH = glyphMetrics.bottom - glyphMetrics.top;
@@ -439,7 +439,7 @@ index 3552e9b1af29..078716ff09c7 100644
        loginGlyph->setPosition(std::round(buttonWidth * 0.5f - (glyphMetrics.left + glyphMetrics.right) * 0.5f), glyphY);
        loginGlyph->setSize(std::max(glyphW, 1.0f), std::max(glyphH, 1.0f));
      }
-@@ -1314,18 +1402,41 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1319,18 +1407,41 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
      m_backButton->setVisible(false);
    }
  
@@ -484,7 +484,7 @@ index 3552e9b1af29..078716ff09c7 100644
    rebuildUserMenu();
    rebuildSessionMenu();
    rebuildSchemeMenu();
-@@ -1337,6 +1448,20 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
+@@ -1342,6 +1453,20 @@ void GreeterSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
      return;
    }
  
@@ -505,7 +505,7 @@ index 3552e9b1af29..078716ff09c7 100644
    // Keyboard focus is applied once interactive targets have valid layout.
    const bool applyingInitialFocus = !m_initialFocusDone && !m_focusRing.empty();
    if (applyingInitialFocus) {
-@@ -1387,6 +1512,7 @@ void GreeterSurface::tryAuthenticate() {
+@@ -1392,6 +1517,7 @@ void GreeterSurface::tryAuthenticate() {
      // Arm the typed input (possibly empty) to answer the first secret prompt.
      m_pendingResponse = m_password;
      m_hasPendingResponse = true;
@@ -513,7 +513,7 @@ index 3552e9b1af29..078716ff09c7 100644
      m_authenticating = true;
      kLog.info("greetd: create_session for '{}'", m_username);
      if (!m_greetdClient->requestCreateSession(m_username)) {
-@@ -1397,6 +1523,7 @@ void GreeterSurface::tryAuthenticate() {
+@@ -1402,6 +1528,7 @@ void GreeterSurface::tryAuthenticate() {
      }
      m_authSessionStarted = true;
      m_pendingReplies.push_back(AuthRequest::CreateSession);
@@ -521,7 +521,7 @@ index 3552e9b1af29..078716ff09c7 100644
      syncAuthInteractivity();
      commitImmediateFrame(false);
    } else if (m_secretPromptWaiting) {
-@@ -1526,6 +1653,7 @@ void GreeterSurface::postAuthResponse(const std::string& data) {
+@@ -1531,6 +1658,7 @@ void GreeterSurface::postAuthResponse(const std::string& data) {
    clearPasswordInput();
    m_secretPromptWaiting = false;
    m_pendingReplies.push_back(AuthRequest::PostAuthData);
@@ -529,7 +529,7 @@ index 3552e9b1af29..078716ff09c7 100644
    syncAuthInteractivity();
    commitImmediateFrame(false);
  }
-@@ -1536,7 +1664,7 @@ void GreeterSurface::syncAuthInteractivity() {
+@@ -1541,7 +1669,7 @@ void GreeterSurface::syncAuthInteractivity() {
      m_passwordField->setEnabled(!busy);
    }
    if (m_loginButton != nullptr) {
@@ -538,7 +538,7 @@ index 3552e9b1af29..078716ff09c7 100644
    }
  }
  
-@@ -1650,7 +1778,9 @@ void GreeterSurface::clearPasswordInput() {
+@@ -1653,7 +1781,9 @@ void GreeterSurface::clearPasswordInput() {
    m_password.clear();
    if (m_passwordField != nullptr) {
      m_passwordField->setValue("");
@@ -548,7 +548,7 @@ index 3552e9b1af29..078716ff09c7 100644
  }
  
  void GreeterSurface::onAuthError(const GreetdError& error) {
-@@ -1660,7 +1790,9 @@ void GreeterSurface::onAuthError(const GreetdError& error) {
+@@ -1663,7 +1793,9 @@ void GreeterSurface::onAuthError(const GreetdError& error) {
    m_pendingResponse.clear();
    m_pendingReplies.clear();
    clearPasswordInput();
@@ -558,7 +558,7 @@ index 3552e9b1af29..078716ff09c7 100644
    kLog.warn("authentication failed: {}", error.description);
    if (!resetAuthSession()) {
      return;
-@@ -1683,6 +1815,7 @@ void GreeterSurface::reportGreetdTransportError(const GreetdError& error) {
+@@ -1686,6 +1818,7 @@ void GreeterSurface::reportGreetdTransportError(const GreetdError& error) {
  void GreeterSurface::updateStatus(const std::string& text, bool isError) {
    // Empty text clears the line; non-empty text shows as an error or, for PAM
    // info prompts, as a neutral hint rather than being discarded.
@@ -566,7 +566,7 @@ index 3552e9b1af29..078716ff09c7 100644
    m_status = text;
    m_statusIsError = isError;
    if (m_statusLabel != nullptr) {
-@@ -1998,7 +2131,12 @@ void GreeterSurface::syncWallpaperTexture() {
+@@ -2047,7 +2180,12 @@ void GreeterSurface::syncWallpaperTexture() {
  
  void GreeterSurface::loadPreferences() {
    const auto prefs = greeter::loadGreeterPreferences();
@@ -579,7 +579,7 @@ index 3552e9b1af29..078716ff09c7 100644
    const auto initialSession = greeter::resolveInitialSessionName(prefs);
  
    if (initialSession.has_value()) {
-@@ -2019,6 +2157,7 @@ void GreeterSurface::loadPreferences() {
+@@ -2068,6 +2206,7 @@ void GreeterSurface::loadPreferences() {
    m_hideLogo = prefs.hideLogo;
    m_powerButtonsPosition = prefs.powerButtonsPosition.value_or("bottom-right");
    m_schemeSelectorPosition = prefs.schemeSelectorPosition.value_or("top-right");
@@ -587,7 +587,7 @@ index 3552e9b1af29..078716ff09c7 100644
  }
  
  void GreeterSurface::savePreferences() const {
-@@ -2155,8 +2294,7 @@ void GreeterSurface::runBackAction() {
+@@ -2231,8 +2370,7 @@ void GreeterSurface::runBackAction() {
      return;
    }
    m_passwordVisible = false;
@@ -597,7 +597,7 @@ index 3552e9b1af29..078716ff09c7 100644
    updateStatus("", false);
    if (m_userSelectArea != nullptr) {
      m_inputDispatcher.setFocus(m_userSelectArea);
-@@ -2170,11 +2308,20 @@ bool GreeterSurface::menuOpen() const noexcept { return m_userMenuOpen || m_sess
+@@ -2246,11 +2384,20 @@ bool GreeterSurface::menuOpen() const noexcept { return m_userMenuOpen || m_sess
  void GreeterSurface::rebuildFocusRing() {
    InputArea* previouslyFocused = InputArea::getFocused();
    m_focusRing.clear();
@@ -618,7 +618,7 @@ index 3552e9b1af29..078716ff09c7 100644
      if (m_loginButton != nullptr && m_loginButton->inputArea() != nullptr) {
        m_focusRing.push_back({m_loginButton->inputArea(), [this]() { tryAuthenticate(); }});
      }
-@@ -2197,13 +2344,19 @@ void GreeterSurface::rebuildFocusRing() {
+@@ -2273,13 +2420,19 @@ void GreeterSurface::rebuildFocusRing() {
    }
  
    if (m_firmwareButton != nullptr && m_firmwareButton->inputArea() != nullptr && m_firmwareButton->visible()) {
@@ -641,7 +641,7 @@ index 3552e9b1af29..078716ff09c7 100644
    }
  
    // Keep focus on whatever was focused before the rebuild, if still present.
-@@ -2282,7 +2435,7 @@ void GreeterSurface::applySelectorBoxStyle(Box* box, const InputArea* area) {
+@@ -2358,7 +2511,7 @@ void GreeterSurface::applySelectorBoxStyle(Box* box, const InputArea* area) {
    box->setStyle(
        RoundedRectStyle{
            .fill = active ? colorForRole(ColorRole::Surface) : colorForRole(ColorRole::SurfaceVariant),
@@ -650,7 +650,7 @@ index 3552e9b1af29..078716ff09c7 100644
            .fillMode = FillMode::Solid,
            .radius = Style::scaledRadiusLg(),
            .softness = 1.0f,
-@@ -2302,7 +2455,7 @@ void GreeterSurface::syncPanelUserChrome() {
+@@ -2378,7 +2531,7 @@ void GreeterSurface::syncPanelUserChrome() {
    m_userSelectBox->setStyle(
        RoundedRectStyle{
            .fill = active ? colorForRole(ColorRole::Secondary) : colorForRole(ColorRole::Surface),
@@ -659,7 +659,7 @@ index 3552e9b1af29..078716ff09c7 100644
            .fillMode = FillMode::Solid,
            .radius = Style::scaledRadiusLg(),
            .softness = 1.0f,
-@@ -2404,7 +2557,7 @@ void GreeterSurface::syncPanelSessionChrome() {
+@@ -2480,7 +2633,7 @@ void GreeterSurface::syncPanelSessionChrome() {
    m_sessionSelectBox->setStyle(
        RoundedRectStyle{
            .fill = active ? colorForRole(ColorRole::Secondary) : colorForRole(ColorRole::Surface),
@@ -668,7 +668,7 @@ index 3552e9b1af29..078716ff09c7 100644
            .fillMode = FillMode::Solid,
            .radius = Style::scaledRadiusLg(),
            .softness = 1.0f,
-@@ -2856,6 +3009,16 @@ void GreeterSurface::activateMenuHighlight() {
+@@ -2932,6 +3085,16 @@ void GreeterSurface::activateMenuHighlight() {
  }
  
  bool GreeterSurface::handleNavigationKey(std::uint32_t sym, std::uint32_t utf32, std::uint32_t modifiers) {
@@ -685,7 +685,7 @@ index 3552e9b1af29..078716ff09c7 100644
    if (m_authenticating) {
      return false;
    }
-@@ -2990,6 +3153,11 @@ bool GreeterSurface::handleNavigationKey(std::uint32_t sym, std::uint32_t utf32,
+@@ -3066,6 +3229,11 @@ bool GreeterSurface::handleNavigationKey(std::uint32_t sym, std::uint32_t utf32,
  }
  
  void GreeterSurface::clearUserMenuRows() {
@@ -697,7 +697,7 @@ index 3552e9b1af29..078716ff09c7 100644
    if (m_userMenuEmptyLabel != nullptr) {
      (void)m_root.removeChild(m_userMenuEmptyLabel);
      m_userMenuEmptyLabel = nullptr;
-@@ -3017,7 +3185,9 @@ void GreeterSurface::clearUserMenuRows() {
+@@ -3093,7 +3261,9 @@ void GreeterSurface::clearUserMenuRows() {
  }
  
  void GreeterSurface::clearUserMenu() {
@@ -708,7 +708,7 @@ index 3552e9b1af29..078716ff09c7 100644
    clearUserMenuRows();
    m_userMenuSearchQuery.clear();
    m_userMenuScrollOffset = 0;
-@@ -3029,7 +3199,9 @@ void GreeterSurface::clearUserMenu() {
+@@ -3105,7 +3275,9 @@ void GreeterSurface::clearUserMenu() {
  }
  
  void GreeterSurface::clearSessionMenu() {
@@ -719,7 +719,7 @@ index 3552e9b1af29..078716ff09c7 100644
    if (m_sessionMenuPanel != nullptr) {
      (void)m_root.removeChild(m_sessionMenuPanel);
      m_sessionMenuPanel = nullptr;
-@@ -3049,7 +3221,9 @@ void GreeterSurface::clearSessionMenu() {
+@@ -3125,7 +3297,9 @@ void GreeterSurface::clearSessionMenu() {
  }
  
  void GreeterSurface::clearSchemeMenu() {
@@ -730,7 +730,7 @@ index 3552e9b1af29..078716ff09c7 100644
    if (m_schemeMenuPanel != nullptr) {
      (void)m_root.removeChild(m_schemeMenuPanel);
      m_schemeMenuPanel = nullptr;
-@@ -3454,3 +3628,120 @@ void GreeterSurface::rebuildSchemeMenu() {
+@@ -3530,3 +3704,120 @@ void GreeterSurface::rebuildSchemeMenu() {
        [this](std::size_t i) { selectScheme(i); }
    );
  }
@@ -852,7 +852,7 @@ index 3552e9b1af29..078716ff09c7 100644
 +  }
 +}
 diff --git a/src/greeter/greeter_surface.h b/src/greeter/greeter_surface.h
-index 21a44cdb264d..d1e1508f838e 100644
+index 148b7d229448..fe1da44f0407 100644
 --- a/src/greeter/greeter_surface.h
 +++ b/src/greeter/greeter_surface.h
 @@ -4,6 +4,7 @@
@@ -863,7 +863,7 @@ index 21a44cdb264d..d1e1508f838e 100644
  #include "render/animation/animation_manager.h"
  #include "render/core/color.h"
  #include "render/core/texture_handle.h"
-@@ -72,6 +73,8 @@ public:
+@@ -74,6 +75,8 @@ public:
    void onPointerAxis(float x, float y, std::uint32_t axis, float axisLines);
    void onKeyEvent(std::uint32_t sym, std::uint32_t utf32, std::uint32_t modifiers, bool pressed, bool preedit);
  
@@ -872,7 +872,7 @@ index 21a44cdb264d..d1e1508f838e 100644
    void onThemeChanged();
    [[nodiscard]] bool handleNavigationKey(std::uint32_t sym, std::uint32_t utf32, std::uint32_t modifiers);
    void requestLayout();
-@@ -120,6 +123,10 @@ private:
+@@ -125,6 +128,10 @@ private:
    void layoutPanelUserSelector(float x, float y, float w, float h);
    void layoutPanelSessionSelector(float x, float y, float w, float h);
    void layoutPowerButtons(float ox, float oy, float sw, float sh);
@@ -883,7 +883,7 @@ index 21a44cdb264d..d1e1508f838e 100644
    void commitImmediateFrame(bool layout);
    void setFocusIndex(std::ptrdiff_t index);
    void syncFocusIndexFromFocused();
-@@ -209,6 +216,25 @@ private:
+@@ -215,6 +222,25 @@ private:
    Button* m_loginButton = nullptr;
    Button* m_backButton = nullptr;
    Label* m_statusLabel = nullptr;
@@ -909,7 +909,7 @@ index 21a44cdb264d..d1e1508f838e 100644
    RectNode* m_configErrorBanner = nullptr;
    Label* m_configErrorHeading = nullptr;
    Label* m_configErrorLabel = nullptr;
-@@ -233,6 +259,7 @@ private:
+@@ -239,6 +265,7 @@ private:
    std::string m_username;
    std::string m_password;
    std::string m_status;
@@ -998,7 +998,7 @@ index 8f46bb63f51d..f50a5d62c134 100644
    } else if (isHovered || isSelected) {
      targetBg = resolveColorSpec(m_palette.hover.bg);
 diff --git a/src/ui/controls/input.cpp b/src/ui/controls/input.cpp
-index 8675d367544d..fb245058cce6 100644
+index 081eec03c160..f72e89992835 100644
 --- a/src/ui/controls/input.cpp
 +++ b/src/ui/controls/input.cpp
 @@ -25,7 +25,7 @@ namespace {
@@ -1106,7 +1106,7 @@ index 8675d367544d..fb245058cce6 100644
    if (m_value.empty() && !m_placeholder.empty()) {
      m_label->setText(m_placeholder);
    } else {
-@@ -486,7 +518,8 @@ void Input::doLayout(Renderer& renderer) {
+@@ -489,7 +521,8 @@ void Input::doLayout(Renderer& renderer) {
    const bool showReveal = m_passwordMode && !m_value.empty();
    if (m_revealIcon != nullptr && m_revealArea != nullptr) {
      m_revealIcon->setVisible(showReveal);
@@ -1116,7 +1116,7 @@ index 8675d367544d..fb245058cce6 100644
      if (showReveal) {
        const float iconSize = std::round(m_fontSize * kRevealIconScale);
        const float slot = revealSlotWidth();
-@@ -496,6 +529,8 @@ void Input::doLayout(Renderer& renderer) {
+@@ -499,6 +532,8 @@ void Input::doLayout(Renderer& renderer) {
        m_revealIcon->setPosition(iconX, std::round((h - (metrics.top + metrics.bottom)) * 0.5f));
        m_revealArea->setPosition(w - slot, 0.0f);
        m_revealArea->setSize(slot, h);
@@ -1125,7 +1125,7 @@ index 8675d367544d..fb245058cce6 100644
      }
    }
  
-@@ -512,6 +547,19 @@ void Input::applyVisualState() {
+@@ -515,6 +550,19 @@ void Input::applyVisualState() {
    if (m_background == nullptr) {
      return;
    }
@@ -1145,7 +1145,7 @@ index 8675d367544d..fb245058cce6 100644
  
    const bool focused = m_inputArea != nullptr && m_inputArea->focused();
    const bool hovered = m_inputArea != nullptr && m_inputArea->hovered();
-@@ -525,8 +573,7 @@ void Input::applyVisualState() {
+@@ -528,8 +576,7 @@ void Input::applyVisualState() {
          }
      );
      const bool showingPlaceholder = m_value.empty() && !m_placeholder.empty();
@@ -1155,7 +1155,7 @@ index 8675d367544d..fb245058cce6 100644
          ? colorForRole(m_flatOnSecondary ? ColorRole::OnSecondary : ColorRole::OnSurfaceVariant, kPlaceholderAlpha)
          : m_flatOnSecondary ? colorForRole(ColorRole::OnSecondary)
                              : colorForRole(ColorRole::OnSurface);
-@@ -541,16 +588,16 @@ void Input::applyVisualState() {
+@@ -544,16 +591,16 @@ void Input::applyVisualState() {
  
    Color fill = focused ? colorForRole(ColorRole::Surface) : colorForRole(ColorRole::SurfaceVariant);
    Color border = m_invalid ? colorForRole(ColorRole::Error)
@@ -1176,7 +1176,7 @@ index 8675d367544d..fb245058cce6 100644
      const float topRadius = std::max(0.0f, m_embeddedTopRadius);
      radius = Radii(topRadius, topRadius, 0.0f, 0.0f);
    }
-@@ -567,8 +614,7 @@ void Input::applyVisualState() {
+@@ -570,8 +617,7 @@ void Input::applyVisualState() {
    );
  
    const bool showingPlaceholder = m_value.empty() && !m_placeholder.empty();
@@ -1186,7 +1186,7 @@ index 8675d367544d..fb245058cce6 100644
                                      : colorForRole(ColorRole::OnSurface);
    if (m_label != nullptr) {
      m_label->setColor(textColor);
-@@ -610,7 +656,7 @@ void Input::updateInteractiveGeometry() {
+@@ -613,7 +659,7 @@ void Input::updateInteractiveGeometry() {
      if (m_flatStyle) {
        m_selectionRect->setStyle(
            RoundedRectStyle{
@@ -1293,10 +1293,10 @@ index 647aa7a8a3e8..e60c7a14f568 100644
    static float s_cornerRadiusScale;
  };
 diff --git a/src/wayland/wayland_client.h b/src/wayland/wayland_client.h
-index 58e82971086e..e1a372cf5f4c 100644
+index 960760aa34f7..9b9e54ab7ee5 100644
 --- a/src/wayland/wayland_client.h
 +++ b/src/wayland/wayland_client.h
-@@ -68,6 +68,8 @@ public:
+@@ -75,6 +75,8 @@ public:
    [[nodiscard]] wl_display* display() const noexcept { return m_display; }
    [[nodiscard]] wl_compositor* compositor() const noexcept { return m_compositor; }
    [[nodiscard]] wl_seat* seat() const noexcept { return m_seat; }

@@ -5,6 +5,7 @@
   yarn-berry_4-fetcher,
   srcOnly,
   nodejs_26,
+  nodejs-slim_26,
   makeWrapper,
   pkg-config,
   python3,
@@ -21,7 +22,23 @@
 }:
 let
   source = import ./source.nix;
-  yarn = "${nodejs_26}/bin/node .yarn/releases/yarn-4.17.1.cjs";
+  # Node 26's V8 source uses CHAR_BIT without including <climits> on arm64.
+  # Keep the repair local to this package until the source includes it.
+  nodejs =
+    if stdenv.hostPlatform.isAarch64 then
+      nodejs_26.override {
+        nodejs-slim = nodejs-slim_26.overrideAttrs (old: {
+          postPatch = (old.postPatch or "") + ''
+            if ! grep -Fq '#include <climits>' deps/v8/src/base/memcopy.h; then
+              substituteInPlace deps/v8/src/base/memcopy.h \
+                --replace-fail '#include <stdlib.h>' $'#include <climits>\n#include <stdlib.h>'
+            fi
+          '';
+        });
+      }
+    else
+      nodejs_26;
+  yarn = "${nodejs}/bin/node .yarn/releases/yarn-4.17.1.cjs";
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "maintainerr";
@@ -44,7 +61,7 @@ stdenv.mkDerivation (finalAttrs: {
   strictDeps = true;
 
   nativeBuildInputs = [
-    nodejs_26
+    nodejs
     makeWrapper
     pkg-config
     python3
@@ -92,8 +109,8 @@ stdenv.mkDerivation (finalAttrs: {
     mkdir -p "$HOME" .yarn/cache
     cp -R ${finalAttrs.offlineCache}/cache/. .yarn/cache/
     chmod -R u+w .yarn/cache
-    export npm_config_nodedir=${srcOnly nodejs_26}
-    export npm_config_node_gyp=${nodejs_26}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js
+    export npm_config_nodedir=${srcOnly nodejs}
+    export npm_config_node_gyp=${nodejs}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js
     ${yarn} install --immutable --inline-builds
     (
       cd node_modules/better-sqlite3
@@ -101,7 +118,7 @@ stdenv.mkDerivation (finalAttrs: {
       node ../node-gyp/bin/node-gyp.js rebuild --release --force_build=1
     )
     mkdir -p "$TMPDIR/build-tools"
-    makeWrapper ${nodejs_26}/bin/node "$TMPDIR/build-tools/node-gyp" \
+    makeWrapper ${nodejs}/bin/node "$TMPDIR/build-tools/node-gyp" \
       --add-flags "$PWD/node_modules/node-gyp/bin/node-gyp.js"
     (
       cd node_modules/sharp
@@ -167,7 +184,7 @@ stdenv.mkDerivation (finalAttrs: {
     makeWrapper "$out/libexec/maintainerr/start.sh" "$out/bin/maintainerr" \
       --prefix PATH : ${
         lib.makeBinPath [
-          nodejs_26
+          nodejs
           coreutils
           findutils
           gnused
@@ -179,7 +196,7 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
-  nativeInstallCheckInputs = [ nodejs_26 ];
+  nativeInstallCheckInputs = [ nodejs ];
   installCheckPhase = ''
     runHook preInstallCheck
     cd "$out/libexec/maintainerr/apps/server"
