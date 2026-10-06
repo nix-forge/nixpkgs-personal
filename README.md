@@ -86,8 +86,10 @@ default; additions to the lint group run in its existing required job.
 The lint group is reserved for portable tooling. Platform-dependent tests belong
 in native checks or a required native job, so moving lint does not hide them.
 
-Run `just check`, `just lint`, and `just update-packages`. Update scripts only
-change pinned source metadata and are checked by CI before automated merge. New
+Run `just check`, `just lint`, and `just update-packages`. The daily updater
+opens one pull request per changed package, so one failed build does not hold
+other package updates. Update scripts only change pinned source metadata and
+are checked by CI before automated merge. New
 packages follow the nixpkgs-style `pkgs/by-name/<prefix>/<name>` layout and must
 declare accurate metadata, platform support, tests where feasible, and an
 updater when upstream can be safely discovered.

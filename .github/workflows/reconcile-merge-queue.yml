@@ -1,7 +1,7 @@
 name: Reconcile merge queue
 on: # zizmor: ignore[dangerous-triggers] Reads API metadata and runs only the default branch's script.
   workflow_run:
-    workflows: ["CI", "Dependency review", "CodeQL", "DCO", "Fuzz font path validation"]
+    workflows: ["CI", "Dependency review", "CodeQL", "DCO", "Fuzz font path validation", "NUR compatibility"]
     types: [completed]
   schedule:
     - cron: 17 * * * *
@@ -17,9 +17,10 @@ concurrency:
   cancel-in-progress: false
 jobs:
   reconcile:
-    # Completion callbacks handle dispatched queue runs; scans and pushes need no reconciliation.
+    # Dispatch completions can make an auto-merge PR or queue ref ready.
     if: >-
-      github.event_name != 'workflow_run' || contains(fromJSON('["pull_request", "merge_group"]'), github.event.workflow_run.event)
+      github.event_name != 'workflow_run' || contains(fromJSON('["pull_request", "merge_group", "workflow_dispatch"]'),
+      github.event.workflow_run.event)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -32,8 +33,7 @@ jobs:
       - name: Reconcile verified automation
         uses: nix-forge/ci/actions/reconcile-queue@13ad6e366ec01e317705d750fc512d33ecc15f6c # v2.9.0
         with:
-          workflows: '["ci.yml", "dependency-review.yml", "codeql.yml", "dco.yml", "fuzz.yml"]'
+          workflows: '["ci.yml", "dependency-review.yml", "codeql.yml", "dco.yml", "fuzz.yml", "nur.yml"]'
           base-sha-workflows: '["ci.yml", "dco.yml"]'
-          automation-branch: automation/package-updates
           source-run-id: ${{ inputs.source_run_id }}
     name: reconcile

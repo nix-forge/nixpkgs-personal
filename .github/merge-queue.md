@@ -1,9 +1,11 @@
 # Merge queue operations
 
 Passing Dependabot PRs enter the protected main merge queue after workflow
-completion. The package updater is also eligible in nixpkgs-personal.
+completion. The package updater opens one PR per changed package and enables
+auto-merge on each; GitHub queues it when its required checks pass.
 The reconciler reads API metadata and executes its pinned shared action.
-It owns automatic admission; no separate auto-merge workflow is needed.
+It owns Dependabot admission and validation of queue refs. The updater enables
+auto-merge on its own package PRs after dispatching required checks.
 Changes under `.github/`, `actions/`, `scripts/` and `workflow-templates/`
 require maintainer admission, including files renamed out of those paths.
 Forks, drafts, failing checks, missing checks, changed heads and GitHub review
