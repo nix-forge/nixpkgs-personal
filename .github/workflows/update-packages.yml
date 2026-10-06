@@ -34,7 +34,7 @@ jobs:
       - name: Update pinned sources
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: nix develop --command python scripts/update-packages.py --all --keep-going
+        run: nix develop --command python scripts/update-packages.py --all --keep-going --allow-partial
       - name: Create or update the package pull request
         env:
           GH_TOKEN: ${{ github.token }}

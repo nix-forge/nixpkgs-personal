@@ -67,8 +67,15 @@ def _parse_args(argv: Sequence[str]) -> tuple[argparse.Namespace, list[str]]:
         action="store_true",
         help="continue running remaining updates after a failure",
     )
+    parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="submit successful updates if failed scripts left the tree unchanged",
+    )
 
     args, child_args = parser.parse_known_args(list(argv))
+    if args.allow_partial and not args.keep_going:
+        parser.error("--allow-partial requires --keep-going")
     if child_args and child_args[0] == "--":
         child_args = child_args[1:]
 
@@ -119,6 +126,16 @@ def _print_summary(succeeded: list[str], failed: list[str]) -> None:
     _stdout(f"  failed ({len(failed)}): {failed_text}")
 
 
+def _working_tree_snapshot(repo_root: Path) -> bytes:
+    return subprocess.run(
+        ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        timeout=30,
+    ).stdout
+
+
 def _main(argv: Sequence[str] | None = None) -> int:
     repo_root = Path(__file__).resolve().parent.parent
     args, child_args = _parse_args(argv if argv is not None else sys.argv[1:])
@@ -132,19 +149,33 @@ def _main(argv: Sequence[str] | None = None) -> int:
 
     succeeded: list[str] = []
     failed: list[str] = []
+    partial_unsafe = False
+    initial_snapshot = _working_tree_snapshot(repo_root) if args.allow_partial else b""
 
     for updater in targets:
+        before = _working_tree_snapshot(repo_root) if args.allow_partial else b""
         exit_code = _run_updater(repo_root, updater, child_args)
         if exit_code == 0:
             succeeded.append(updater.name)
             continue
 
         failed.append(f"{updater.name} (exit {exit_code})")
+        if args.allow_partial and _working_tree_snapshot(repo_root) != before:
+            _stderr(f"error: failed updater {updater.name} changed the working tree")
+            partial_unsafe = True
+            break
         if not args.keep_going:
             break
 
     _print_summary(succeeded, failed)
-    return 0 if not failed else 1
+    if not failed:
+        return 0
+    if args.allow_partial and not partial_unsafe:
+        if _working_tree_snapshot(repo_root) != initial_snapshot:
+            _stdout("Submitting successful updates; failed packages need attention")
+            return 0
+        _stderr("error: no successful package changes to submit")
+    return 1
 
 
 if __name__ == "__main__":
