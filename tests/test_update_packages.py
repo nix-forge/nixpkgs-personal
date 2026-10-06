@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -69,6 +70,26 @@ class PartialUpdateTests(unittest.TestCase):
             self.assertEqual(
                 update_packages._main(["--all", "--keep-going", "--allow-partial"]), 1
             )
+
+    def test_discovery_lists_each_updater_without_running_it(self) -> None:
+        with (
+            patch.object(
+                update_packages, "_discover_updaters", return_value=self.updaters
+            ),
+            patch.object(update_packages, "_run_updater") as run_updater,
+            patch.object(update_packages, "_stdout") as output,
+        ):
+            self.assertEqual(update_packages._main(["--list-json"]), 0)
+        output.assert_called_once()
+        self.assertEqual(json.loads(output.call_args.args[0]), ["first", "second"])
+        run_updater.assert_not_called()
+
+    def test_discovery_rejects_empty_catalog(self) -> None:
+        with (
+            patch.object(update_packages, "_discover_updaters", return_value={}),
+            self.assertRaises(SystemExit),
+        ):
+            update_packages._main(["--list-json"])
 
 
 if __name__ == "__main__":

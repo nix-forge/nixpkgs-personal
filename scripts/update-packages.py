@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -54,6 +55,11 @@ def _parse_args(argv: Sequence[str]) -> tuple[argparse.Namespace, list[str]]:
         "--all",
         action="store_true",
         help="run all discovered updater scripts",
+    )
+    parser.add_argument(
+        "--list-json",
+        action="store_true",
+        help="print discovered package names as a JSON array without running updates",
     )
     parser.add_argument(
         "--package",
@@ -136,11 +142,26 @@ def _working_tree_snapshot(repo_root: Path) -> bytes:
     ).stdout
 
 
+def _list_updaters(
+    updaters: dict[str, _PackageUpdater],
+    args: argparse.Namespace,
+    child_args: list[str],
+) -> int:
+    if args.all or args.package or child_args or args.keep_going or args.allow_partial:
+        raise SystemExit("error: --list-json cannot be combined with update options")
+    if not updaters:
+        raise SystemExit("error: no updater scripts found")
+    _stdout(json.dumps(sorted(updaters)))
+    return 0
+
+
 def _main(argv: Sequence[str] | None = None) -> int:
     repo_root = Path(__file__).resolve().parent.parent
     args, child_args = _parse_args(argv if argv is not None else sys.argv[1:])
 
     updaters = _discover_updaters(repo_root)
+    if args.list_json:
+        return _list_updaters(updaters, args, child_args)
     targets = _select_targets(
         updaters,
         run_all=args.all,
