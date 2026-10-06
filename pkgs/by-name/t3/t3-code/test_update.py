@@ -8,6 +8,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -30,6 +31,7 @@ class UpdateTests(unittest.TestCase):
             darwin_url=self.existing.darwin_url,
             darwin_hash_sri=self.existing.darwin_hash,
             linux_rev="v99.0.0",
+            spdx_rev=self.existing.spdx_rev,
             electron_version=self.existing.electron_version,
             electron_dist_url=self.existing.electron_dist_url,
             electron_shasums_url=self.existing.electron_shasums_url,
@@ -85,6 +87,31 @@ class UpdateTests(unittest.TestCase):
             )
         self.assertEqual(run.call_args.args[0][-1], "github:NixOS/nixpkgs/revision")
 
+    def test_nixpkgs_selector_accepts_resolved_path(self) -> None:
+        result = subprocess.CompletedProcess(
+            [], 0, json.dumps({"resolved": {"path": "/nix/store/upstream"}}), ""
+        )
+        with patch.object(update.subprocess, "run", return_value=result):
+            self.assertEqual(
+                update._resolve_nixpkgs("nixpkgs"), Path("/nix/store/upstream")
+            )
+
+    def test_spdx_revision_comes_from_release_archive(self) -> None:
+        archive_path = Path(self.temporary.name) / "release.tar.gz"
+        content = (
+            b'const SPDX_LICENSE_LIST_REVISION = "'
+            + self.existing.spdx_rev.encode()
+            + b'";\n'
+        )
+        with tarfile.open(archive_path, "w:gz") as archive:
+            entry = tarfile.TarInfo("t3code/scripts/lib/third-party-licenses.ts")
+            entry.size = len(content)
+            archive.addfile(entry, io.BytesIO(content))
+        self.assertEqual(
+            update._spdx_revision_from_tarball(archive_path, rev="v99.0.0"),
+            self.existing.spdx_rev,
+        )
+
     def test_unrelated_build_failure_does_not_return_a_hash(self) -> None:
         result = subprocess.CompletedProcess([], 1, "", "builder is unavailable")
         with (
@@ -112,6 +139,9 @@ class UpdateTests(unittest.TestCase):
             linux_hash_sri=self.existing.linux_hash,
             pnpm_hash_sri=self.existing.pnpm_hash,
             cargo_hash_sri=self.existing.cargo_hash,
+            kde_cargo_hash_sri=self.existing.kde_cargo_hash,
+            hyprland_cargo_hash_sri=self.existing.hyprland_cargo_hash,
+            spdx_hash_sri=self.existing.spdx_hash,
             electron_dist_hash_sri=self.existing.electron_dist_hash,
             electron_shasums_hash_sri=self.existing.electron_shasums_hash,
             electron_headers_hash_sri=self.existing.electron_headers_hash,
@@ -165,11 +195,12 @@ class UpdateTests(unittest.TestCase):
             self.assertTrue((package_dir / "linux.nix").is_file())
             if failure:
                 raise RuntimeError("builder failed")
-            return (
-                self.existing.pnpm_hash
-                if attr == "pnpmDeps"
-                else self.existing.cargo_hash
-            )
+            return {
+                "pnpmDeps": self.existing.pnpm_hash,
+                "cargoDeps": self.existing.cargo_hash,
+                "kdeCargoDeps": self.existing.kde_cargo_hash,
+                "hyprlandCargoDeps": self.existing.hyprland_cargo_hash,
+            }[attr]
 
         with (
             patch.object(

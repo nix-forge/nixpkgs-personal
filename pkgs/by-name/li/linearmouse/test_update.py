@@ -24,11 +24,11 @@ class SchemaPinTests(unittest.TestCase):
             release = {
                 "draft": False,
                 "prerelease": False,
-                "tag_name": "v0.12.0",
+                "tag_name": "v99.0.0",
                 "assets": [
                     {
                         "name": "LinearMouse.dmg",
-                        "browser_download_url": "https://github.com/linearmouse/linearmouse/releases/download/v0.12.0/LinearMouse.dmg",
+                        "browser_download_url": "https://github.com/linearmouse/linearmouse/releases/download/v99.0.0/LinearMouse.dmg",
                     }
                 ],
             }
@@ -43,8 +43,8 @@ class SchemaPinTests(unittest.TestCase):
             ):
                 self.assertEqual(update._main([]), 0)
             state = update._parse_existing(source.read_text())
-            self.assertEqual(state.version, "0.12.0")
-            self.assertEqual(state.schema_url, update._schema_url("0.12.0"))
+            self.assertEqual(state.version, "99.0.0")
+            self.assertEqual(state.schema_url, update._schema_url("99.0.0"))
             self.assertEqual(state.schema_hash_sri, "sha256-schema")
             self.assertEqual(prefetch.call_args_list[1].args, (state.schema_url,))
 

@@ -89,6 +89,27 @@ stdenv.mkDerivation (
       hash = source.linux.cargoHash;
     };
     cargoRoot = "native/resource-monitor";
+    kdeCargoDeps = rustPlatform.fetchCargoVendor {
+      pname = "${commonAttrs.pname}-kde-cargo-deps";
+      inherit (finalAttrs) version src;
+      cargoRoot = "native/kde-snap-shot";
+      hash = source.linux.kdeCargoHash;
+    };
+    hyprlandCargoDeps = rustPlatform.fetchCargoVendor {
+      pname = "${commonAttrs.pname}-hyprland-cargo-deps";
+      inherit (finalAttrs) version src;
+      cargoRoot = "native/hyprland-snap-shot";
+      hash = source.linux.hyprlandCargoHash;
+    };
+
+    # Vite generates a third-party license manifest during the build. It
+    # normally downloads SPDX details, so provide its pinned revision locally.
+    spdxLicenseData = fetchFromGitHub {
+      owner = "spdx";
+      repo = "license-list-data";
+      rev = source.linux.spdxRev;
+      hash = source.linux.spdxHash;
+    };
 
     # Fixed-output mirrors, exposed so update.py can refresh their hashes by
     # building these attributes directly.
@@ -96,6 +117,8 @@ stdenv.mkDerivation (
       inherit (finalAttrs)
         pnpmDeps
         cargoDeps
+        kdeCargoDeps
+        hyprlandCargoDeps
         electronDistZip
         electronShasums
         ;
@@ -121,6 +144,41 @@ stdenv.mkDerivation (
       substituteInPlace package.json \
         --replace-fail '"packageManager": "pnpm@'"$upstreamPin"'"' \
         '"packageManager": "pnpm@${pnpm_11.version}"'
+
+      mkdir -p native/kde-snap-shot/.cargo native/hyprland-snap-shot/.cargo
+      cat > native/kde-snap-shot/.cargo/config.toml <<EOF
+      [source.crates-io]
+      replace-with = "kde-vendor"
+      [source.kde-vendor]
+      directory = "${finalAttrs.kdeCargoDeps}/source-registry-0"
+      EOF
+      cat > native/hyprland-snap-shot/.cargo/config.toml <<EOF
+      [source.crates-io]
+      replace-with = "hyprland-vendor"
+      [source.hyprland-vendor]
+      directory = "${finalAttrs.hyprlandCargoDeps}/source-registry-0"
+      EOF
+
+      # Cargo reads configuration from its working directory, not from the
+      # --manifest-path target. Run each helper in its own vendored project.
+      python3 - <<'PY'
+      from pathlib import Path
+      path = Path("scripts/build-desktop-artifact.ts")
+      source = path.read_text()
+      needle = "cwd: input.repoRoot,"
+      assert source.count(needle) == 2
+      source = source.replace(
+          needle,
+          "cwd: path.join(input.repoRoot, `native/''${input.backend}-snap-shot`),",
+          1,
+      )
+      source = source.replace(
+          needle,
+          'cwd: path.join(input.repoRoot, "native/resource-monitor"),',
+          1,
+      )
+      path.write_text(source)
+      PY
 
       runHook postPatch
     '';
@@ -244,6 +302,15 @@ stdenv.mkDerivation (
       # resolves deterministically: env-paths prefers it over $HOME, and
       # the sandbox inherits whatever the caller had set.
       export XDG_CACHE_HOME="$HOME/.cache"
+
+      grep -Fq 'const SPDX_LICENSE_LIST_REVISION = "${source.linux.spdxRev}";' \
+        scripts/lib/third-party-licenses.ts
+      spdxVersion="$(sed -n 's/^const SPDX_LICENSE_LIST_VERSION = "\(v[0-9.]*\)";$/\1/p' \
+        scripts/lib/third-party-licenses.ts)"
+      test -n "$spdxVersion"
+      mkdir -p ".generated/third-party-licenses/spdx"
+      ln -s "${finalAttrs.spdxLicenseData}/json/details" \
+        ".generated/third-party-licenses/spdx/$spdxVersion"
 
       # Seed the @electron/get cache before anything resolves Electron
       # artifacts. @electron/get serves the distribution zip from its

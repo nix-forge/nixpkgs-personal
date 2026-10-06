@@ -1,11 +1,11 @@
 {
-  version = "0.11.4";
+  version = "0.12.0";
   src = {
-    url = "https://github.com/linearmouse/linearmouse/releases/download/v0.11.4/LinearMouse.dmg";
-    hash = "sha256-dVEnujywU8UGFdwSQO161/16M3qz87u4kKBmRM1i2F8=";
+    url = "https://github.com/linearmouse/linearmouse/releases/download/v0.12.0/LinearMouse.dmg";
+    hash = "sha256-r/UPPIGM7VpOIqYXTIcuMiN5fUMmP+ZH1/lV+b4Pzzw=";
   };
   configurationSchema = {
-    url = "https://raw.githubusercontent.com/linearmouse/linearmouse/v0.11.4/Documentation/Configuration.json";
-    hash = "sha256-0KpDoyoLGatTeL9/4NOgF61Qsy6TtKqeTiF0zGJDj8I=";
+    url = "https://raw.githubusercontent.com/linearmouse/linearmouse/v0.12.0/Documentation/Configuration.json";
+    hash = "sha256-Ou+N9knhMDVpniykRZHAOUA0JHpscZBdXgEK+6Rsl/Y=";
   };
 }

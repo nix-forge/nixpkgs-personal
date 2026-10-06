@@ -8,7 +8,10 @@ the same inspector as apple-fonts. It retains Microsoft's license.rtf.
 The updater resolves the published ISO, and generates the next inventory before
 writing either source pin. Review source.nix and manifest.json together. The
 build rejects a manifest from a different release or changed payload. It never
-executes Windows installer code. Run the updater from the personal repository:
+executes Windows installer code. If Microsoft advertises a release before its
+ISO shortcut is ready, the updater reports the delay and retains the existing
+verified pin. It still rejects unexpected redirects. Run the updater from the
+personal repository:
 
 ```text
 nix develop .#apple-fonts -c python pkgs/by-name/tt/ttf-ms-win11-auto/update.py --check

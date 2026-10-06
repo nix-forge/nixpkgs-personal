@@ -1,5 +1,5 @@
 {
-  version = "5.1.0";
-  rev = "c7b9197af77ff22bfb9a83c52a95643a1d90ca86";
-  hash = "sha256-A7ehoEnAJw4k1Qwpr/WkOkLXWZAVU970uB+sm6nBxP0=";
+  version = "5.2.1";
+  rev = "6ef43e2bf2f3d5b4205ec72a72e34a2ab76ce3b4";
+  hash = "sha256-ukT5U54WQSpq6sktl5QJOZ8S4ZF3LLmP8CAFel1XJf0=";
 }
