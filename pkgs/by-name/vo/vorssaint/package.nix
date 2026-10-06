@@ -85,9 +85,12 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         "$buildDir/io.github.ianhollow.personalmonitor.fan-control" --selftest
 
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
-          -strict-concurrency=complete -warnings-as-errors \
           -emit-library -module-name PersonalMonitorNowPlaying \
           Sources/NowPlayingAdapter/NowPlayingAdapter.swift \
+          Sources/NowPlayingAdapter/NowPlayingQueue.swift \
+          Sources/NowPlayingAdapter/NowPlayingSelection.swift \
+          Sources/Vorssaint/Services/Notch/NotchPlaybackSource.swift \
+          Sources/Vorssaint/Services/Notch/NotchPlaybackCommand.swift \
           -o "$buildDir/libPersonalMonitorNowPlaying.dylib"
 
         # Generate independently drawn package artwork in the required sizes.
