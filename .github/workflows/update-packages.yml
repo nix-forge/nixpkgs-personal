@@ -34,7 +34,7 @@ jobs:
       - name: Update pinned sources
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: nix develop --command python scripts/update-packages.py --all --keep-going
+        run: nix develop --command python scripts/update-packages.py --all --keep-going --allow-partial
       - name: Create or update the package pull request
         env:
           GH_TOKEN: ${{ github.token }}
@@ -47,13 +47,14 @@ jobs:
             exit 0
           fi
 
+          nix develop --command python scripts/package-catalog.py
           base_sha=$(git rev-parse HEAD)
           branch="automation/package-updates"
           git fetch origin "$branch" || true
           git switch --force-create "$branch"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pkgs scripts
+          git add pkgs scripts docs/catalog.md
           git commit -m "maint: update package sources"
           git push --force-with-lease --set-upstream origin "$branch"
 
