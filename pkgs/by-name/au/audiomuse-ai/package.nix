@@ -156,8 +156,7 @@ python313Packages.buildPythonApplication (_finalAttrs: {
       error lyrics plugin query static taskqueue tasks templates \
       ${appDir}/
     cp native-build/linux/{__init__,launcher}.py ${appDir}/native-build/linux/
-    cp native-build/native_common/{__init__,frozen_children}.py \
-      ${appDir}/native-build/native_common/
+    cp -R native-build/native_common/. ${appDir}/native-build/native_common/
     install -Dm644 LICENSE "$out/share/doc/audiomuse-ai/LICENSE"
     ${mkRole "audiomuse-ai-web" "flask"}
     ${mkRole "audiomuse-ai-worker-high" "worker-high"}

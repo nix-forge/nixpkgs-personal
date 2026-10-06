@@ -1,9 +1,9 @@
 {
-  version = "3.3.5";
+  version = "3.4.0";
   src = {
     owner = "vorssaint";
     repo = "vorssaint-utils";
-    rev = "b686b87f8933a69ac88e7a4f8d8976c083ed6cd1";
-    hash = "sha256-NLGPtfi0dNG1hNysGJB+AyGq1FcqADzpnmmLJbIn3PA=";
+    rev = "c9cfa0d1014c885119bf35bbac850d670267a723";
+    hash = "sha256-2D74XjE6XHj65hCiTuAag/0VPU3bo2lB5N8RnBmLCgY=";
   };
 }

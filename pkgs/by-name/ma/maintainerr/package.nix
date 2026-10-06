@@ -22,6 +22,16 @@
 }:
 let
   source = import ./source.nix;
+  # sharp 0.35.5 requires at least libvips 8.18.7.
+  currentVips = vips.overrideAttrs (_: {
+    version = "8.18.7";
+    src = fetchFromGitHub {
+      owner = "libvips";
+      repo = "libvips";
+      rev = "v8.18.7";
+      hash = "sha256-veceg2RJ0IXZ7zt/Bn9eJgTrpSghwz7+ogrmBT91Odk=";
+    };
+  });
   # Node 26's V8 source uses CHAR_BIT without including <climits> on arm64.
   # Keep the repair local to this package until the source includes it.
   nodejs =
@@ -74,7 +84,7 @@ stdenv.mkDerivation (finalAttrs: {
     giflib
     pixman
     librsvg
-    vips
+    currentVips
   ];
 
   # Compile Node addons against the pinned Nix libraries. Upstream's npm
@@ -93,12 +103,6 @@ stdenv.mkDerivation (finalAttrs: {
     substituteInPlace apps/server/src/app/config/typeOrmConfig.ts \
       --replace-fail "/opt/app/apps/server/dist/database/migrations" \
         "$out/libexec/maintainerr/apps/server/dist/database/migrations"
-    substituteInPlace apps/server/src/modules/logging/logs.module.ts \
-      --replace-fail "? '/opt/data'" \
-        "? (process.env.DATA_DIR?.trim() || '/opt/data')"
-    substituteInPlace apps/server/src/modules/logging/logs.controller.ts \
-      --replace-fail "? '/opt/data/logs'" \
-        "? path.join(process.env.DATA_DIR?.trim() || '/opt/data', 'logs')"
     printf '%s\n' 'VITE_BASE_PATH=/__PATH_PREFIX__' >> apps/ui/.env
   '';
 

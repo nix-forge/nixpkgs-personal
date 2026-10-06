@@ -4,14 +4,14 @@ This package builds pinned upstream Noctalia with a general bar icon policy
 and landscape playback cards on the Control Center Media page. The patches
 contain no application names or application-specific artwork.
 
-The pin is Noctalia 5.1.0, whose Hyprland backend supports both the legacy
+The pin is Noctalia 5.2.1, whose Hyprland backend supports both the legacy
 numeric workspace IDs and the stable `address`/`type` workspace identities
 used by newer Hyprland revisions. Keep that compatibility when updating the
 source pin.
 
-The Home date card hides its weather row when the weather service is disabled
-and opens the calendar instead. Enabling weather restores both its row and its
-weather-page action. Review this behavior when updating the pinned source.
+Upstream now hides the Home date card's weather row when the weather service is
+disabled and opens the calendar instead. Enabling weather restores both its row
+and its weather-page action. Review this behavior when updating the pinned source.
 
 Minimal workspace capsules with inline labels and application icons use equal
 label and icon hit cells, with larger gaps between workspaces than within them.
