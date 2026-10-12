@@ -35,7 +35,7 @@ jobs:
         with:
           workflows: '["ci.yml", "dependency-review.yml", "codeql.yml", "dco.yml", "fuzz.yml"]'
           base-sha-workflows: '["ci.yml", "dco.yml"]'
-          package-source-checks: >-
+          package-source-checks: |-
             {
               "ci.yml": [
                 "Build (x86_64-linux)",
