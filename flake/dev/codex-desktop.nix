@@ -87,6 +87,7 @@
                       info = plistlib.load(plist_file)
                   assert info["CFBundleIdentifier"] == "com.openai.codex"
                   assert info["CFBundleShortVersionString"] == "${codexDesktop.version}"
+                  assert info["CFBundleVersion"] == "${codexDesktop.sourceForSystem.buildVersion}"
                   PY
                   file ${codexDesktop}/Applications/ChatGPT.app/Contents/MacOS/ChatGPT | grep -F arm64
                   rcodesign verify ${codexDesktop}/Applications/ChatGPT.app/Contents/MacOS/ChatGPT

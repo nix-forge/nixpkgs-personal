@@ -78,6 +78,7 @@ SOURCE_PATTERN: Final = re.compile(
     r'      version = "([^"]+)";\n'
     r'      url = "([^"]+)";\n'
     r'      hash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'(?:      buildVersion = "([0-9]+)";\n)?'
     r"    \};\n"
     r"    aarch64-linux = \{\n"
     r'      version = "([^"]+)";\n'
@@ -99,6 +100,7 @@ class _Source:
     version: str
     url: str
     hash_sri: str
+    build_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +109,7 @@ class _DiscoveredSource:
     url: str
     expected_size: int
     published_sha256: str | None = None
+    build_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -245,6 +248,13 @@ def _discover_macos_source() -> tuple[str, _DiscoveredSource]:
         _fail("latest Codex appcast item has no enclosure")
 
     version = version_element.text.strip()
+    build_element = item.find("./sparkle:version", SPARKLE_NAMESPACE)
+    build_version = str(
+        _positive_integer(
+            build_element.text if build_element is not None else None,
+            label="macOS Sparkle build version",
+        )
+    )
     url = enclosure.attrib.get("url")
     if not isinstance(url, str) or not url:
         _fail("latest Codex appcast enclosure has no URL")
@@ -264,6 +274,7 @@ def _discover_macos_source() -> tuple[str, _DiscoveredSource]:
         version=version,
         url=url,
         expected_size=expected_size,
+        build_version=build_version,
     )
 
 
@@ -470,16 +481,27 @@ def _parse_existing(content: str) -> _UpstreamState:
     if match is None:
         _fail("source.nix does not match the updater-owned format")
 
-    app_name, *source_values = match.groups()
+    app_name, macos_version, macos_url, macos_hash, build_version, *source_values = (
+        match.groups()
+    )
     sources = {
-        system: _Source(*source_values[index * 3 : index * 3 + 3])
-        for index, system in enumerate(SUPPORTED_SYSTEMS)
+        "aarch64-darwin": _Source(
+            macos_version, macos_url, macos_hash, build_version=build_version
+        ),
+        **{
+            system: _Source(*source_values[index * 3 : index * 3 + 3])
+            for index, system in enumerate(SUPPORTED_SYSTEMS[1:])
+        },
     }
     return _UpstreamState(app_name=app_name, sources=sources)
 
 
 def _source_matches_discovery(existing: _Source, discovered: _DiscoveredSource) -> bool:
     if existing.version != discovered.version or existing.url != discovered.url:
+        return False
+    if discovered.build_version is not None and (
+        existing.build_version != discovered.build_version
+    ):
         return False
     return discovered.published_sha256 is None or existing.hash_sri == (
         _hex_sha256_to_sri(discovered.published_sha256)
@@ -523,6 +545,7 @@ def _fetch_upstream(
             version=discovered.version,
             url=discovered.url,
             hash_sri=result.hash_sri,
+            build_version=discovered.build_version,
         )
     return _UpstreamState(app_name=release.app_name, sources=sources)
 
@@ -540,8 +563,10 @@ def _render_source(upstream: _UpstreamState) -> str:
             f'      version = "{source.version}";',
             f'      url = "{source.url}";',
             f'      hash = "{source.hash_sri}";',
-            "    };",
         ])
+        if source.build_version is not None:
+            lines.append(f'      buildVersion = "{source.build_version}";')
+        lines.append("    };")
     lines.extend(["  };", "}"])
     return "\n".join(lines) + "\n"
 

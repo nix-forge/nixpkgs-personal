@@ -105,6 +105,96 @@ class SourceMetadataTests(unittest.TestCase):
 
         self.assertFalse(update._source_matches_discovery(existing, discovered))
 
+    def test_macos_republished_build_is_detected_without_a_version_change(self) -> None:
+        """A new Sparkle build at the same archive URL needs a source refresh."""
+        source = _source("aarch64-darwin")
+        existing = update._Source(
+            source.version, source.url, source.hash_sri, build_version="13232"
+        )
+        discovered = update._DiscoveredSource(
+            source.version, source.url, expected_size=1, build_version="13520"
+        )
+        self.assertFalse(update._source_matches_discovery(existing, discovered))
+        current = update._Source(
+            source.version, source.url, source.hash_sri, build_version="13520"
+        )
+        self.assertTrue(update._source_matches_discovery(current, discovered))
+
+    def test_macos_build_identity_round_trips_and_migrates_old_pins(self) -> None:
+        """Persist the build identity and refresh pins that predate its tracking."""
+        sources = {system: _source(system) for system in update.SUPPORTED_SYSTEMS}
+        macos = sources["aarch64-darwin"]
+        discovered = update._DiscoveredSource(
+            macos.version, macos.url, expected_size=1, build_version="13520"
+        )
+        self.assertFalse(update._source_matches_discovery(macos, discovered))
+        sources["aarch64-darwin"] = update._Source(
+            macos.version, macos.url, macos.hash_sri, build_version="13520"
+        )
+        state = update._UpstreamState(app_name="ChatGPT", sources=sources)
+        self.assertEqual(update._parse_existing(update._render_source(state)), state)
+
+    def test_macos_feed_records_the_numeric_build_identity(self) -> None:
+        """Track Sparkle's build rather than only its reused short version."""
+        source = _source("aarch64-darwin")
+        xml = f'''<rss xmlns:sparkle="{update.SPARKLE_NAMESPACE["sparkle"]}">
+          <channel><item>
+            <sparkle:version>13520</sparkle:version>
+            <sparkle:shortVersionString>{source.version}</sparkle:shortVersionString>
+            <enclosure url="{source.url}" length="1"
+              sparkle:edSignature="{"A" * 86}==" />
+          </item></channel>
+        </rss>'''
+        with mock.patch.object(
+            update, "_fetch_xml", return_value=update.ET.fromstring(xml)
+        ):
+            _, discovered = update._discover_macos_source()
+        self.assertEqual(discovered.build_version, "13520")
+        with (
+            mock.patch.object(
+                update,
+                "_fetch_xml",
+                return_value=update.ET.fromstring(xml.replace("13520", "invalid")),
+            ),
+            contextlib.redirect_stderr(io.StringIO()),
+            self.assertRaises(SystemExit),
+        ):
+            update._discover_macos_source()
+
+    def test_fetched_macos_source_preserves_build_identity(self) -> None:
+        """The update path must write the identity needed by the next scheduled run."""
+        sources = {system: _source(system) for system in update.SUPPORTED_SYSTEMS}
+        source = sources["aarch64-darwin"]
+        discovered = update._DiscoveredSource(
+            source.version, source.url, expected_size=1, build_version="13520"
+        )
+        release = update._Release("ChatGPT", {"aarch64-darwin": discovered})
+        existing = update._UpstreamState("ChatGPT", sources)
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "macos.zip"
+            archive.write_bytes(b"x")
+            prefetched = update._PrefetchedSource(source.hash_sri, archive)
+            with mock.patch.object(update, "_prefetch_source", return_value=prefetched):
+                fetched = update._fetch_upstream(release, existing, ["aarch64-darwin"])
+        self.assertEqual(fetched.sources["aarch64-darwin"].build_version, "13520")
+        self.assertEqual(
+            update._changed_systems(
+                fetched,
+                update._Release(
+                    "ChatGPT",
+                    {
+                        system: discovered
+                        if system == "aarch64-darwin"
+                        else update._DiscoveredSource(
+                            sources[system].version, sources[system].url, 1
+                        )
+                        for system in update.SUPPORTED_SYSTEMS
+                    },
+                ),
+            ),
+            [],
+        )
+
 
 class DebianMetadataTests(unittest.TestCase):
     """Check APT records against the downloaded Debian package."""
