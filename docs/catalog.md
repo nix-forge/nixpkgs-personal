@@ -146,7 +146,7 @@ Anthropic's official Claude AI desktop app.
 
 [Recipe](../pkgs/by-name/cl/claude-desktop/package.nix) · [Package guide](../pkgs/by-name/cl/claude-desktop/README.md) · [Upstream](https://claude.com/download)
 
-- `aarch64-darwin`: 2.19675.1; unfree; includes unfree terms.
+- `aarch64-darwin`: 2.31226.1; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#claude-desktop
@@ -262,9 +262,9 @@ Matt Pocock's Agent Skills catalog.
 
 [Recipe](../pkgs/by-name/ma/mattpocock-skills/package.nix) · [Package guide](../pkgs/by-name/ma/mattpocock-skills/README.md) · [Upstream](https://github.com/mattpocock/skills)
 
-- `aarch64-darwin`: unstable-2026-10-06; [MIT](https://spdx.org/licenses/MIT.html).
-- `aarch64-linux`: unstable-2026-10-06; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: unstable-2026-10-06; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: unstable-2026-10-09; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: unstable-2026-10-09; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: unstable-2026-10-09; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#mattpocock-skills
@@ -276,7 +276,7 @@ Microsoft Teams.
 
 [Recipe](../pkgs/by-name/mi/microsoft-teams/package.nix) · [Package guide](../pkgs/by-name/mi/microsoft-teams/README.md) · [Upstream](https://teams.microsoft.com)
 
-- `aarch64-darwin`: 26246.1709.5146.8945; unfree; includes unfree terms.
+- `aarch64-darwin`: 26261.303.5165.1465; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#microsoft-teams
@@ -369,9 +369,9 @@ OpenAI desktop app with ChatGPT, Work, and Codex.
 
 [Recipe](../pkgs/by-name/op/openai-codex-desktop/package.nix) · [Package guide](../pkgs/by-name/op/openai-codex-desktop/README.md) · [Upstream](https://chatgpt.com/download/)
 
-- `aarch64-darwin`: 26.930.61225; unfree; includes unfree terms.
-- `aarch64-linux`: 26.930.61225; unfree; includes unfree terms.
-- `x86_64-linux`: 26.930.61225; unfree; includes unfree terms.
+- `aarch64-darwin`: 26.1007.30912; unfree; includes unfree terms.
+- `aarch64-linux`: 26.1007.21434; unfree; includes unfree terms.
+- `x86_64-linux`: 26.1007.21434; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#openai-codex-desktop
@@ -411,9 +411,9 @@ pstack Agent Skills catalog.
 
 [Recipe](../pkgs/by-name/ps/pstack-skills/package.nix) · [Package guide](../pkgs/by-name/ps/pstack-skills/README.md) · [Upstream](https://github.com/cursor/plugins/tree/main/pstack)
 
-- `aarch64-darwin`: unstable-2026-10-06; [MIT](https://spdx.org/licenses/MIT.html).
-- `aarch64-linux`: unstable-2026-10-06; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: unstable-2026-10-06; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: unstable-2026-10-12; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: unstable-2026-10-12; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: unstable-2026-10-12; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#pstack-skills
@@ -437,7 +437,7 @@ Spotify for macOS patched with SpotX-Bash and signed as a complete app bundle.
 
 [Recipe](../pkgs/by-name/sp/spotify-spotx/package.nix) · [Package guide](../pkgs/by-name/sp/spotify-spotx/README.md) · [Upstream](https://github.com/SpotX-Official/SpotX-Bash)
 
-- `aarch64-darwin`: 1.3.3.264; unfree; includes unfree terms.
+- `aarch64-darwin`: 1.3.4.258; unfree; includes unfree terms.
 - `x86_64-linux`: 1.2.95.453.g0eeebbed; unfree; includes unfree terms.
 
 Hosted CI: Evaluation only: CI would execute Spotify modifications covered by the service's alteration and ad-blocking restrictions.
@@ -519,7 +519,7 @@ PersonalMonitor, an unofficial build of the Vorssaint macOS toolkit.
 
 [Recipe](../pkgs/by-name/vo/vorssaint/package.nix) · [Package guide](../pkgs/by-name/vo/vorssaint/README.md) · [Upstream](https://vorssaint.com/)
 
-- `aarch64-darwin`: 3.4.0; [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html).
+- `aarch64-darwin`: 3.4.1; [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#vorssaint
