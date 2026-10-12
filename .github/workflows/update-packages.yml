@@ -96,7 +96,8 @@ jobs:
           # automation/package-updates name and prevents nested refs below it.
           branch="automation/package-updates-$PACKAGE"
           existing=$(gh pr list --repo "$REPOSITORY" --head "$branch" --state open \
-            --json url,author --jq '.[] | select(.author.login == "github-actions[bot]") | .url')
+            --json url,author,isCrossRepository \
+            --jq '.[] | select(.isCrossRepository == false and .author.is_bot == true and .author.login == "app/github-actions") | .url')
           if [[ -z "$existing" ]] && gh pr list --repo "$REPOSITORY" --head "$branch" \
             --state open --json url --jq '.[0].url' | grep -q .; then
             echo "An open PR on $branch is not owned by github-actions[bot]." >&2
