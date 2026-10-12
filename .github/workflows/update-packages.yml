@@ -1,23 +1,44 @@
 name: Update packages
 on:
   schedule:
-    - cron: "23 4 * * 1"
+    - cron: "23 4 * * *"
   workflow_dispatch:
 concurrency:
   group: package-updates
   cancel-in-progress: false
 permissions: {}
 jobs:
-  update:
+  discover:
+    name: Discover package updaters
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-    # Updaters inspect macOS release archives with native extraction tools.
-    # Upstream executables are checked only by the read-only package build CI.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      packages: ${{ steps.packages.outputs.names }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: packages
+        run: echo "names=$(python3 scripts/update-packages.py --list-json)" >> "$GITHUB_OUTPUT"
+  update:
+    needs: discover
+    if: needs.discover.result == 'success'
+    # Each updater gets a clean checkout and a separate PR.
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        package: ${{ fromJSON(needs.discover.outputs.packages) }}
+    name: Update ${{ matrix.package }}
     runs-on: macos-26
     timeout-minutes: 90
     permissions:
-      actions: write # Dispatch trusted queue validation.
-      contents: write # Update trusted repository automation.
-      pull-requests: write # Update pull request metadata.
+      actions: write # Dispatch validation suppressed by GITHUB_TOKEN.
+      contents: write # Push this package's update branch.
+      pull-requests: write # Open its PR and enable merge queue admission.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,51 +52,133 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh auth setup-git
-      - name: Update pinned sources
+      - name: Update pinned source
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: nix develop --command python scripts/update-packages.py --all --keep-going --allow-partial
-      - name: Create or update the package pull request
+          PACKAGE: ${{ matrix.package }}
+        run: nix develop --command python scripts/update-packages.py --package "$PACKAGE"
+      - name: Publish package pull request
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          PACKAGE: ${{ matrix.package }}
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet; then
-            echo "All package pins are current."
+          [[ "$PACKAGE" =~ ^[a-z0-9][a-z0-9+._-]*$ ]]
+          package_path="pkgs/by-name/${PACKAGE:0:2}/$PACKAGE"
+          git add -A
+          while IFS= read -r -d '' path; do
+            if [[ "$path" != "$package_path/"* ]]; then
+              echo "Updater changed a file outside $package_path: $path" >&2
+              exit 1
+            fi
+          done < <(git diff --cached --no-renames --name-only -z)
+          if git diff --cached --quiet; then
+            echo "$PACKAGE is current."
             exit 0
           fi
 
+          # The updater must never edit this shared artifact itself. Only the
+          # trusted default-branch generator runs after the package-only guard.
           nix develop --command python scripts/package-catalog.py
-          base_sha=$(git rev-parse HEAD)
-          branch="automation/package-updates"
-          git fetch origin "$branch" || true
-          git switch --force-create "$branch"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pkgs scripts docs/catalog.md
-          git commit -m "maint: update package sources"
-          git push --force-with-lease --set-upstream origin "$branch"
+          git add -A
+          while IFS= read -r -d '' path; do
+            if [[ "$path" != "$package_path/"* && "$path" != docs/catalog.md ]]; then
+              echo "Catalog generation changed a file outside $package_path or docs/catalog.md: $path" >&2
+              exit 1
+            fi
+          done < <(git diff --cached --no-renames --name-only -z)
 
-          pr_url=$(gh pr list --repo "$REPOSITORY" --head "$branch" --state open --json url --jq '.[0].url')
-          if [[ -z "$pr_url" ]]; then
-            pr_url=$(gh pr create \
-              --repo "$REPOSITORY" \
-              --base main \
-              --head "$branch" \
-              --title "maint: update package sources" \
-              --body "Automated package source updates.")
+          base_sha=$(git rev-parse HEAD)
+          branch="automation/package-updates/$PACKAGE"
+          existing=$(gh pr list --repo "$REPOSITORY" --head "$branch" --state open \
+            --json url,author --jq '.[] | select(.author.login == "github-actions[bot]") | .url')
+          if [[ -z "$existing" ]] && gh pr list --repo "$REPOSITORY" --head "$branch" \
+            --state open --json url --jq '.[0].url' | grep -q .; then
+            echo "An open PR on $branch is not owned by github-actions[bot]." >&2
+            exit 1
           fi
 
-          # GITHUB_TOKEN does not trigger ordinary PR workflows. Explicit
-          # dispatches publish required checks against the update commit.
-          gh workflow run ci.yml --repo "$REPOSITORY" --ref "$branch" -f base_sha="$base_sha"
-          gh workflow run codeql.yml --repo "$REPOSITORY" --ref "$branch"
-          gh workflow run dependency-review.yml --repo "$REPOSITORY" --ref "$branch" \
-            -f base_ref=main \
-            -f head_ref="$branch"
+          rewrite=true
+          old_sha=$(git ls-remote --heads origin "$branch" | cut -f1)
+          if [[ -n "$existing" && -n "$old_sha" ]]; then
+            git fetch origin "$branch"
+            # A merged package can change the shared catalog or the branch's
+            # base. Rebuild the bot branch from current main when either differs.
+            if git diff --cached --quiet "$old_sha"; then
+              mergeable=$(gh pr view "$existing" --repo "$REPOSITORY" --json mergeable --jq .mergeable)
+              if [[ "$mergeable" == MERGEABLE ]]; then
+                echo "$PACKAGE already has a mergeable PR for this complete tree. Resume its validation."
+                rewrite=false
+                head_sha="$old_sha"
+              fi
+            fi
+          fi
+          if [[ "$rewrite" == true ]]; then
+            git switch --force-create "$branch"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -s -m "maint: update $PACKAGE source"
+            head_sha=$(git rev-parse HEAD)
+            if [[ -n "$old_sha" ]]; then
+              git push --force-with-lease="refs/heads/$branch:$old_sha" --set-upstream origin "$branch"
+            else
+              git push --set-upstream origin "$branch"
+            fi
+          fi
 
-          # Validation completion triggers the shared reconciler. It alone
-          # admits eligible updates, leaving automation changes for review.
-    name: update
+          pr_url="$existing"
+          if [[ -z "$pr_url" ]]; then
+            pr_url=$(gh pr create --repo "$REPOSITORY" --base "$BASE_BRANCH" \
+              --head "$branch" --title "maint: update $PACKAGE source" \
+              --body "Automated source update for $PACKAGE. CI builds the affected package on supported platforms.")
+          fi
+
+          # Resume an interrupted publication without rewriting an identical
+          # branch or duplicating running, completed, or failed validation.
+          dispatch_missing_validation() {
+            local workflow=$1 metadata workflow_id runs attempt current_sha
+            metadata=$(gh api "repos/$REPOSITORY/actions/workflows/$workflow")
+            workflow_id=$(jq -er --arg path ".github/workflows/$workflow" '
+              select(.path == $path and .state == "active" and (.id | type) == "number") | .id
+            ' <<< "$metadata")
+            for attempt in 1 2 3; do
+              runs=$(gh api "repos/$REPOSITORY/actions/workflows/$workflow/runs?head_sha=$head_sha&per_page=100")
+              jq -e '(.workflow_runs | type) == "array" and (.total_count | type) == "number"' <<< "$runs" >/dev/null
+              if jq -e --arg repo "$REPOSITORY" --arg branch "$branch" --arg sha "$head_sha" \
+                --arg path ".github/workflows/$workflow" --argjson id "$workflow_id" '
+                .workflow_runs | any(
+                  (.id | type) == "number" and .id > 0 and .run_attempt >= 1 and
+                  .workflow_id == $id and .path == $path and .head_sha == $sha and
+                  .head_branch == $branch and .repository.full_name == $repo and
+                  .head_repository.full_name == $repo and
+                  (.event == "pull_request" or .event == "workflow_dispatch")
+                )
+              ' <<< "$runs" >/dev/null; then
+                echo "$workflow already has validation for $head_sha."
+                return
+              fi
+              # Do not infer absence from a truncated history response.
+              if [[ $(jq -r .total_count <<< "$runs") -gt 100 ]]; then
+                echo "Too many runs to prove missing exact-head validation for $workflow." >&2
+                exit 1
+              fi
+              if [[ "$attempt" -lt 3 ]]; then sleep 2; fi
+            done
+            current_sha=$(git ls-remote --heads origin "$branch" | cut -f1)
+            [[ "$current_sha" == "$head_sha" ]]
+            case "$workflow" in
+              ci.yml|dco.yml)
+                gh workflow run "$workflow" --repo "$REPOSITORY" --ref "$branch" -f base_sha="$base_sha" ;;
+              dependency-review.yml)
+                gh workflow run "$workflow" --repo "$REPOSITORY" --ref "$branch" \
+                  -f base_ref="$base_sha" -f head_ref="$head_sha" ;;
+              *) gh workflow run "$workflow" --repo "$REPOSITORY" --ref "$branch" ;;
+            esac
+          }
+          for workflow in ci.yml codeql.yml dependency-review.yml dco.yml fuzz.yml; do
+            dispatch_missing_validation "$workflow"
+          done
+          gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --match-head-commit "$head_sha"

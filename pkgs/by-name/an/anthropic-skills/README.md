@@ -32,9 +32,9 @@ with `selectedSkills = [ "docx" "pdf" "pptx" "xlsx" ];`. They remain unfree.
 which lacks an explicit per-skill license at this pin and is conservatively
 classified unfree. It is preserved unchanged pending clarification.
 
-Anthropic's [pinned README](https://github.com/anthropics/skills/blob/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/README.md)
+Anthropic's [pinned README](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/README.md)
 documents document-skills installation in Claude Code and Claude integrations.
-Its [document-skill terms](https://github.com/anthropics/skills/blob/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/docx/LICENSE.txt)
+Its [document-skill terms](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/docx/LICENSE.txt)
 restrict retention outside the Services and derivative works. Use those skills
 within an applicable supported Anthropic agreement; the package does not
 establish permission to export them to arbitrary agents. Local installation
