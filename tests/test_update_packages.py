@@ -127,7 +127,7 @@ class PublisherTests(unittest.TestCase):
             self.write(f"pkgs/by-name/{name[:2]}/{name}/source.txt", "1\n")
         self.write("docs/catalog.md", "first=1\nsecond=1\n")
         self.write("README.md", "Reviewed root documentation.\n")
-        self.commit("base")
+        self._commit("base")
         subprocess.run(
             ["git", "init", "-q", "--bare", str(self.remote)],
             env=self.env,
@@ -178,6 +178,12 @@ elif args[:2] == ["pr", "create"]:
     print("https://github.com/example/repository/pull/1")
 elif args[:1] == ["api"]:
     path = args[1]
+    if "/actions/runs/" in path and "/jobs?" in path:
+        if os.environ.get("BLOCKED_JOBS_API_FAIL"):
+            raise SystemExit(1)
+        jobs = [{"id": 200, "status": "completed", "conclusion": "failure"}] if os.environ.get("BLOCKED_EXECUTED_JOB") else []
+        print(json.dumps({"total_count": len(jobs), "jobs": jobs}))
+        raise SystemExit(0)
     workflow = path.split("/actions/workflows/", 1)[1].split("/", 1)[0]
     names = ["ci.yml", "codeql.yml", "dependency-review.yml", "dco.yml", "fuzz.yml"]
     identity = names.index(workflow) + 1
@@ -250,11 +256,11 @@ if os.environ.get("GENERATOR_EXTRA"):
             text=True,
         ).strip()
 
-    def commit(self, message: str) -> None:
+    def _commit(self, message: str) -> None:
         self.git("add", "-A")
         self.git("commit", "-qm", message)
 
-    def publish(self) -> subprocess.CompletedProcess[str]:
+    def _publish(self) -> subprocess.CompletedProcess[str]:
         workflow = SCRIPT.parents[1] / ".github/workflows/update-packages.yml"
         step = workflow.read_text().split(
             "      - name: Publish package pull request\n", 1
@@ -281,7 +287,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.git("switch", "-qc", "automation/package-updates-first")
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         self.write("docs/catalog.md", "first=2\nsecond=1\n")
-        self.commit("old bot update")
+        self._commit("old bot update")
         self.git("push", "-q", "origin", "HEAD")
         self.env["PRESENT_HEAD"] = self.git("rev-parse", "HEAD")
         self.env["PRESENT_WORKFLOWS"] = json.dumps(
@@ -301,7 +307,7 @@ if os.environ.get("GENERATOR_EXTRA"):
 
     def test_published_update_contains_generated_catalog_and_one_package(self) -> None:
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.git("show", "HEAD:docs/catalog.md"), "first=2\nsecond=1")
         self.assertEqual(
@@ -319,7 +325,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         legacy_sha = self.git("rev-parse", "HEAD")
         self.git("push", "-q", "origin", "HEAD:" + legacy_ref)
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.git("ls-remote", "origin", legacy_ref).split()[0], legacy_sha
@@ -332,7 +338,7 @@ if os.environ.get("GENERATOR_EXTRA"):
 
     def test_publisher_dispatches_one_complete_validation_set(self) -> None:
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         workflows = [
             call[2] for call in self.api_calls() if call[:2] == ["workflow", "run"]
@@ -350,7 +356,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         ):
             with self.subTest(path=path):
                 self.write(path, "unreviewed updater mutation\n")
-                result = self.publish()
+                result = self._publish()
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("Updater changed a file outside", result.stderr)
                 self.assertFalse((self.root / "nix.jsonl").exists())
@@ -360,13 +366,13 @@ if os.environ.get("GENERATOR_EXTRA"):
     def test_generator_failure_never_publishes(self) -> None:
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         self.env["GENERATOR_FAIL"] = "1"
-        self.assertNotEqual(self.publish().returncode, 0)
+        self.assertNotEqual(self._publish().returncode, 0)
         self.assertEqual(self.api_calls(), [])
 
     def test_generator_cannot_edit_additional_repository_files(self) -> None:
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         self.env["GENERATOR_EXTRA"] = "1"
-        result = self.publish()
+        result = self._publish()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("outside", result.stderr)
         self.assertEqual(self.api_calls(), [])
@@ -375,10 +381,10 @@ if os.environ.get("GENERATOR_EXTRA"):
         self._old_pr()
         self.write("pkgs/by-name/se/second/source.txt", "2\n")
         self.write("docs/catalog.md", "first=1\nsecond=2\n")
-        self.commit("another reviewed package")
+        self._commit("another reviewed package")
         base = self.git("rev-parse", "HEAD")
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.git("show", "HEAD:docs/catalog.md"), "first=2\nsecond=2")
         self.assertEqual(self.git("rev-parse", "HEAD^"), base)
@@ -398,7 +404,7 @@ if os.environ.get("GENERATOR_EXTRA"):
                     self.env.pop(key, None)
                 self.env.update(identity)
                 self.write("pkgs/by-name/fi/first/source.txt", "2\n")
-                result = self.publish()
+                result = self._publish()
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("not owned by github-actions[bot]", result.stderr)
                 self.assertEqual(self.git("ls-remote", "origin", ref), before)
@@ -407,13 +413,33 @@ if os.environ.get("GENERATOR_EXTRA"):
                 )
                 self.git("reset", "--hard", "HEAD")
 
+    def test_reviewed_workflow_drift_refreshes_without_changing_pr_scope(self) -> None:
+        self._old_pr()
+        old_sha = self.env["PRESENT_HEAD"]
+        self.write(".github/workflows/dco.yml", "reviewed dispatch contract\n")
+        self._commit("reviewed validation contract")
+        base = self.git("rev-parse", "HEAD")
+        self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+        result = self._publish()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotEqual(self.git("rev-parse", "HEAD"), old_sha)
+        self.assertEqual(self.git("rev-parse", "HEAD^"), base)
+        self.assertEqual(
+            self.git("show", "HEAD:.github/workflows/dco.yml"),
+            "reviewed dispatch contract",
+        )
+        self.assertEqual(
+            set(self.git("diff", "--name-only", base, "HEAD").splitlines()),
+            {"pkgs/by-name/fi/first/source.txt", "docs/catalog.md"},
+        )
+
     def test_identical_mergeable_pr_is_not_rewritten(self) -> None:
         self._old_pr()
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         before = self.git(
             "ls-remote", "origin", "refs/heads/automation/package-updates-first"
         )
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.git(
@@ -435,7 +461,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         before = self.git(
             "ls-remote", "origin", "refs/heads/automation/package-updates-first"
         )
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.git(
@@ -450,11 +476,63 @@ if os.environ.get("GENERATOR_EXTRA"):
         merge = next(call for call in self.api_calls() if call[:2] == ["pr", "merge"])
         self.assertEqual(merge[-2:], ["--match-head-commit", self.env["PRESENT_HEAD"]])
 
+    def test_action_required_needs_proof_of_no_executed_jobs(self) -> None:
+        self._old_pr()
+        self.env["PRESENT_WORKFLOWS"] = json.dumps(
+            dict.fromkeys(
+                (
+                    "ci.yml",
+                    "codeql.yml",
+                    "dependency-review.yml",
+                    "dco.yml",
+                    "fuzz.yml",
+                ),
+                "action_required",
+            )
+        )
+        before = self.git(
+            "ls-remote", "origin", "refs/heads/automation/package-updates-first"
+        )
+        for executed, api_error, dispatch_count, success in (
+            (False, False, 5, True),
+            (True, False, 0, True),
+            (False, True, 0, False),
+        ):
+            with self.subTest(executed=executed, api_error=api_error):
+                self.git("reset", "--hard", "HEAD")
+                for key in ("BLOCKED_EXECUTED_JOB", "BLOCKED_JOBS_API_FAIL"):
+                    self.env.pop(key, None)
+                if executed:
+                    self.env["BLOCKED_EXECUTED_JOB"] = "true"
+                if api_error:
+                    self.env["BLOCKED_JOBS_API_FAIL"] = "true"
+                (self.root / "gh.jsonl").unlink(missing_ok=True)
+                self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+                result = self._publish()
+                self.assertEqual(result.returncode == 0, success, result.stderr)
+                dispatches = [
+                    call for call in self.api_calls() if call[:2] == ["workflow", "run"]
+                ]
+                self.assertEqual(len(dispatches), dispatch_count)
+                self.assertEqual(
+                    self.git(
+                        "ls-remote",
+                        "origin",
+                        "refs/heads/automation/package-updates-first",
+                    ),
+                    before,
+                )
+                self.assertEqual(
+                    any(call[:2] == ["pr", "merge"] for call in self.api_calls()),
+                    success,
+                )
+                self.git("reset", "--hard", "HEAD")
+
     def test_delayed_validation_visibility_does_not_duplicate_run(self) -> None:
         self._old_pr()
         self.env["DELAYED_WORKFLOW"] = "dco.yml"
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(
             any(call[:2] == ["workflow", "run"] for call in self.api_calls())
@@ -471,7 +549,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.env["WRONG_REPOSITORY_WORKFLOW"] = "ci.yml"
         self.env["WRONG_EVENT_WORKFLOW"] = "dco.yml"
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             [call[2] for call in self.api_calls() if call[:2] == ["workflow", "run"]],
@@ -482,7 +560,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         self._old_pr()
         self.env["API_FAIL_WORKFLOW"] = "ci.yml"
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
-        self.assertNotEqual(self.publish().returncode, 0)
+        self.assertNotEqual(self._publish().returncode, 0)
         self.assertFalse(any(call[:2] == ["pr", "merge"] for call in self.api_calls()))
 
     def test_conflicting_pr_refreshes_even_when_target_files_match(self) -> None:
@@ -490,12 +568,161 @@ if os.environ.get("GENERATOR_EXTRA"):
         base = self.git("rev-parse", "HEAD")
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         self.env["MERGEABLE"] = "CONFLICTING"
-        result = self.publish()
+        result = self._publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.git("rev-parse", "HEAD^"), base)
         self.assertTrue(
             any(call[:2] == ["workflow", "run"] for call in self.api_calls())
         )
+
+
+class SourceDcoTests(unittest.TestCase):
+    """Run the actual DCO workflow shell on real source and queue commits."""
+
+    def _fixture(
+        self,
+        *,
+        signed: bool = True,
+        invalid: str | None = None,
+        queue: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkout = root / "checkout"
+            checkout.mkdir()
+            tools = root / "tools"
+            tools.mkdir()
+            env = {
+                **os.environ,
+                "GIT_CONFIG_GLOBAL": os.devnull,
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "PATH": str(tools) + os.pathsep + os.environ["PATH"],
+            }
+
+            def git(*args: str) -> str:
+                return subprocess.check_output(
+                    ["git", "-C", str(checkout), *args],
+                    env=env,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                ).strip()
+
+            git("init", "-q", "--initial-branch=main")
+            git("config", "user.name", "Fixture")
+            git("config", "user.email", "fixture@example.invalid")
+            git("config", "commit.gpgsign", "false")
+            workflow_dir = checkout / ".github/workflows"
+            workflow_dir.mkdir(parents=True)
+            for name in (
+                "ci.yml",
+                "dco.yml",
+                "codeql.yml",
+                "dependency-review.yml",
+                "fuzz.yml",
+            ):
+                (workflow_dir / name).write_text("reviewed workflow\n")
+            source = checkout / "pkgs/by-name/fi/first/source.txt"
+            source.parent.mkdir(parents=True)
+            source.write_text("1\n")
+            git("add", "-A")
+            git("commit", "-qsm", "reviewed main")
+            base = git("rev-parse", "HEAD")
+            subprocess.run(
+                ["git", "init", "-q", "--bare", str(root / "remote.git")],
+                env=env,
+                check=True,
+            )
+            git("remote", "add", "origin", str(root / "remote.git"))
+            git("push", "-q", "origin", "main")
+            branch = "automation/package-updates-first"
+            git("switch", "-qc", branch)
+            if invalid == "ancestry":
+                git("commit", "--allow-empty", "-qsm", "unreviewed side base")
+                base = git("rev-parse", "HEAD")
+            source.write_text("2\n")
+            if invalid == "scope":
+                (checkout / "README.md").write_text("untrusted change\n")
+            git("add", "-A")
+            git("commit", "-qm" if not signed else "-qsm", "source update")
+            head = git("rev-parse", "HEAD")
+            if invalid == "drift":
+                git("switch", "-q", "main")
+                (workflow_dir / "dco.yml").write_text("new reviewed workflow\n")
+                git("add", "-A")
+                git("commit", "-qsm", "reviewed contract drift")
+                git("push", "-q", "origin", "main")
+                git("switch", "-q", branch)
+            if queue:
+                git("commit", "--allow-empty", "-qm", "unsigned synthetic queue tip")
+                base, head = head, git("rev-parse", "HEAD")
+            record = {
+                "draft": False,
+                "state": "open",
+                "user": {
+                    "id": 123 if invalid == "owner" else 41898282,
+                    "type": "Bot",
+                    "login": "github-actions[bot]",
+                },
+                "head": {
+                    "sha": head,
+                    "ref": branch,
+                    "repo": {
+                        "full_name": "other/repository"
+                        if invalid == "fork"
+                        else "example/repository"
+                    },
+                },
+                "base": {"ref": "main", "repo": {"full_name": "example/repository"}},
+            }
+            gh = tools / "gh"
+            gh.write_text(
+                "#!" + sys.executable + "\nimport os\nprint(os.environ['PR_JSON'])\n"
+            )
+            gh.chmod(0o755)
+            env.update({
+                "EVENT_NAME": "workflow_dispatch",
+                "BASE_SHA": "0" * 40 if invalid == "parent" else base,
+                "HEAD_SHA": head,
+                "PR_NUMBER": "",
+                "DEFAULT_BRANCH": "main",
+                "GITHUB_REF": "refs/heads/"
+                + ("gh-readonly-queue/main/fixture" if queue else branch),
+                "GITHUB_REPOSITORY": "example/repository",
+                "PR_JSON": json.dumps([record]),
+            })
+            workflow = SCRIPT.parents[1] / ".github/workflows/dco.yml"
+            step = workflow.read_text().split(
+                "      - name: Check every proposed commit\n", 1
+            )[1]
+            shell = textwrap.dedent(
+                step.split("        run: |\n", 1)[1].split("  queue-completion:\n", 1)[
+                    0
+                ]
+            )
+            return subprocess.run(
+                ["bash", "-c", shell],
+                cwd=checkout,
+                env=env,
+                text=True,
+                capture_output=True,
+            )
+
+    def test_signed_source_head_passes(self) -> None:
+        result = self._fixture()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_unsigned_actual_source_head_fails(self) -> None:
+        self.assertNotEqual(self._fixture(signed=False).returncode, 0)
+
+    def test_untrusted_owner_scope_parent_and_contract_fail(self) -> None:
+        for invalid in ("owner", "fork", "scope", "parent", "ancestry", "drift"):
+            with self.subTest(invalid=invalid):
+                self.assertNotEqual(self._fixture(invalid=invalid).returncode, 0)
+
+    def test_queue_still_excludes_only_unsigned_synthetic_tip(self) -> None:
+        result = self._fixture(queue=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotEqual(self._fixture(queue=True, invalid="parent").returncode, 0)
 
 
 if __name__ == "__main__":

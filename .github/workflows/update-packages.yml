@@ -143,6 +143,7 @@ jobs:
           # branch or duplicating running, completed, or failed validation.
           dispatch_missing_validation() {
             local workflow=$1 metadata workflow_id runs attempt current_sha
+            local matching blocked jobs
             metadata=$(gh api "repos/$REPOSITORY/actions/workflows/$workflow")
             workflow_id=$(jq -er --arg path ".github/workflows/$workflow" '
               select(.path == $path and .state == "active" and (.id | type) == "number") | .id
@@ -150,19 +151,30 @@ jobs:
             for attempt in 1 2 3; do
               runs=$(gh api "repos/$REPOSITORY/actions/workflows/$workflow/runs?head_sha=$head_sha&per_page=100")
               jq -e '(.workflow_runs | type) == "array" and (.total_count | type) == "number"' <<< "$runs" >/dev/null
-              if jq -e --arg repo "$REPOSITORY" --arg branch "$branch" --arg sha "$head_sha" \
+              matching=$(jq --arg repo "$REPOSITORY" --arg branch "$branch" --arg sha "$head_sha" \
                 --arg path ".github/workflows/$workflow" --argjson id "$workflow_id" '
-                .workflow_runs | any(
+                .workflow_runs | map(select(
                   (.id | type) == "number" and .id > 0 and .run_attempt >= 1 and
                   .workflow_id == $id and .path == $path and .head_sha == $sha and
                   .head_branch == $branch and .repository.full_name == $repo and
                   .head_repository.full_name == $repo and
                   (.event == "pull_request" or .event == "workflow_dispatch")
-                )
-              ' <<< "$runs" >/dev/null; then
+                ))
+              ' <<< "$runs")
+              if jq -e 'any(.status != "completed" or .conclusion != "action_required")' <<< "$matching" >/dev/null; then
                 echo "$workflow already has validation for $head_sha."
                 return
               fi
+              # Approval-blocked PR runs can exist without executing any jobs.
+              # Prove they are empty before dispatching genuinely missing checks.
+              while IFS= read -r blocked; do
+                jobs=$(gh api "repos/$REPOSITORY/actions/runs/$blocked/jobs?per_page=100")
+                jq -e '(.total_count | type) == "number" and .total_count >= 0 and (.jobs | type) == "array"' <<< "$jobs" >/dev/null
+                if jq -e '.total_count != 0 or (.jobs | length) != 0' <<< "$jobs" >/dev/null; then
+                  echo "$workflow has existing jobs for $head_sha; preserve its result."
+                  return
+                fi
+              done < <(jq -r '.[] | .id' <<< "$matching")
               # Do not infer absence from a truncated history response.
               if [[ $(jq -r .total_count <<< "$runs") -gt 100 ]]; then
                 echo "Too many runs to prove missing exact-head validation for $workflow." >&2
