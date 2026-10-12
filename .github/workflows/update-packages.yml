@@ -80,6 +80,17 @@ jobs:
             exit 0
           fi
 
+          # The updater must never edit this shared artifact itself. Only the
+          # trusted default-branch generator runs after the package-only guard.
+          nix develop --command python scripts/package-catalog.py
+          git add -A
+          while IFS= read -r -d '' path; do
+            if [[ "$path" != "$package_path/"* && "$path" != docs/catalog.md ]]; then
+              echo "Catalog generation changed a file outside $package_path or docs/catalog.md: $path" >&2
+              exit 1
+            fi
+          done < <(git diff --cached --no-renames --name-only -z)
+
           base_sha=$(git rev-parse HEAD)
           branch="automation/package-updates/$PACKAGE"
           existing=$(gh pr list --repo "$REPOSITORY" --head "$branch" --state open \
@@ -93,9 +104,14 @@ jobs:
           old_sha=$(git ls-remote --heads origin "$branch" | cut -f1)
           if [[ -n "$existing" && -n "$old_sha" ]]; then
             git fetch origin "$branch"
-            if git diff --cached --quiet "$old_sha" -- "$package_path"; then
-              echo "$PACKAGE already has a PR for these package files."
-              exit 0
+            # A merged package can change the shared catalog or the branch's
+            # base. Rebuild the bot branch from current main when either differs.
+            if git diff --cached --quiet "$old_sha"; then
+              mergeable=$(gh pr view "$existing" --repo "$REPOSITORY" --json mergeable --jq .mergeable)
+              if [[ "$mergeable" == MERGEABLE ]]; then
+                echo "$PACKAGE already has a mergeable PR for this complete tree."
+                exit 0
+              fi
             fi
           fi
           git switch --force-create "$branch"
@@ -123,5 +139,4 @@ jobs:
             -f base_ref="$base_sha" -f head_ref="$head_sha"
           gh workflow run dco.yml --repo "$REPOSITORY" --ref "$branch" -f base_sha="$base_sha"
           gh workflow run fuzz.yml --repo "$REPOSITORY" --ref "$branch"
-          gh workflow run nur.yml --repo "$REPOSITORY" --ref "$branch"
           gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --match-head-commit "$head_sha"
