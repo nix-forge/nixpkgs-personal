@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read # Verify owned package update PR metadata.
     steps:
       - name: Check out the merge ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,6 +38,7 @@ jobs:
             }}
           PR_NUMBER: ${{ github.event.pull_request.number || '' }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -98,8 +100,51 @@ jobs:
             EVENT_NAME=$original_event
           }
 
+          check_source_dispatch() {
+            [[ "$GITHUB_REF" == refs/heads/automation/package-updates-* ]] || return 1
+            [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ && "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || return 1
+            test "$(git rev-parse HEAD)" = "$HEAD_SHA" || return 1
+            # A source update is one real commit, not a synthetic queue tip.
+            test "$(git show -s --format=%P "$HEAD_SHA")" = "$BASE_SHA" || return 1
+            git fetch --no-tags origin "$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
+            git merge-base --is-ancestor "$BASE_SHA" "refs/remotes/origin/$DEFAULT_BRANCH"
+            local branch=${GITHUB_REF#refs/heads/} package package_path path changed=false workflow
+            package=${branch#automation/package-updates-}
+            [[ "$package" =~ ^[a-z0-9][a-z0-9+._-]*$ ]] || return 1
+            package_path="pkgs/by-name/${package:0:2}/$package"
+            while IFS= read -r -d '' path; do
+              if [[ "$path" == "$package_path/"* ]]; then
+                changed=true
+              elif [[ "$path" != docs/catalog.md ]]; then
+                return 1
+              fi
+            done < <(git diff --no-renames --name-only -z "$BASE_SHA" "$HEAD_SHA")
+            [[ "$changed" == true ]] || return 1
+            # Stale validation contracts require a source branch refresh, not
+            # copying CI files into the focused package update.
+            for workflow in ci.yml codeql.yml dependency-review.yml dco.yml fuzz.yml; do
+              test "$(git rev-parse "${HEAD_SHA}:.github/workflows/$workflow")" = \
+                "$(git rev-parse "refs/remotes/origin/$DEFAULT_BRANCH:.github/workflows/$workflow")" || return 1
+            done
+            gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
+              -f state=open -f head="${GITHUB_REPOSITORY%%/*}:$branch" -f base="$DEFAULT_BRANCH" -f per_page=100 | \
+              jq -e --arg repo "$GITHUB_REPOSITORY" --arg sha "$HEAD_SHA" \
+                --arg branch "$branch" --arg base "$DEFAULT_BRANCH" '
+                map(select(.head.repo.full_name == $repo and .head.ref == $branch and
+                  .head.sha == $sha and .base.repo.full_name == $repo and .base.ref == $base)) |
+                length == 1 and .[0].state == "open" and .[0].draft == false and
+                .[0].user.id == 41898282 and .[0].user.type == "Bot" and
+                .[0].user.login == "github-actions[bot]"
+              ' >/dev/null
+            check_signoffs
+          }
+
           if [ "$EVENT_NAME" = workflow_dispatch ] && [ -n "$BASE_SHA" ]; then
-            check_queue_dispatch
+            if [[ "$GITHUB_REF" == refs/heads/gh-readonly-queue/"$DEFAULT_BRANCH"/* ]]; then
+              check_queue_dispatch
+            else
+              check_source_dispatch
+            fi
           elif [ "$EVENT_NAME" = schedule ] || [ "$EVENT_NAME" = workflow_dispatch ]; then
             fixture=$(mktemp -d)
             trap 'rm -rf "$fixture"' EXIT
