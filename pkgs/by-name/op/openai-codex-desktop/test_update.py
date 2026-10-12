@@ -138,12 +138,12 @@ class SourceMetadataTests(unittest.TestCase):
         """Track Sparkle's build rather than only its reused short version."""
         source = _source("aarch64-darwin")
         xml = f'''<rss xmlns:sparkle="{update.SPARKLE_NAMESPACE["sparkle"]}">
-          <channel><item>
-            <sparkle:version>13520</sparkle:version>
-            <sparkle:shortVersionString>{source.version}</sparkle:shortVersionString>
-            <enclosure url="{source.url}" length="1"
-              sparkle:edSignature="{"A" * 86}==" />
-          </item></channel>
+            <channel><item>
+                <sparkle:version>13520</sparkle:version>
+                <sparkle:shortVersionString>{source.version}</sparkle:shortVersionString>
+                <enclosure url="{source.url}" length="1"
+                    sparkle:edSignature="{"A" * 86}==" />
+            </item></channel>
         </rss>'''
         with mock.patch.object(
             update, "_fetch_xml", return_value=update.ET.fromstring(xml)
