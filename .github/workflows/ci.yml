@@ -79,7 +79,9 @@ jobs:
           cache: 'false'
           cache-scope: ci-lint
       - name: Test package automation publication
-        run: python3 -B -m unittest discover -s tests -p test_update_packages.py -v
+        run: |
+          test -f tests/test_update_packages.py
+          python3 -B -m unittest discover -s tests -p test_update_packages.py -v
       - name: Test build selection and source fetch retries
         run: python3 -m unittest discover -s .github/tests
       - name: Test safe release archive inspection
