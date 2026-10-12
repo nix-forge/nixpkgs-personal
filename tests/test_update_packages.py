@@ -172,14 +172,16 @@ elif args[:1] == ["api"]:
             calls = [json.loads(line) for line in Path(os.environ["GH_LOG"]).read_text().splitlines()]
             reads = sum(call[:1] == ["api"] and "/" + workflow + "/runs?" in call[1] for call in calls)
             if os.environ.get("DELAYED_WORKFLOW") != workflow or reads >= 2:
-                record = {"id": 100 + identity, "workflow_id": identity,
-                          "path": ".github/workflows/" + workflow,
-                          "head_sha": os.environ.get("PRESENT_HEAD", current_sha),
-                          "head_branch": "automation/package-updates/" + os.environ["PACKAGE"],
-                          "repository": {"full_name": os.environ["REPOSITORY"]},
-                          "head_repository": {"full_name": os.environ["REPOSITORY"]},
-                          "event": "workflow_dispatch", "run_attempt": 1,
-                          "status": "completed", "conclusion": present[workflow]}
+                record = {
+                    "id": 100 + identity, "workflow_id": identity,
+                    "path": ".github/workflows/" + workflow,
+                    "head_sha": os.environ.get("PRESENT_HEAD", current_sha),
+                    "head_branch": "automation/package-updates/" + os.environ["PACKAGE"],
+                    "repository": {"full_name": os.environ["REPOSITORY"]},
+                    "head_repository": {"full_name": os.environ["REPOSITORY"]},
+                    "event": "workflow_dispatch", "run_attempt": 1,
+                    "status": "completed", "conclusion": present[workflow],
+                }
                 if os.environ.get("WRONG_EVENT_WORKFLOW") == workflow:
                     record["event"] = "schedule"
                 if os.environ.get("WRONG_REPOSITORY_WORKFLOW") == workflow:
