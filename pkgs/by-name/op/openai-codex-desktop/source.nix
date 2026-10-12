@@ -4,7 +4,8 @@
     aarch64-darwin = {
       version = "26.930.61225";
       url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-26.930.61225.zip";
-      hash = "sha256-TZJ7bea0df8kzhX/6x98P1lCihcV48QEhmEEci8a6aM=";
+      hash = "sha256-PIZwBSaANHBOh1JcjzGH8FKbijJWO/KSvpfXM3+280I=";
+      buildVersion = "13520";
     };
     aarch64-linux = {
       version = "26.930.61225";

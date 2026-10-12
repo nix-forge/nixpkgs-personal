@@ -1,9 +1,10 @@
 # Adapted from noctalia nix/package.nix at the revision in source.nix.
 # See UPSTREAM-LICENSE for the MIT license.
-# Only source/version injection differs; review this file when updating upstream.
+# Source, version, and revision injection differ; review this file when updating upstream.
 {
   src,
   version,
+  rev,
   lib,
   config,
   stdenv,
@@ -46,6 +47,7 @@
   jemalloc,
   makeWrapper,
   git,
+  gsettings-desktop-schemas,
   autoAddDriverRunpath,
   # DEPRECATED: no longer affects the build; kept for `.override` compat.
   cudaSupport ? config.cudaSupport,
@@ -70,9 +72,15 @@ lib.warnIf cudaSupport
 
     inherit src;
 
+    postPatch = ''
+      substituteInPlace meson.build \
+        --replace-fail "_git_revision_config.set('VCS_TAG', 'unknown')" "_git_revision_config.set('VCS_TAG', '${rev}')"
+    '';
+
     postFixup = ''
       wrapProgram $out/bin/noctalia \
-        --prefix PATH : ${lib.makeBinPath [ git ]}
+        --prefix PATH : ${lib.makeBinPath [ git ]} \
+        --prefix XDG_DATA_DIRS : "${glib.getSchemaDataDirPath gsettings-desktop-schemas}"
 
       $out/bin/noctalia completions bash | install -D /dev/stdin $out/share/bash-completion/completions/noctalia
       $out/bin/noctalia completions zsh  | install -D /dev/stdin $out/share/zsh/site-functions/_noctalia
@@ -124,6 +132,8 @@ lib.warnIf cudaSupport
     ];
 
     mesonBuildType = "release";
+
+    mesonFlags = [ "-Dtests=disabled" ];
 
     ninjaFlags = [ "-v" ];
 

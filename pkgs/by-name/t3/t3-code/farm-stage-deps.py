@@ -28,7 +28,13 @@ IMPORTERS = ("apps/desktop", "apps/server", ".")
 
 
 def read_yaml(path: Path) -> dict:
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    content = path.read_text(encoding="utf-8")
+    # pnpm 11 writes .modules.yaml as JSON. Parse JSON first because PyYAML
+    # misreads long flow mappings containing peer-context keys.
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        data = yaml.safe_load(content)
     if not isinstance(data, dict):
         raise TypeError(f"expected a YAML object in {path}")
     return data

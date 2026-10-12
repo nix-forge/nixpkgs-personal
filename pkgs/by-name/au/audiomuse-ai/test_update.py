@@ -78,9 +78,10 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(parsed.transformers, source.transformers)
 
     def test_parser_rejects_tag_revision_pins(self) -> None:
+        source = _current_source()
         content = SOURCE_PATH.read_text(encoding="utf-8").replace(
-            'rev = "31239fa986afb91a15e039e1a9a64ed5a2d6fa12";',
-            'rev = "v3.6.0";',
+            f'rev = "{source.app_rev}";',
+            f'rev = "{source.app_tag}";',
             1,
         )
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):

@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NoReturn
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
 from font_manifest import extract, manifest
@@ -32,6 +32,10 @@ DEFAULT_EVAL_PAGE_URL: Final = (
 )
 ISO_ALIAS_TEMPLATE: Final = "https://aka.ms/Win11E-ISO-{release}-en-us"
 HTTP_METHOD_NOT_ALLOWED: Final = 405
+
+
+class _UnpublishedIsoAliasError(Exception):
+    """The Evaluation Center advertises a release before its alias is ready."""
 
 
 @dataclass(frozen=True)
@@ -114,6 +118,13 @@ def _resolve_iso_url(alias_url: str, *, timeout: int = 30) -> str:
     if parsed_final_url.scheme != "https":
         _fail(f"resolved ISO URL does not use HTTPS: {final_url}")
     if not parsed_final_url.path.lower().endswith(".iso"):
+        query = parse_qs(parsed_final_url.query)
+        if (
+            parsed_final_url.netloc == "www.bing.com"
+            and parsed_final_url.path == "/"
+            and query == {"ref": ["aka"], "shorturl": [parsed_alias_url.path[1:]]}
+        ):
+            raise _UnpublishedIsoAliasError(alias_url)
         _fail(f"resolved URL is not an ISO download link: {final_url}")
 
     return final_url
@@ -204,7 +215,13 @@ def _discover_upstream(
     )
     release = _parse_release(eval_page_text)
     alias_url = ISO_ALIAS_TEMPLATE.format(release=release)
-    iso_url = _resolve_iso_url(alias_url)
+    try:
+        iso_url = _resolve_iso_url(alias_url)
+    except _UnpublishedIsoAliasError:
+        if existing_source is None:
+            _fail(f"Microsoft has not published the ISO alias for {release}")
+        _stderr(f"deferred: Microsoft has not published the ISO alias for {release}")
+        return existing_source
 
     if existing_source is not None and existing_source.iso_url == iso_url:
         return existing_source

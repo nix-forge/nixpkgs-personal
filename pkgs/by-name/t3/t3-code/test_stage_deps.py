@@ -22,6 +22,14 @@ SPEC.loader.exec_module(farm)
 
 
 class StageTests(unittest.TestCase):
+    def test_reads_pnpm_json_modules_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / ".modules.yaml"
+            peer_context = "effect@4.0.0(" + "@types+node@24.12.4_" * 60 + ")"
+            metadata = {"hoistedDependencies": {peer_context: {"effect": "private"}}}
+            path.write_text(json.dumps(metadata, indent=2))
+            self.assertEqual(farm.read_yaml(path), metadata)
+
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

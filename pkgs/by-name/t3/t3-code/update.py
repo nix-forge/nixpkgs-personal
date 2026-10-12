@@ -59,6 +59,10 @@ SOURCE_PATTERN: Final = re.compile(
     r'    hash = "(sha256-[A-Za-z0-9+/=]+)";\n'
     r'    pnpmHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
     r'    cargoHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'    kdeCargoHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'    hyprlandCargoHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r'    spdxRev = "([0-9a-f]{40})";\n'
+    r'    spdxHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
     r'    electronVersion = "([^"]+)";\n'
     r'    electronDistUrl = "([^"]+)";\n'
     r'    electronDistHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
@@ -88,6 +92,7 @@ class _Release:
     darwin_url: str
     darwin_hash_sri: str
     linux_rev: str
+    spdx_rev: str
     electron_version: str
     electron_dist_url: str
     electron_shasums_url: str
@@ -104,6 +109,10 @@ class _ExistingSource:
     linux_hash: str
     pnpm_hash: str
     cargo_hash: str
+    kde_cargo_hash: str
+    hyprland_cargo_hash: str
+    spdx_rev: str
+    spdx_hash: str
     electron_version: str
     electron_dist_url: str
     electron_dist_hash: str
@@ -121,6 +130,9 @@ class _ResolvedSource:
     linux_hash_sri: str
     pnpm_hash_sri: str
     cargo_hash_sri: str
+    kde_cargo_hash_sri: str
+    hyprland_cargo_hash_sri: str
+    spdx_hash_sri: str
     electron_dist_hash_sri: str
     electron_shasums_hash_sri: str
     electron_headers_hash_sri: str
@@ -286,6 +298,10 @@ def _resolve_nixpkgs(selector: str) -> Path:
     except json.JSONDecodeError as exc:
         _fail(f"could not parse Nixpkgs metadata: {exc}")
     store_path = metadata.get("path") if isinstance(metadata, dict) else None
+    if store_path is None and isinstance(metadata, dict):
+        resolved = metadata.get("resolved")
+        if isinstance(resolved, dict):
+            store_path = resolved.get("path")
     if not isinstance(store_path, str) or not Path(store_path).is_absolute():
         _fail("Nixpkgs metadata did not include an absolute source path")
     return Path(store_path)
@@ -366,6 +382,38 @@ def _electron_version_from_tarball(tarball: Path, *, rev: str) -> str:
     return version
 
 
+def _spdx_revision_from_tarball(tarball: Path, *, rev: str) -> str:
+    try:
+        with tarfile.open(tarball, "r:gz") as archive:
+            member = next(
+                (
+                    item
+                    for item in archive.getmembers()
+                    if item.isfile()
+                    and item.name.endswith("scripts/lib/third-party-licenses.ts")
+                    and item.size < 1024 * 1024
+                ),
+                None,
+            )
+            if member is None:
+                _fail(f"{rev} has no third-party license generator")
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                _fail(f"could not read the third-party license generator from {rev}")
+            content = extracted.read().decode("utf-8")
+    except (tarfile.TarError, UnicodeDecodeError) as exc:
+        _fail(f"failed to inspect the {rev} license generator: {exc}")
+
+    match = re.search(
+        r'^const SPDX_LICENSE_LIST_REVISION = "([0-9a-f]{40})";$',
+        content,
+        flags=re.MULTILINE,
+    )
+    if match is None:
+        _fail(f"{rev} has no pinned SPDX license data revision")
+    return match.group(1)
+
+
 def _electron_artifact_urls(electron_version: str) -> tuple[str, str, str]:
     base = (
         f"https://{ELECTRON_RELEASE_HOST}/{ELECTRON_OWNER_REPO}"
@@ -438,6 +486,7 @@ def _discover_release(meta: _ReleaseMeta) -> _Release:
     )
     tarball_path = _prefetch_store_path(tarball_url, label="T3 Code source archive")
     electron_version = _electron_version_from_tarball(tarball_path, rev=meta.linux_rev)
+    spdx_rev = _spdx_revision_from_tarball(tarball_path, rev=meta.linux_rev)
     electron_dist_url, electron_shasums_url, electron_headers_url = (
         _electron_artifact_urls(electron_version)
     )
@@ -446,6 +495,7 @@ def _discover_release(meta: _ReleaseMeta) -> _Release:
         darwin_url=meta.darwin_url,
         darwin_hash_sri=meta.darwin_hash_sri,
         linux_rev=meta.linux_rev,
+        spdx_rev=spdx_rev,
         electron_version=electron_version,
         electron_dist_url=electron_dist_url,
         electron_shasums_url=electron_shasums_url,
@@ -466,6 +516,10 @@ def _parse_existing(content: str) -> _ExistingSource:
         linux_hash,
         pnpm_hash,
         cargo_hash,
+        kde_cargo_hash,
+        hyprland_cargo_hash,
+        spdx_rev,
+        spdx_hash,
         electron_version,
         electron_dist_url,
         electron_dist_hash,
@@ -483,6 +537,10 @@ def _parse_existing(content: str) -> _ExistingSource:
         linux_hash=linux_hash,
         pnpm_hash=pnpm_hash,
         cargo_hash=cargo_hash,
+        kde_cargo_hash=kde_cargo_hash,
+        hyprland_cargo_hash=hyprland_cargo_hash,
+        spdx_rev=spdx_rev,
+        spdx_hash=spdx_hash,
         electron_version=electron_version,
         electron_dist_url=electron_dist_url,
         electron_dist_hash=electron_dist_hash,
@@ -508,6 +566,10 @@ def _render_source(resolved: _ResolvedSource) -> str:
         f'    hash = "{resolved.linux_hash_sri}";\n'
         f'    pnpmHash = "{resolved.pnpm_hash_sri}";\n'
         f'    cargoHash = "{resolved.cargo_hash_sri}";\n'
+        f'    kdeCargoHash = "{resolved.kde_cargo_hash_sri}";\n'
+        f'    hyprlandCargoHash = "{resolved.hyprland_cargo_hash_sri}";\n'
+        f'    spdxRev = "{release.spdx_rev}";\n'
+        f'    spdxHash = "{resolved.spdx_hash_sri}";\n'
         f'    electronVersion = "{release.electron_version}";\n'
         f'    electronDistUrl = "{release.electron_dist_url}";\n'
         f'    electronDistHash = "{resolved.electron_dist_hash_sri}";\n'
@@ -568,6 +630,11 @@ def _resolve_hashes(
     electron_headers_hash_sri = _prefetch_hash(
         release.electron_headers_url, label="Electron headers", unpack=True
     )
+    spdx_hash_sri = _prefetch_hash(
+        f"https://github.com/spdx/license-list-data/archive/{release.spdx_rev}.tar.gz",
+        label="SPDX license data",
+        unpack=True,
+    )
 
     _stdout(
         "[update] resolving offline pnpm and cargo mirrors (this downloads "
@@ -585,6 +652,9 @@ def _resolve_hashes(
             linux_hash_sri=linux_hash_sri,
             pnpm_hash_sri=FAKE_HASH,
             cargo_hash_sri=FAKE_HASH,
+            kde_cargo_hash_sri=FAKE_HASH,
+            hyprland_cargo_hash_sri=FAKE_HASH,
+            spdx_hash_sri=spdx_hash_sri,
             electron_dist_hash_sri=electron_dist_hash_sri,
             electron_shasums_hash_sri=electron_shasums_hash_sri,
             electron_headers_hash_sri=electron_headers_hash_sri,
@@ -609,6 +679,18 @@ def _resolve_hashes(
             attr="cargoDeps",
             label="cargo vendor",
         )
+        kde_cargo_hash_sri = _nix_build_fod_hash(
+            package_dir=candidate,
+            nixpkgs_path=nixpkgs_path,
+            attr="kdeCargoDeps",
+            label="KDE cargo vendor",
+        )
+        hyprland_cargo_hash_sri = _nix_build_fod_hash(
+            package_dir=candidate,
+            nixpkgs_path=nixpkgs_path,
+            attr="hyprlandCargoDeps",
+            label="Hyprland cargo vendor",
+        )
 
     return _ResolvedSource(
         existing=existing,
@@ -617,6 +699,9 @@ def _resolve_hashes(
         linux_hash_sri=linux_hash_sri,
         pnpm_hash_sri=pnpm_hash_sri,
         cargo_hash_sri=cargo_hash_sri,
+        kde_cargo_hash_sri=kde_cargo_hash_sri,
+        hyprland_cargo_hash_sri=hyprland_cargo_hash_sri,
+        spdx_hash_sri=spdx_hash_sri,
         electron_dist_hash_sri=electron_dist_hash_sri,
         electron_shasums_hash_sri=electron_shasums_hash_sri,
         electron_headers_hash_sri=electron_headers_hash_sri,

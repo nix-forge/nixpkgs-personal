@@ -120,7 +120,7 @@
       "licenses": ["asl20", "ofl"]
     },
     "claude-api": {
-      "skillHash": "001abd67b06d9aa18f7f7c1a221200a51394f2cfb45cb583f4931bf77fd4b70f",
+      "skillHash": "d2d78eb159724410f2996489f054b15e803ec030198d36ca35cb764ab80520c0",
       "notices": {
         "LICENSE.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
       },

@@ -1,6 +1,8 @@
+diff --git a/src/shell/bar/widgets/taskbar_widget.cpp b/src/shell/bar/widgets/taskbar_widget.cpp
+index 34734096b383..78302c2c8981 100644
 --- a/src/shell/bar/widgets/taskbar_widget.cpp
 +++ b/src/shell/bar/widgets/taskbar_widget.cpp
-@@ -822,7 +822,12 @@
+@@ -825,7 +825,12 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
    const float effectiveIconScale =
        m_groupByWorkspace && m_workspaceGroupContent != WorkspaceGroupContent::Icons ? 1.0F : m_configOptions.iconScale;
    float iconSize = std::round(Style::baseGlyphSize * effectiveIconScale * m_contentScale);
@@ -14,7 +16,7 @@
    float tileSize = std::round(iconSize + tilePadding * 2.0F);
    const float barCross = m_vertical ? m_containerWidth : m_containerHeight;
    const float capsuleThickness = barCapsuleThicknessFor(m_configService, m_barName);
-@@ -871,7 +876,23 @@
+@@ -874,7 +879,23 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
    const bool showWindowTitle = m_showWindowTitle && windowTitleWidth > minWindowTitleWidth;
    const float tileWidthWithTitle = tileSize + (showWindowTitle ? windowTitleWidth + windowTitleGap : 0.0F);
  
@@ -39,7 +41,7 @@
      auto hoverBox = ui::box({
          .radius = resolvedBarCapsuleRadius(width, height),
          .width = width,
-@@ -1244,7 +1265,9 @@
+@@ -1254,7 +1275,9 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
  
    if (m_groupByWorkspace && !m_workspaces.empty()) {
      const float groupGap = Style::spaceXs * m_contentScale;
@@ -50,7 +52,7 @@
  
      const bool inlineBadge = m_showWorkspaceLabel && m_workspaceLabelPlacement == WorkspaceLabelPlacement::Inside;
      const bool externalBadge = m_showWorkspaceLabel && !inlineBadge;
-@@ -1255,7 +1278,7 @@
+@@ -1265,7 +1288,7 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
          ? std::max(0.0F, (m_workspaceGroupCapsule ? groupedCrossInner : crossExtent) - 2.0F * groupOutlineInset)
          : 0.0F;
  
@@ -59,36 +61,35 @@
      float stripPaddingMainStart = 0.0F;
      float stripPaddingCrossStart = 0.0F;
      if (externalBadge) {
-@@ -1544,15 +1567,27 @@
-       }
- 
+@@ -1556,16 +1579,28 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
        const bool emptyWorkspace = tasks.empty();
--      const auto surfaceFill = colorSpecFromRole(ColorRole::SurfaceVariant, ws.workspace.active ? 0.52F : 0.18F);
--      const auto borderColor = colorSpecFromRole(ColorRole::Primary, ws.workspace.active ? 0.65F : 0.16F);
--
--      const float crossSize = std::round(tileSize + groupPad * 2.0F);
--
--      float groupPadTop = groupPad;
--      float groupPadRight = groupPad;
--      float groupPadBottom = groupPad;
--      float groupPadLeft = groupPad;
-+      auto surfaceFill = colorSpecFromRole(ColorRole::SurfaceVariant, ws.workspace.active ? 0.52F : 0.18F);
-+      auto borderColor = colorSpecFromRole(ColorRole::Primary, ws.workspace.active ? 0.65F : 0.16F);
+       const bool focusedWorkspace = workspaceUsesFocusedStyle(ws);
+ 
+-      const auto surfaceFill = colorSpecFromRole(ColorRole::SurfaceVariant, focusedWorkspace ? 0.52F : 0.18F);
++      auto surfaceFill = colorSpecFromRole(ColorRole::SurfaceVariant, focusedWorkspace ? 0.52F : 0.18F);
+ 
+-      const auto borderColor = colorSpecFromRole(ColorRole::Primary, focusedWorkspace ? 0.65F : 0.16F);
++      auto borderColor = colorSpecFromRole(ColorRole::Primary, focusedWorkspace ? 0.65F : 0.16F);
 +      if (inlineWorkspaceStrip) {
 +        // Resting workspaces blend into the bar; only selection or urgency has a fill.
 +        // Keep the outline transparent in every state so geometry stays unchanged.
 +        surfaceFill = clearColorSpec();
 +        borderColor = clearColorSpec();
 +        if (ws.workspace.urgent) {
-+          surfaceFill = workspaceTextColor(ws.workspace);
++          surfaceFill = workspaceTextColor(ws);
 +          surfaceFill.alpha *= 0.14F;
-+        } else if (ws.workspace.active) {
++        } else if (focusedWorkspace) {
 +          surfaceFill = inlineWorkspaceFill;
 +        }
 +      }
-+
+ 
+-      const float crossSize = std::round(tileSize + groupPad * 2.0F);
 +      const float crossSize = std::round(tileSize + groupCrossPad * 2.0F);
-+
+ 
+-      float groupPadTop = groupPad;
+-      float groupPadRight = groupPad;
+-      float groupPadBottom = groupPad;
+-      float groupPadLeft = groupPad;
 +      float groupPadTop = m_vertical ? groupPad : groupCrossPad;
 +      float groupPadRight = m_vertical ? groupCrossPad : groupPad;
 +      float groupPadBottom = m_vertical ? groupPad : groupCrossPad;
@@ -96,7 +97,7 @@
        std::optional<WorkspaceDiscSize> externalBadgeDisc;
        if (externalBadge) {
          externalBadgeDisc =
-@@ -1596,6 +1631,30 @@
+@@ -1609,6 +1644,30 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
        );
        group->setPadding(groupPadTop, groupPadRight, groupPadBottom, groupPadLeft);
  
@@ -127,7 +128,7 @@
        if (inlineBadge && m_showWorkspaceLabel) {
          const float inlineBadgeFontSize = std::round(Style::fontSizeCaption * 0.85F * fontScale());
          const float inlineBadgeHeight = std::round(std::max(10.0F, iconSize - (Style::spaceXs * m_contentScale)));
-@@ -1604,6 +1663,16 @@
+@@ -1617,6 +1676,16 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
          );
          disc.height = inlineBadgeHeight;
          disc.width = std::round(std::max(inlineBadgeHeight, disc.width));
@@ -144,12 +145,10 @@
          if (m_vertical) {
            disc = clampWorkspaceDiscToCrossLimit(disc, externalBadgeCrossLimit);
          }
-@@ -1661,6 +1730,20 @@
-         badge->setPosition(badgePos.left, badgePos.top);
-         badge->layout(renderer);
+@@ -1676,6 +1745,20 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
          group->addChild(std::move(badge));
-+      }
-+
+       }
+ 
 +      if (workspaceHover) {
 +        // A background hit area covers the padding and gaps without intercepting
 +        // label or app actions. It never contributes to the group's layout.
@@ -162,6 +161,8 @@
 +        attachHover(*gaps, size.width, size.height);
 +        group->addChild(std::move(gaps));
 +        workspaceHover = {};
-       }
- 
++      }
++
        m_taskStrip->addChild(std::move(group));
+     }
+     std::erase_if(m_groupedAppCycleCursor, [&](const auto& item) { return !cycleKeysThisFrame.contains(item.first); });

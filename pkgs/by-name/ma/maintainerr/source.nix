@@ -1,6 +1,6 @@
 {
-  version = "3.28.0";
-  rev = "276ec9dd9cb7608b8577190a14b03e9a8f831510";
-  hash = "sha256-jZ4aEb2fpqaAfe5n92pWSVqW8wjT4G9RTjCt+XfvaZg=";
-  yarnHash = "sha256-DvFJaVciFkO31kL8Bv61ONF2AZOBnMz7i9JRRsFpSAY=";
+  version = "3.30.1";
+  rev = "3e11c99b8bdaf567f2463c9975a46a8259616616";
+  hash = "sha256-P8EKz/m2plybCl1CtSn7pq1caSvSHgtft2yIlpx5MQk=";
+  yarnHash = "sha256-R5amitFNC2HwBwPTlv6ZSG2nuqfky7uaM6EwuyhWr/g=";
 }

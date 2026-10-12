@@ -7,7 +7,7 @@ const appRequire = createRequire(
   path.join(resources, "app.asar", "package.json"),
 );
 assert.equal(appRequire("./package.json").version, expectedVersion);
-for (const name of ["node-pty", "@napi-rs/keyring", "msgpackr-extract"]) {
+for (const name of ["node-pty", "@napi-rs/keyring"]) {
   appRequire(name);
   console.log(`Loaded ${name}`);
 }

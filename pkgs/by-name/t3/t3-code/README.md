@@ -14,8 +14,9 @@ macOS (`aarch64-darwin`) installs the official signed and notarized
 application bundle. Linux (`x86_64-linux`) compiles the application from the
 tagged upstream source with the workspace's own artifact script and wraps the
 result as a native package: no AppImage runtime or FUSE involved. The Linux
-build stays fully offline through the pinned pnpm/cargo mirrors and a
-pre-seeded Electron download cache. Staging preserves the installed pnpm
+build stays fully offline through the pinned pnpm mirror, separate Cargo vendors
+for the three native helpers, SPDX license data, and a pre-seeded Electron
+download cache. Staging preserves the installed pnpm
 peer contexts and dependency links, with lock metadata for Electron Builder's
 production dependency collector. See `linux.nix` for the build steps.
 
@@ -43,13 +44,13 @@ when the local host cannot build them.
 `--check` only compares release metadata and stays cheap. A real update
 re-downloads every artifact and rebuilds the offline pnpm/cargo mirrors to
 refresh their hashes, which downloads the full dependency closures once per
-revision. The Electron runtime version is read from
-`apps/desktop/package.json` inside the tagged source so vendored native
-prebuilds keep their ABI.
+revision. The updater reads the Electron runtime and SPDX license data revision
+from the tagged source, then pins both inputs. The runtime version comes from
+`apps/desktop/package.json` so vendored native prebuilds keep their ABI.
 
 The package expression records platform support, licensing, and build checks.
-The Linux install check loads packaged native terminal, keyring, and MessagePack
-modules and checks the bundled server's version. Darwin build checks preserve
+The Linux install check loads packaged native terminal and keyring modules and
+checks the bundled server's version. Darwin build checks preserve
 the signed bundle and verify its entrypoints; native runtime checks run outside
 the build sandbox.
 
