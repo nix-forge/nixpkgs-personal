@@ -192,6 +192,19 @@ jobs:
           PARTITION_INDEX: ${{ matrix.partition-index }}
         shell: bash
         run: bash .github/scripts/build-affected.sh
+      - name: Verify Codex bundle with Apple's signature verifier
+        if: matrix.system == 'aarch64-darwin'
+        shell: bash
+        run: |
+          set -euo pipefail
+          package=$(nix eval --raw --no-write-lock-file .#packages.aarch64-darwin.openai-codex-desktop.outPath)
+          app_name=$(nix eval --raw --no-write-lock-file .#packages.aarch64-darwin.openai-codex-desktop.appName)
+          if [[ ! -d "$package" ]]; then
+            nix build --no-link --no-write-lock-file .#packages.aarch64-darwin.openai-codex-desktop
+          fi
+          bundle="$package/Applications/$app_name.app"
+          test -d "$bundle"
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$bundle"
   expensive-font-audit:
     name: Manual expensive font audit (${{ matrix.system }})
     if: github.event_name == 'workflow_dispatch' && inputs.build_expensive_font
