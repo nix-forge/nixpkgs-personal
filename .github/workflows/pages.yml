@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: nix-forge/ci/actions/setup-nix@32dec0910e46dda3568ef5a494ed5fb6a9a08f31 # v2.10.0
+      - uses: nix-forge/ci/actions/setup-nix@1e0a32faa469994e478ba8a3944875b6aca7e659 # v2.11.0
         with:
           cache: "false"
           cache-scope: documentation

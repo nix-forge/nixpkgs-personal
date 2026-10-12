@@ -2,7 +2,7 @@ name: Reconcile merge queue
 on: # zizmor: ignore[dangerous-triggers] Reads API metadata and runs only the default branch's script.
   workflow_run:
     workflows: ["CI", "Dependency review", "CodeQL", "DCO", "Fuzz font path validation"]
-    types: [completed]
+    types: [requested, in_progress, completed]
   schedule:
     - cron: 17 * * * *
   workflow_dispatch:
@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   reconcile:
-    # Dispatch completions can make an auto-merge PR or queue ref ready.
+    # Source starts invalidate stale results; completions can make PRs/queue refs ready.
     if: >-
       github.event_name != 'workflow_run' || contains(fromJSON('["pull_request", "merge_group", "workflow_dispatch"]'),
       github.event.workflow_run.event)
@@ -31,9 +31,38 @@ jobs:
       statuses: write # Report verified queue job results.
     steps:
       - name: Reconcile verified automation
-        uses: nix-forge/ci/actions/reconcile-queue@32dec0910e46dda3568ef5a494ed5fb6a9a08f31 # v2.10.0
+        uses: nix-forge/ci/actions/reconcile-queue@1e0a32faa469994e478ba8a3944875b6aca7e659 # v2.11.0
         with:
           workflows: '["ci.yml", "dependency-review.yml", "codeql.yml", "dco.yml", "fuzz.yml"]'
           base-sha-workflows: '["ci.yml", "dco.yml"]'
+          package-source-checks: >-
+            {
+              "ci.yml": [
+                "Build (x86_64-linux)",
+                "Build (aarch64-linux)",
+                "Build (aarch64-darwin)",
+                "Lint and security",
+                "Flake checks (x86_64-linux)",
+                "Flake checks (aarch64-linux)",
+                "Flake checks (aarch64-darwin)",
+                "NUR compatibility / NUR (locked)",
+                "NUR compatibility / NUR (unstable)",
+                "Flake lock health",
+                "Build (x86_64-linux 2/2)",
+                "Build (aarch64-linux 2/2)"
+              ],
+              "codeql.yml": [
+                "Analyze (python) / analyze"
+              ],
+              "dependency-review.yml": [
+                "dependency-review / review"
+              ],
+              "dco.yml": [
+                "DCO sign-off"
+              ],
+              "fuzz.yml": [
+                "Fuzz font path validation"
+              ]
+            }
           source-run-id: ${{ inputs.source_run_id }}
     name: reconcile
