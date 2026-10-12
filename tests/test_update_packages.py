@@ -136,21 +136,42 @@ class PublisherTests(unittest.TestCase):
         )
         self.git("remote", "add", "origin", str(self.remote))
         self.git("push", "-q", "origin", "main")
-        self.adapter(
+        self._adapter(
             "gh",
             r"""
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 args = sys.argv[1:]
 with Path(os.environ["GH_LOG"]).open("a") as log:
     log.write(json.dumps(args) + "\n")
 if args[:2] == ["pr", "list"]:
-    if "url,author" in args:
-        print(os.environ.get("EXISTING_PR", ""))
-    else:
-        print(os.environ.get("FOREIGN_PR", ""))
+    records = []
+    if os.environ.get("EXISTING_PR"):
+        records.append({
+            "url": os.environ["EXISTING_PR"],
+            "author": {
+                "login": os.environ.get("BOT_LOGIN", "app/github-actions"),
+                "is_bot": os.environ.get("BOT_IS_BOT", "true") == "true",
+            },
+            "isCrossRepository": os.environ.get("PR_CROSS_REPOSITORY", "false") == "true",
+        })
+    if os.environ.get("FOREIGN_PR"):
+        records.append({
+            "url": os.environ["FOREIGN_PR"],
+            "author": {"login": "human", "is_bot": False},
+            "isCrossRepository": False,
+        })
+    fields = args[args.index("--json") + 1].split(",")
+    records = [{key: value for key, value in record.items() if key in fields} for record in records]
+    query = args[args.index("--jq") + 1]
+    # gh's printer omits null results, unlike raw jq -r.
+    subprocess.run(
+        ["jq", "-r", "(" + query + ") // empty"],
+        input=json.dumps(records), text=True, check=True,
+    )
 elif args[:2] == ["pr", "view"]:
     print(os.environ.get("MERGEABLE", "MERGEABLE"))
 elif args[:2] == ["pr", "create"]:
@@ -190,7 +211,7 @@ elif args[:1] == ["api"]:
         print(json.dumps({"workflow_runs": records, "total_count": len(records)}))
 """,
         )
-        self.adapter(
+        self._adapter(
             "nix",
             r"""
 import json
@@ -209,9 +230,9 @@ if os.environ.get("GENERATOR_EXTRA"):
 """,
         )
 
-        self.adapter("sleep", "")
+        self._adapter("sleep", "")
 
-    def adapter(self, name: str, body: str) -> None:
+    def _adapter(self, name: str, body: str) -> None:
         path = self.tools / name
         path.write_text("#!" + sys.executable + "\n" + textwrap.dedent(body))
         path.chmod(0o755)
@@ -361,6 +382,30 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.git("show", "HEAD:docs/catalog.md"), "first=2\nsecond=2")
         self.assertEqual(self.git("rev-parse", "HEAD^"), base)
+
+    def test_untrusted_existing_pr_is_not_rewritten_or_merged(self) -> None:
+        self._old_pr()
+        ref = "refs/heads/automation/package-updates-first"
+        before = self.git("ls-remote", "origin", ref)
+        for identity in (
+            {"BOT_LOGIN": "human"},
+            {"BOT_LOGIN": "app/dependabot"},
+            {"BOT_IS_BOT": "false"},
+            {"PR_CROSS_REPOSITORY": "true"},
+        ):
+            with self.subTest(identity=identity):
+                for key in ("BOT_LOGIN", "BOT_IS_BOT", "PR_CROSS_REPOSITORY"):
+                    self.env.pop(key, None)
+                self.env.update(identity)
+                self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+                result = self.publish()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("not owned by github-actions[bot]", result.stderr)
+                self.assertEqual(self.git("ls-remote", "origin", ref), before)
+                self.assertFalse(
+                    any(call[:2] == ["pr", "merge"] for call in self.api_calls())
+                )
+                self.git("reset", "--hard", "HEAD")
 
     def test_identical_mergeable_pr_is_not_rewritten(self) -> None:
         self._old_pr()
