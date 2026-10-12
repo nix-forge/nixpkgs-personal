@@ -93,6 +93,12 @@ package's updater with `python3 /path/to/package/update.py`. Nixpkgs-compatible
 passing a single store copy of `update.py` would lose its helpers and metadata.
 Font update wrappers additionally declare extraction and inspection tools.
 
+The daily scheduled runner discovers these entry points and runs each in a
+separate checkout. Each changed package gets its own signed commit, branch,
+pull request, and required CI runs. A failed updater stops only its package
+job. The pull request enters the merge queue after its checks pass; failed
+checks leave that package's pull request open for review.
+
 Historical emoji releases and reviewed source compositions keep manual update
 policies. The consolidated Apple developer-font entries require manual source
 and inventory review. A package without an updater must document that choice.
