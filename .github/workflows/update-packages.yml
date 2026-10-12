@@ -92,7 +92,9 @@ jobs:
           done < <(git diff --cached --no-renames --name-only -z)
 
           base_sha=$(git rev-parse HEAD)
-          branch="automation/package-updates/$PACKAGE"
+          # Use sibling refs: the preserved legacy batch branch occupies the
+          # automation/package-updates name and prevents nested refs below it.
+          branch="automation/package-updates-$PACKAGE"
           existing=$(gh pr list --repo "$REPOSITORY" --head "$branch" --state open \
             --json url,author --jq '.[] | select(.author.login == "github-actions[bot]") | .url')
           if [[ -z "$existing" ]] && gh pr list --repo "$REPOSITORY" --head "$branch" \

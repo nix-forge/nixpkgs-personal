@@ -176,7 +176,7 @@ elif args[:1] == ["api"]:
                     "id": 100 + identity, "workflow_id": identity,
                     "path": ".github/workflows/" + workflow,
                     "head_sha": os.environ.get("PRESENT_HEAD", current_sha),
-                    "head_branch": "automation/package-updates/" + os.environ["PACKAGE"],
+                    "head_branch": "automation/package-updates-" + os.environ["PACKAGE"],
                     "repository": {"full_name": os.environ["REPOSITORY"]},
                     "head_repository": {"full_name": os.environ["REPOSITORY"]},
                     "event": "workflow_dispatch", "run_attempt": 1,
@@ -256,8 +256,8 @@ if os.environ.get("GENERATOR_EXTRA"):
             else []
         )
 
-    def old_pr(self) -> None:
-        self.git("switch", "-qc", "automation/package-updates/first")
+    def _old_pr(self) -> None:
+        self.git("switch", "-qc", "automation/package-updates-first")
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         self.write("docs/catalog.md", "first=2\nsecond=1\n")
         self.commit("old bot update")
@@ -292,6 +292,22 @@ if os.environ.get("GENERATOR_EXTRA"):
             {"pkgs/by-name/fi/first/source.txt", "docs/catalog.md"},
         )
         self.assertIn("Signed-off-by:", self.git("show", "-s", "--format=%B", "HEAD"))
+
+    def test_legacy_batch_branch_is_preserved_during_package_publication(self) -> None:
+        legacy_ref = "refs/heads/automation/package-updates"
+        legacy_sha = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "origin", "HEAD:" + legacy_ref)
+        self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+        result = self.publish()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.git("ls-remote", "origin", legacy_ref).split()[0], legacy_sha
+        )
+        package_ref = "refs/heads/automation/package-updates-first"
+        self.assertEqual(
+            self.git("ls-remote", "origin", package_ref).split()[0],
+            self.git("rev-parse", "HEAD"),
+        )
 
     def test_publisher_dispatches_one_complete_validation_set(self) -> None:
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
@@ -335,7 +351,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.assertEqual(self.api_calls(), [])
 
     def test_existing_pr_refreshes_catalog_after_another_package_merges(self) -> None:
-        self.old_pr()
+        self._old_pr()
         self.write("pkgs/by-name/se/second/source.txt", "2\n")
         self.write("docs/catalog.md", "first=1\nsecond=2\n")
         self.commit("another reviewed package")
@@ -347,16 +363,16 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.assertEqual(self.git("rev-parse", "HEAD^"), base)
 
     def test_identical_mergeable_pr_is_not_rewritten(self) -> None:
-        self.old_pr()
+        self._old_pr()
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         before = self.git(
-            "ls-remote", "origin", "refs/heads/automation/package-updates/first"
+            "ls-remote", "origin", "refs/heads/automation/package-updates-first"
         )
         result = self.publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.git(
-                "ls-remote", "origin", "refs/heads/automation/package-updates/first"
+                "ls-remote", "origin", "refs/heads/automation/package-updates-first"
             ),
             before,
         )
@@ -365,20 +381,20 @@ if os.environ.get("GENERATOR_EXTRA"):
         )
 
     def test_interrupted_publication_resumes_only_missing_validation(self) -> None:
-        self.old_pr()
+        self._old_pr()
         self.env["PRESENT_WORKFLOWS"] = json.dumps({
             "ci.yml": "failure",
             "codeql.yml": "success",
         })
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         before = self.git(
-            "ls-remote", "origin", "refs/heads/automation/package-updates/first"
+            "ls-remote", "origin", "refs/heads/automation/package-updates-first"
         )
         result = self.publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.git(
-                "ls-remote", "origin", "refs/heads/automation/package-updates/first"
+                "ls-remote", "origin", "refs/heads/automation/package-updates-first"
             ),
             before,
         )
@@ -390,7 +406,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.assertEqual(merge[-2:], ["--match-head-commit", self.env["PRESENT_HEAD"]])
 
     def test_delayed_validation_visibility_does_not_duplicate_run(self) -> None:
-        self.old_pr()
+        self._old_pr()
         self.env["DELAYED_WORKFLOW"] = "dco.yml"
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         result = self.publish()
@@ -406,7 +422,7 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.assertEqual(len(reads), 2)
 
     def test_wrong_repository_or_event_cannot_supply_validation(self) -> None:
-        self.old_pr()
+        self._old_pr()
         self.env["WRONG_REPOSITORY_WORKFLOW"] = "ci.yml"
         self.env["WRONG_EVENT_WORKFLOW"] = "dco.yml"
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
@@ -418,14 +434,14 @@ if os.environ.get("GENERATOR_EXTRA"):
         )
 
     def test_metadata_api_error_cannot_enable_auto_merge(self) -> None:
-        self.old_pr()
+        self._old_pr()
         self.env["API_FAIL_WORKFLOW"] = "ci.yml"
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         self.assertNotEqual(self.publish().returncode, 0)
         self.assertFalse(any(call[:2] == ["pr", "merge"] for call in self.api_calls()))
 
     def test_conflicting_pr_refreshes_even_when_target_files_match(self) -> None:
-        self.old_pr()
+        self._old_pr()
         base = self.git("rev-parse", "HEAD")
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         self.env["MERGEABLE"] = "CONFLICTING"
