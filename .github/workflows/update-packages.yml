@@ -101,6 +101,7 @@ jobs:
             exit 1
           fi
 
+          rewrite=true
           old_sha=$(git ls-remote --heads origin "$branch" | cut -f1)
           if [[ -n "$existing" && -n "$old_sha" ]]; then
             git fetch origin "$branch"
@@ -109,20 +110,23 @@ jobs:
             if git diff --cached --quiet "$old_sha"; then
               mergeable=$(gh pr view "$existing" --repo "$REPOSITORY" --json mergeable --jq .mergeable)
               if [[ "$mergeable" == MERGEABLE ]]; then
-                echo "$PACKAGE already has a mergeable PR for this complete tree."
-                exit 0
+                echo "$PACKAGE already has a mergeable PR for this complete tree. Resume its validation."
+                rewrite=false
+                head_sha="$old_sha"
               fi
             fi
           fi
-          git switch --force-create "$branch"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -s -m "maint: update $PACKAGE source"
-          head_sha=$(git rev-parse HEAD)
-          if [[ -n "$old_sha" ]]; then
-            git push --force-with-lease="refs/heads/$branch:$old_sha" --set-upstream origin "$branch"
-          else
-            git push --set-upstream origin "$branch"
+          if [[ "$rewrite" == true ]]; then
+            git switch --force-create "$branch"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -s -m "maint: update $PACKAGE source"
+            head_sha=$(git rev-parse HEAD)
+            if [[ -n "$old_sha" ]]; then
+              git push --force-with-lease="refs/heads/$branch:$old_sha" --set-upstream origin "$branch"
+            else
+              git push --set-upstream origin "$branch"
+            fi
           fi
 
           pr_url="$existing"
@@ -132,11 +136,49 @@ jobs:
               --body "Automated source update for $PACKAGE. CI builds the affected package on supported platforms.")
           fi
 
-          # Bot pushes do not start ordinary PR checks.
-          gh workflow run ci.yml --repo "$REPOSITORY" --ref "$branch" -f base_sha="$base_sha"
-          gh workflow run codeql.yml --repo "$REPOSITORY" --ref "$branch"
-          gh workflow run dependency-review.yml --repo "$REPOSITORY" --ref "$branch" \
-            -f base_ref="$base_sha" -f head_ref="$head_sha"
-          gh workflow run dco.yml --repo "$REPOSITORY" --ref "$branch" -f base_sha="$base_sha"
-          gh workflow run fuzz.yml --repo "$REPOSITORY" --ref "$branch"
+          # Resume an interrupted publication without rewriting an identical
+          # branch or duplicating running, completed, or failed validation.
+          dispatch_missing_validation() {
+            local workflow=$1 metadata workflow_id runs attempt current_sha
+            metadata=$(gh api "repos/$REPOSITORY/actions/workflows/$workflow")
+            workflow_id=$(jq -er --arg path ".github/workflows/$workflow" '
+              select(.path == $path and .state == "active" and (.id | type) == "number") | .id
+            ' <<< "$metadata")
+            for attempt in 1 2 3; do
+              runs=$(gh api "repos/$REPOSITORY/actions/workflows/$workflow/runs?head_sha=$head_sha&per_page=100")
+              jq -e '(.workflow_runs | type) == "array" and (.total_count | type) == "number"' <<< "$runs" >/dev/null
+              if jq -e --arg repo "$REPOSITORY" --arg branch "$branch" --arg sha "$head_sha" \
+                --arg path ".github/workflows/$workflow" --argjson id "$workflow_id" '
+                .workflow_runs | any(
+                  (.id | type) == "number" and .id > 0 and .run_attempt >= 1 and
+                  .workflow_id == $id and .path == $path and .head_sha == $sha and
+                  .head_branch == $branch and .repository.full_name == $repo and
+                  .head_repository.full_name == $repo and
+                  (.event == "pull_request" or .event == "workflow_dispatch")
+                )
+              ' <<< "$runs" >/dev/null; then
+                echo "$workflow already has validation for $head_sha."
+                return
+              fi
+              # Do not infer absence from a truncated history response.
+              if [[ $(jq -r .total_count <<< "$runs") -gt 100 ]]; then
+                echo "Too many runs to prove missing exact-head validation for $workflow." >&2
+                exit 1
+              fi
+              if [[ "$attempt" -lt 3 ]]; then sleep 2; fi
+            done
+            current_sha=$(git ls-remote --heads origin "$branch" | cut -f1)
+            [[ "$current_sha" == "$head_sha" ]]
+            case "$workflow" in
+              ci.yml|dco.yml)
+                gh workflow run "$workflow" --repo "$REPOSITORY" --ref "$branch" -f base_sha="$base_sha" ;;
+              dependency-review.yml)
+                gh workflow run "$workflow" --repo "$REPOSITORY" --ref "$branch" \
+                  -f base_ref="$base_sha" -f head_ref="$head_sha" ;;
+              *) gh workflow run "$workflow" --repo "$REPOSITORY" --ref "$branch" ;;
+            esac
+          }
+          for workflow in ci.yml codeql.yml dependency-review.yml dco.yml fuzz.yml; do
+            dispatch_missing_validation "$workflow"
+          done
           gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --match-head-commit "$head_sha"

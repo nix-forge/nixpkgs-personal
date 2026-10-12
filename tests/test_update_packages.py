@@ -155,6 +155,37 @@ elif args[:2] == ["pr", "view"]:
     print(os.environ.get("MERGEABLE", "MERGEABLE"))
 elif args[:2] == ["pr", "create"]:
     print("https://github.com/example/repository/pull/1")
+elif args[:1] == ["api"]:
+    path = args[1]
+    workflow = path.split("/actions/workflows/", 1)[1].split("/", 1)[0]
+    names = ["ci.yml", "codeql.yml", "dependency-review.yml", "dco.yml", "fuzz.yml"]
+    identity = names.index(workflow) + 1
+    if os.environ.get("API_FAIL_WORKFLOW") == workflow:
+        raise SystemExit(1)
+    if "/runs?" not in path:
+        print(json.dumps({"id": identity, "path": ".github/workflows/" + workflow, "state": "active"}))
+    else:
+        current_sha = path.split("head_sha=", 1)[1].split("&", 1)[0]
+        present = json.loads(os.environ.get("PRESENT_WORKFLOWS", "{}"))
+        records = []
+        if workflow in present:
+            calls = [json.loads(line) for line in Path(os.environ["GH_LOG"]).read_text().splitlines()]
+            reads = sum(call[:1] == ["api"] and "/" + workflow + "/runs?" in call[1] for call in calls)
+            if os.environ.get("DELAYED_WORKFLOW") != workflow or reads >= 2:
+                record = {"id": 100 + identity, "workflow_id": identity,
+                          "path": ".github/workflows/" + workflow,
+                          "head_sha": os.environ.get("PRESENT_HEAD", current_sha),
+                          "head_branch": "automation/package-updates/" + os.environ["PACKAGE"],
+                          "repository": {"full_name": os.environ["REPOSITORY"]},
+                          "head_repository": {"full_name": os.environ["REPOSITORY"]},
+                          "event": "workflow_dispatch", "run_attempt": 1,
+                          "status": "completed", "conclusion": present[workflow]}
+                if os.environ.get("WRONG_EVENT_WORKFLOW") == workflow:
+                    record["event"] = "schedule"
+                if os.environ.get("WRONG_REPOSITORY_WORKFLOW") == workflow:
+                    record["head_repository"] = {"full_name": "foreign/repository"}
+                records.append(record)
+        print(json.dumps({"workflow_runs": records, "total_count": len(records)}))
 """,
         )
         self.adapter(
@@ -175,6 +206,8 @@ if os.environ.get("GENERATOR_EXTRA"):
     Path("README.md").write_text("unexpected generator mutation\n")
 """,
         )
+
+        self.adapter("sleep", "")
 
     def adapter(self, name: str, body: str) -> None:
         path = self.tools / name
@@ -227,6 +260,19 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.write("docs/catalog.md", "first=2\nsecond=1\n")
         self.commit("old bot update")
         self.git("push", "-q", "origin", "HEAD")
+        self.env["PRESENT_HEAD"] = self.git("rev-parse", "HEAD")
+        self.env["PRESENT_WORKFLOWS"] = json.dumps(
+            dict.fromkeys(
+                (
+                    "ci.yml",
+                    "codeql.yml",
+                    "dependency-review.yml",
+                    "dco.yml",
+                    "fuzz.yml",
+                ),
+                "success",
+            )
+        )
         self.git("switch", "-q", "main")
         self.env["EXISTING_PR"] = "https://github.com/example/repository/pull/1"
 
@@ -315,6 +361,66 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.assertFalse(
             any(call[:2] == ["workflow", "run"] for call in self.api_calls())
         )
+
+    def test_interrupted_publication_resumes_only_missing_validation(self) -> None:
+        self.old_pr()
+        self.env["PRESENT_WORKFLOWS"] = json.dumps({
+            "ci.yml": "failure",
+            "codeql.yml": "success",
+        })
+        self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+        before = self.git(
+            "ls-remote", "origin", "refs/heads/automation/package-updates/first"
+        )
+        result = self.publish()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.git(
+                "ls-remote", "origin", "refs/heads/automation/package-updates/first"
+            ),
+            before,
+        )
+        self.assertEqual(
+            [call[2] for call in self.api_calls() if call[:2] == ["workflow", "run"]],
+            ["dependency-review.yml", "dco.yml", "fuzz.yml"],
+        )
+        merge = next(call for call in self.api_calls() if call[:2] == ["pr", "merge"])
+        self.assertEqual(merge[-2:], ["--match-head-commit", self.env["PRESENT_HEAD"]])
+
+    def test_delayed_validation_visibility_does_not_duplicate_run(self) -> None:
+        self.old_pr()
+        self.env["DELAYED_WORKFLOW"] = "dco.yml"
+        self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+        result = self.publish()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(
+            any(call[:2] == ["workflow", "run"] for call in self.api_calls())
+        )
+        reads = [
+            call
+            for call in self.api_calls()
+            if call[:1] == ["api"] and "/dco.yml/runs?" in call[1]
+        ]
+        self.assertEqual(len(reads), 2)
+
+    def test_wrong_repository_or_event_cannot_supply_validation(self) -> None:
+        self.old_pr()
+        self.env["WRONG_REPOSITORY_WORKFLOW"] = "ci.yml"
+        self.env["WRONG_EVENT_WORKFLOW"] = "dco.yml"
+        self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+        result = self.publish()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            [call[2] for call in self.api_calls() if call[:2] == ["workflow", "run"]],
+            ["ci.yml", "dco.yml"],
+        )
+
+    def test_metadata_api_error_cannot_enable_auto_merge(self) -> None:
+        self.old_pr()
+        self.env["API_FAIL_WORKFLOW"] = "ci.yml"
+        self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+        self.assertNotEqual(self.publish().returncode, 0)
+        self.assertFalse(any(call[:2] == ["pr", "merge"] for call in self.api_calls()))
 
     def test_conflicting_pr_refreshes_even_when_target_files_match(self) -> None:
         self.old_pr()
