@@ -1,9 +1,9 @@
 {
-  version = "unstable-2026-10-06";
+  version = "unstable-2026-10-09";
   src = {
     owner = "mattpocock";
     repo = "skills";
-    rev = "6fd947921b935b7e1e69293a200400f0fdd5c15f";
-    hash = "sha256-c36sg+3AyW+iZ730QKXqwejpFOL+2neWlZhL5Jc7Rcs=";
+    rev = "49dd158d1076134a641b33efb035946536778336";
+    hash = "sha256-NljCSZNI3sZ+vbCw7pRdrwR7try4BxOFp4gdjuWYtzs=";
   };
 }
