@@ -147,11 +147,10 @@ def _list_updaters(
     args: argparse.Namespace,
     child_args: list[str],
 ) -> int:
-    if args.all or args.package or child_args or args.keep_going or args.allow_partial:
+    if args.all or child_args or args.keep_going or args.allow_partial:
         raise SystemExit("error: --list-json cannot be combined with update options")
-    if not updaters:
-        raise SystemExit("error: no updater scripts found")
-    _stdout(json.dumps(sorted(updaters)))
+    targets = _select_targets(updaters, run_all=False, package_names=args.package)
+    _stdout(json.dumps([updater.name for updater in targets]))
     return 0
 
 

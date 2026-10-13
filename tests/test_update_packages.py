@@ -88,12 +88,98 @@ class PartialUpdateTests(unittest.TestCase):
         self.assertEqual(json.loads(output.call_args.args[0]), ["first", "second"])
         run_updater.assert_not_called()
 
+    def test_discovery_selects_known_package_without_running_it(self) -> None:
+        with (
+            patch.object(
+                update_packages, "_discover_updaters", return_value=self.updaters
+            ),
+            patch.object(update_packages, "_run_updater") as run_updater,
+            patch.object(update_packages, "_stdout") as output,
+        ):
+            self.assertEqual(
+                update_packages._main(["--list-json", "--package", "second"]), 0
+            )
+        output.assert_called_once_with('["second"]')
+        run_updater.assert_not_called()
+
     def test_discovery_rejects_empty_catalog(self) -> None:
         with (
             patch.object(update_packages, "_discover_updaters", return_value={}),
             self.assertRaises(SystemExit),
         ):
             update_packages._main(["--list-json"])
+
+
+class DiscoveryTests(unittest.TestCase):
+    """Execute the workflow's discovery step against inert updater files."""
+
+    def setUp(self) -> None:
+        fixture = tempfile.TemporaryDirectory()
+        self.addCleanup(fixture.cleanup)
+        self.root = Path(fixture.name)
+        (self.root / "scripts").mkdir()
+        (self.root / "scripts/update-packages.py").write_text(SCRIPT.read_text())
+        for package in ("first", "second"):
+            directory = self.root / f"pkgs/by-name/{package[:2]}/{package}"
+            directory.mkdir(parents=True)
+            (directory / "update.py").write_text(
+                "raise AssertionError('Discovery must never execute an updater')\n"
+            )
+        self.output = self.root / "output"
+        self.output.touch()
+        workflow = SCRIPT.parent.parent / ".github/workflows/update-packages.yml"
+        block = (
+            workflow
+            .read_text()
+            .split("      - id: packages\n", 1)[1]
+            .split("  update:\n", 1)[0]
+        )
+        run = block.split("        run: ", 1)[1]
+        self.script = (
+            textwrap.dedent(run.split("\n", 1)[1])
+            if run.startswith("|\n")
+            else run.strip()
+        )
+
+    def discover(self, package: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", "-euo", "pipefail", "-c", self.script],
+            cwd=self.root,
+            env={
+                "PATH": os.environ["PATH"],
+                "PACKAGE": package,
+                "GITHUB_OUTPUT": str(self.output),
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+
+    def test_default_discovery_preserves_all_packages(self) -> None:
+        result = self.discover("")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.output.read_text(), 'names=["first", "second"]\n')
+
+    def test_selected_package_produces_only_its_single_matrix_entry(self) -> None:
+        result = self.discover("second")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.output.read_text(), 'names=["second"]\n')
+
+    def test_unknown_and_shell_shaped_inputs_fail_without_output(self) -> None:
+        for package in (
+            "unknown",
+            "first; touch injected",
+            "$(touch injected)",
+            'first\nnames=["second"]',
+            "--all",
+        ):
+            with self.subTest(package=package):
+                self.output.write_text("")
+                result = self.discover(package)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.output.read_text(), "")
+                self.assertFalse((self.root / "injected").exists())
 
 
 class PublisherTests(unittest.TestCase):
