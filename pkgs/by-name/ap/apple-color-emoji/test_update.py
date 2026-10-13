@@ -2,6 +2,7 @@
 
 import io
 import unittest
+from http.client import HTTPMessage
 from unittest.mock import patch
 from urllib.request import HTTPRedirectHandler
 
@@ -99,8 +100,9 @@ class RequestTests(unittest.TestCase):
         ):
             with self.subTest(destination=destination):
                 redirected = HTTPRedirectHandler().redirect_request(
-                    request, None, 302, "Found", {}, destination
+                    request, io.BytesIO(), 302, "Found", HTTPMessage(), destination
                 )
+                assert redirected is not None
                 self.assertIsNone(redirected.get_header("Authorization"))
 
 
