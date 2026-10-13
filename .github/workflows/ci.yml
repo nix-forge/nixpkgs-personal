@@ -35,7 +35,7 @@ jobs:
       actions: write # Notify the protected default-branch reconciler.
     steps:
       - name: Notify source validation start
-        uses: nix-forge/ci/actions/queue-completion@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/queue-completion@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           source-activity: in_progress
   discover:
@@ -53,7 +53,7 @@ jobs:
         with:
           persist-credentials: false
       - id: inventory
-        uses: nix-forge/ci/actions/discover-lockfiles@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/discover-lockfiles@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
   lock-health:
     name: Flake lock health
     needs: [flake-lock]
@@ -75,7 +75,7 @@ jobs:
       fail-fast: false
       matrix:
         lockfile: ${{ fromJSON(needs.discover.outputs.lockfiles) }}
-    uses: nix-forge/ci/.github/workflows/flake-lock.yml@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+    uses: nix-forge/ci/.github/workflows/flake-lock.yml@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
     with:
       lockfile: ${{ matrix.lockfile }}
   lint:
@@ -92,7 +92,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           cache: 'false'
           cache-scope: ci-lint
@@ -109,11 +109,11 @@ jobs:
       - name: Check package discovery catalog
         run: python3 scripts/package-catalog.py --check
       - name: Check shared workflow contracts
-        uses: nix-forge/ci/actions/validate-workflows@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/validate-workflows@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
       - name: Run repository hooks and publication checks
         uses: nix-forge/ci/actions/repository-checks@13ad6e366ec01e317705d750fc512d33ecc15f6c # v2.9.0
       - name: Build portable lint checks
-        uses: nix-forge/ci/actions/flake-checks@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/flake-checks@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           system: x86_64-linux
           checks-output: lintChecks
@@ -140,12 +140,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           cache: 'false'
           cache-scope: ci-flake
       - name: Materialize discovered partitions
-        uses: nix-forge/ci/actions/materialize-partitions@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/materialize-partitions@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
       - env:
           TARGET_SYSTEM: ${{ matrix.system }}
         run: |
@@ -195,12 +195,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           cache: 'false'
           cache-scope: ci-build
       - name: Build every declared native CI check
-        uses: nix-forge/ci/actions/flake-checks@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/flake-checks@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           system: ${{ matrix.system }}
           checks-output: ciChecks
@@ -252,12 +252,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           cache: 'false'
           cache-scope: ci-expensive-font
       - name: Build exhaustive font audit
-        uses: nix-forge/ci/actions/flake-checks@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/flake-checks@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           system: ${{ matrix.system }}
           checks-output: manualChecks
@@ -274,7 +274,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Nix
-        uses: nix-forge/ci/actions/setup-nix@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           cache: 'false'
           cache-scope: ci-expensive-audiomuse
@@ -303,7 +303,7 @@ jobs:
       actions: write # Dispatch trusted queue validation.
     steps:
       - name: Notify trusted queue reconciler
-        uses: nix-forge/ci/actions/queue-completion@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+        uses: nix-forge/ci/actions/queue-completion@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           source-activity: ${{ startsWith(github.ref, 'refs/heads/automation/package-updates-') && 'completed'
             || '' }}
@@ -313,4 +313,4 @@ jobs:
     name: NUR compatibility
     permissions:
       contents: read
-    uses: nix-forge/ci/.github/workflows/nur.yml@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
+    uses: nix-forge/ci/.github/workflows/nur.yml@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0

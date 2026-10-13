@@ -61,8 +61,8 @@ in
             ];
           };
           sharedRelease = pkgs.fetchurl {
-            url = "https://github.com/nix-forge/ci/releases/download/v2.12.0/nix-forge-ci-v2.12.0.tar.gz";
-            hash = "sha256-7B6QmbYvxPZzjM6+8IA+QX/Zerp+B4OFo1NXBVkLqeQ=";
+            url = "https://github.com/nix-forge/ci/releases/download/v2.13.0/nix-forge-ci-v2.13.0.tar.gz";
+            hash = "sha256-DktBzMZugRZKOIjQyZorgkfpSoUdtmTiapqddP5B75Y=";
           };
         in
         pkgs.runCommand "package-source-notification-contract"

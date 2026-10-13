@@ -17,8 +17,8 @@ from unittest.mock import patch
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-PIN = "ab8e486d3d1c48edd116578e097a46eb0c8f5097"
-ARCHIVE_SHA = "ec1e9099b62fc4f6738ccebef0803e417fd97aba7e078385a3535705590ba9e4"
+PIN = "1a6dfe0b851c69ad30169977e014bd45029e9c55"
+ARCHIVE_SHA = "0e4b41ccc66e81164a3888d0c99a2b8247e94a851db664e26a9a9d74fe41ef96"
 FILES = ["ci.yml", "codeql.yml", "dependency-review.yml", "dco.yml", "fuzz.yml"]
 SOURCE = "refs/heads/automation/package-updates-example"
 QUEUE = "refs/heads/gh-readonly-queue/main/pr-7-example"
@@ -115,12 +115,12 @@ class SourceNotificationTests(unittest.TestCase):
         archive = Path(os.environ["SHARED_CI_ARCHIVE"])
         if hashlib.sha256(archive.read_bytes()).hexdigest() != ARCHIVE_SHA:
             raise ValueError(
-                "Shared CI archive differs from the verified v2.12 release"
+                "Shared CI archive differs from the verified v2.13 release"
             )
         with tarfile.open(archive) as bundle:
 
             def read(name):
-                member = bundle.extractfile(f"nix-forge-ci-v2.12.0/{name}")
+                member = bundle.extractfile(f"nix-forge-ci-v2.13.0/{name}")
                 if member is None:
                     raise ValueError("Shared release member is not a regular file")
                 return member.read().decode()
@@ -299,6 +299,7 @@ class SourceNotificationTests(unittest.TestCase):
                     "PATH": f"{root}:{os.environ['PATH']}",
                     "RECEIPT": str(receipt),
                     "DEFAULT_BRANCH": "main",
+                    "GH_REPO": "nix-forge/example",
                     "GITHUB_RUN_ID": "123",
                     "GITHUB_RUN_ATTEMPT": "2",
                     "SOURCE_ACTIVITY": activity,
@@ -330,20 +331,21 @@ class SourceNotificationTests(unittest.TestCase):
                 result, calls = self.invoke(phase)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 expected = [
-                    "workflow",
-                    "run",
-                    "reconcile-merge-queue.yml",
-                    "--ref",
-                    "main",
+                    "api",
+                    "repos/nix-forge/example/actions/workflows/reconcile-merge-queue.yml/dispatches",
+                    "--method",
+                    "POST",
                     "-f",
-                    "source_run_id=123",
+                    "ref=main",
+                    "-f",
+                    "inputs[source_run_id]=123",
                 ]
                 if phase:
                     expected += [
                         "-f",
-                        "source_run_attempt=2",
+                        "inputs[source_run_attempt]=2",
                         "-f",
-                        f"source_activity={phase}",
+                        f"inputs[source_activity]={phase}",
                     ]
                 self.assertEqual(calls, [expected])
 
@@ -381,6 +383,11 @@ class SourceNotificationTests(unittest.TestCase):
                 "id": index,
                 "event": "workflow_dispatch",
                 "queue_workflow": workflow,
+                "workflow_id": index,
+                "path": f".github/workflows/{workflow}",
+                "head_branch": QUEUE.removeprefix("refs/heads/"),
+                "repository": {"full_name": "nix-forge/example"},
+                "head_repository": {"full_name": "nix-forge/example"},
                 "head_sha": sha,
                 "run_attempt": 1,
                 "status": "completed",
@@ -415,6 +422,14 @@ class SourceNotificationTests(unittest.TestCase):
                 self.assertEqual(path, f"repos/nix-forge/example/statuses/{sha}")
                 published.append(data)
                 return None
+            if "/actions/workflows?" in path:
+                workflows = [
+                    {"id": run["workflow_id"], "path": run["path"], "state": "active"}
+                    for run in runs
+                ]
+                return {"total_count": len(workflows), "workflows": workflows}
+            if "/actions/runs?head_sha=" in path:
+                return {"total_count": len(runs), "workflow_runs": runs}
             if "/status?" in path:
                 return {"statuses": []}
             if "/git/ref/" in path:
@@ -422,12 +437,12 @@ class SourceNotificationTests(unittest.TestCase):
             for run in runs:
                 if f"/actions/runs/{run['id']}/jobs?" in path:
                     return {"jobs": jobs[run["id"]]}
-                if f"/actions/workflows/{run['queue_workflow']}/runs?" in path:
-                    return {"workflow_runs": [run]}
             raise AssertionError(path)
 
         with (
-            patch.multiple(self.queue, SOURCE_CHECKS=checks),
+            patch.multiple(
+                self.queue, SOURCE_CHECKS=checks, SOURCE_CACHE={}, SOURCE_RUN_LISTS={}
+            ),
             patch.object(self.queue, "api", side_effect=api),
         ):
             self.assertTrue(self.queue.publish_dispatch_results(QUEUE, sha, runs))
