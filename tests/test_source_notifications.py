@@ -24,7 +24,9 @@ SOURCE = "refs/heads/automation/package-updates-example"
 QUEUE = "refs/heads/gh-readonly-queue/main/pr-7-example"
 
 
-def expression(value, event="workflow_dispatch", ref=SOURCE, cancelled=False):
+def expression(
+    value, event="workflow_dispatch", ref=SOURCE, cancelled=False, needs=None
+):
     """Evaluate the callers' boolean expressions.
 
     Raises:
@@ -41,6 +43,8 @@ def expression(value, event="workflow_dispatch", ref=SOURCE, cancelled=False):
         "inputs.build_expensive_font": "False",
         "inputs.build_expensive_audiomuse": "False",
     }
+    for job_id, result in (needs or {}).items():
+        replacements[f"needs.{job_id}.result"] = repr(result)
     for old, new in replacements.items():
         value = value.replace(old, new)
     value = value.replace("&&", " and ").replace("||", " or ")
@@ -240,6 +244,80 @@ class SourceNotificationTests(unittest.TestCase):
                             self.assertTrue(expression(job["if"], ref=QUEUE))
                             self.assertTrue(expression(job["if"]))
                             self.assertFalse(expression(job["if"], cancelled=True))
+
+    def test_downstream_jobs_survive_skipped_notification_ancestors(self):
+        jobs = self.workflows["ci.yml"]["jobs"]
+
+        def scheduled(job_id, results, *, cancelled=False, condition=None):
+            job = jobs[job_id]
+            condition = job.get("if", "true") if condition is None else condition
+            ancestors = set()
+
+            def visit(current):
+                for dependency in jobs[current].get("needs", []):
+                    if dependency not in ancestors:
+                        ancestors.add(dependency)
+                        visit(dependency)
+
+            visit(job_id)
+            # GitHub implicitly adds success() without an explicit status
+            # function, including skipped transitive ancestors. Model the
+            # observed PR127 skip rather than only checking direct needs.
+            explicit_status = any(
+                function in condition
+                for function in ("always()", "cancelled()", "success()", "failure()")
+            )
+            if not explicit_status and any(
+                results[ancestor] != "success" for ancestor in ancestors
+            ):
+                return False
+            return expression(
+                condition, event=event, ref=ref, cancelled=cancelled, needs=results
+            )
+
+        for event, ref, start_result in [
+            ("pull_request", "refs/pull/7/merge", "skipped"),
+            ("merge_group", QUEUE, "skipped"),
+            ("workflow_dispatch", QUEUE, "skipped"),
+            ("workflow_dispatch", SOURCE, "success"),
+        ]:
+            with self.subTest(event=event, ref=ref):
+                results = {
+                    "source-start": start_result,
+                    "discover": "success",
+                    "lint": "success",
+                    "flake": "success",
+                    "flake-lock": "success",
+                }
+                for job_id, prerequisites in [
+                    ("flake-lock", ["discover"]),
+                    ("build", ["lint", "flake"]),
+                ]:
+                    self.assertTrue(scheduled(job_id, results))
+                    self.assertFalse(scheduled(job_id, results, cancelled=True))
+                    if start_result == "skipped":
+                        # The pre-fix missing-if version reproduces the real
+                        # transitive skip despite every direct need succeeding.
+                        self.assertFalse(scheduled(job_id, results, condition="true"))
+                    for prerequisite in prerequisites:
+                        for result in ["failure", "cancelled", "skipped"]:
+                            self.assertFalse(
+                                scheduled(
+                                    job_id,
+                                    results | {prerequisite: result},
+                                )
+                            )
+                # The stable required gate still runs and checks the actual
+                # matrix result; it never turns a failed/skipped lock green.
+                self.assertEqual(jobs["lock-health"]["if"], "always()")
+                self.assertIn(
+                    'test "$LOCK_RESULT" = success',
+                    jobs["lock-health"]["steps"][0]["run"],
+                )
+                for result in ["failure", "skipped", "cancelled"]:
+                    self.assertTrue(
+                        scheduled("lock-health", results | {"flake-lock": result})
+                    )
 
     def test_actual_ref_guards_and_phases(self):
         for workflow in self.workflows.values():

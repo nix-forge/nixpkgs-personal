@@ -68,6 +68,7 @@ jobs:
         run: test "$LOCK_RESULT" = success
   flake-lock:
     needs: [discover]
+    if: "!cancelled() && needs.discover.result == 'success'"
     name: Flake lock (${{ matrix.lockfile }})
     permissions:
       contents: read
@@ -155,6 +156,7 @@ jobs:
   build:
     name: ${{ matrix.name }}
     needs: [lint, flake]
+    if: "!cancelled() && needs.lint.result == 'success' && needs.flake.result == 'success'"
     strategy:
       fail-fast: false
       matrix:
