@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: "23 4 * * *"
   workflow_dispatch:
+    inputs:
+      package:
+        description: Optional exact package name to recover; empty updates all packages.
+        type: string
+        required: false
 concurrency:
   group: package-updates
   cancel-in-progress: false
@@ -22,7 +27,13 @@ jobs:
         with:
           persist-credentials: false
       - id: packages
-        run: echo "names=$(python3 scripts/update-packages.py --list-json)" >> "$GITHUB_OUTPUT"
+        env:
+          PACKAGE: ${{ inputs.package }}
+        run: |
+          args=(--list-json)
+          if [[ -n "$PACKAGE" ]]; then args+=(--package "$PACKAGE"); fi
+          names=$(python3 scripts/update-packages.py "${args[@]}")
+          printf 'names=%s\n' "$names" >> "$GITHUB_OUTPUT"
   update:
     needs: discover
     if: needs.discover.result == 'success'
