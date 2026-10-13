@@ -152,6 +152,9 @@ class SourceNotificationTests(unittest.TestCase):
         for value in inputs.values():
             self.assertEqual(value["type"], "string")
             self.assertEqual(value["required"], "false")
+        # Source and queue writes are paced by the shared reconciler. A full
+        # six-head sweep needs the consumer's own timeout, not the CI repo's.
+        self.assertEqual(self.reconciler["jobs"]["reconcile"]["timeout-minutes"], "15")
         action = self.reconciler["jobs"]["reconcile"]["steps"][0]
         self.assertEqual(action["uses"], f"nix-forge/ci/actions/reconcile-queue@{PIN}")
         for external, internal in [
