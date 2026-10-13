@@ -176,10 +176,9 @@ async def run(name, args, limit, executable=None):
 
 
 async def main():
-    loop = asyncio.get_running_loop()
     owner = asyncio.current_task()
     for sig in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]:
-        loop.add_signal_handler(sig, owner.cancel)
+        asyncio.get_running_loop().add_signal_handler(sig, owner.cancel)
     combined = ROOT / "combined-framework-sqlite.swift"
     combined.write_text(
         "import AppKit\nimport SwiftUI\n"
@@ -208,20 +207,30 @@ async def main():
         })
     )
     linking = SQLITE[2:]
-    discovery = {
-        "baseline": [],
-        "sdk-header-overlay": ["-Xcc", "-ivfsoverlay", "-Xcc", str(overlay)],
-    }
-    metadata = {
-        key: ENV.get(key, "").replace(str(SOURCE), "<source>")
-        for key in ("SDKROOT", "NIX_CFLAGS_COMPILE", "NIX_LDFLAGS")
-    }
-    (REPORT / "compiler-environment.json").write_text(
-        json.dumps(metadata, indent=2) + "\n"
-    )
-    for name, flags in discovery.items():
-        cache = ROOT / (name + "-combined-cache")
-        cache.mkdir(exist_ok=True)
+    flags = ["-Xcc", "-ivfsoverlay", "-Xcc", str(overlay)]
+    helper_sources = [
+        "Sources/Vorssaint/Services/FanControl/FanControlSupport.swift",
+        "Sources/Vorssaint/Services/FanControl/FanControlXPC.swift",
+        "Sources/Vorssaint/Services/SystemMonitor/SMCClient.swift",
+        "Sources/Vorssaint/Services/Metrics/TemperatureSensorSelector.swift",
+        "Sources/Vorssaint/Services/FanControl/FanControlHardware.swift",
+        "Sources/FanControlHelper/main.swift",
+    ]
+    adapter_sources = [
+        "Sources/NowPlayingAdapter/NowPlayingAdapter.swift",
+        "Sources/NowPlayingAdapter/NowPlayingQueue.swift",
+        "Sources/NowPlayingAdapter/NowPlayingSelection.swift",
+        "Sources/Vorssaint/Services/Notch/NotchPlaybackSource.swift",
+        "Sources/Vorssaint/Services/Notch/NotchPlaybackCommand.swift",
+    ]
+    for name in ("mixed", "isolated"):
+        sql_cache = ROOT / (name + "-sql-cache")
+        helper_cache = sql_cache if name == "mixed" else ROOT / "isolated-helper-cache"
+        adapter_cache = (
+            sql_cache if name == "mixed" else ROOT / "isolated-adapter-cache"
+        )
+        for cache in (sql_cache, helper_cache, adapter_cache):
+            cache.mkdir(exist_ok=True)
         binary = ROOT / (name + "-combined")
         smoke = await run(
             name + "-combined-compile",
@@ -229,39 +238,57 @@ async def main():
                 *BASE,
                 "-v",
                 "-module-cache-path",
-                str(cache),
+                str(sql_cache),
                 *flags,
                 *linking,
                 str(combined),
                 "-o",
                 str(binary),
             ],
-            120,
+            90,
         )
-        if smoke["returncode"] == 0:
-            query = await run(name + "-combined-query", [], 10, executable=str(binary))
-            if query["returncode"] != 0:
-                continue
-            if flags:
-                await run(
-                    name + "-app-typecheck",
-                    [
-                        *BASE,
-                        "-typecheck",
-                        "-v",
-                        "-Xfrontend",
-                        "-debug-time-function-bodies",
-                        "-module-cache-path",
-                        str(cache),
-                        *flags,
-                        "-I",
-                        "Sources/VMStatisticsCompat",
-                        "-I",
-                        "Sources/HIDEventSystem",
-                        *APP,
-                    ],
-                    120,
-                )
+        if smoke["returncode"] != 0:
+            continue
+        query = await run(name + "-combined-query", [], 10, executable=str(binary))
+        if query["returncode"] != 0:
+            continue
+        helper = ROOT / (name + "-fan-helper")
+        compiled = await run(
+            name + "-helper-compile",
+            [
+                *BASE,
+                "-v",
+                "-O",
+                "-whole-module-optimization",
+                "-module-cache-path",
+                str(helper_cache),
+                *helper_sources,
+                "-o",
+                str(helper),
+            ],
+            90,
+        )
+        if compiled["returncode"] == 0:
+            await run(
+                name + "-helper-selftest", ["--selftest"], 10, executable=str(helper)
+            )
+        await run(
+            name + "-adapter-compile",
+            [
+                *BASE,
+                "-v",
+                "-O",
+                "-module-cache-path",
+                str(adapter_cache),
+                "-emit-library",
+                "-module-name",
+                "PersonalMonitorNowPlaying",
+                *adapter_sources,
+                "-o",
+                str(ROOT / (name + "-adapter.dylib")),
+            ],
+            90,
+        )
 
 
 def publish_reports():
