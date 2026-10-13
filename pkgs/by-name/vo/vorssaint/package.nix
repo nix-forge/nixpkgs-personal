@@ -8,7 +8,9 @@
   makeWrapper,
   python3,
   rcodesign,
+  sqlite,
   swift,
+  writeTextDir,
 }:
 
 let
@@ -17,6 +19,14 @@ let
   needsSwift510CompatibilityPatch = lib.versionOlder swift.version "6";
   # Upstream 3.4.1 includes both fan-helper isolation fixes already.
   needsFanHelperConcurrencyPatch = lib.versionOlder source.version "3.4.1";
+  # The Nix Apple SDK removes SQLite headers in favor of the separate library.
+  sqliteModule = writeTextDir "module.modulemap" ''
+    module SQLite3 [system] {
+      header "${lib.getDev sqlite}/include/sqlite3.h"
+      link "sqlite3"
+      export *
+    }
+  '';
 in
 lib.warnIf (!needsSwift510CompatibilityPatch)
   ''
@@ -54,6 +64,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         rcodesign
         swift
       ];
+      buildInputs = [ sqlite ];
       strictDeps = true;
 
       dontConfigure = true;
@@ -63,6 +74,16 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
 
         buildDir="$PWD/build"
         mkdir -p "$buildDir"
+        sqliteFlags=(
+          -I ${sqliteModule} -L ${lib.getLib sqlite}/lib -lsqlite3
+          -Xlinker -rpath -Xlinker ${lib.getLib sqlite}/lib
+        )
+
+        # Check import, linking and a real query even on older upstream releases
+        # that do not yet compile the OpenCode reader introduced in 3.4.1.
+        swiftc -swift-version 5 -target arm64-apple-macosx14.0 \
+          "''${sqliteFlags[@]}" ${./check_sqlite.swift} -o "$buildDir/check-sqlite"
+        "$buildDir/check-sqlite"
 
         # Upstream deliberately builds with a plain swiftc invocation. Keep the
         # source discovery explicit and deterministic, while excluding no sources:
@@ -72,7 +93,8 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
           appSources+=("$sourceFile")
         done < <(find Sources/Vorssaint -type f -name '*.swift' | sort)
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
-          -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem "''${appSources[@]}" \
+          -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem \
+          "''${sqliteFlags[@]}" "''${appSources[@]}" \
           -o "$buildDir/PersonalMonitor"
 
         # Native 5.10 and 6.3 checks found a smaller helper with WMO.
