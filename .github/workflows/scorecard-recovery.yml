@@ -13,6 +13,6 @@ jobs:
     permissions:
       actions: write # Retry only verified current-branch outages, with a bounded attempt count.
       contents: read
-    uses: nix-forge/ci/.github/workflows/retry-scorecard.yml@32dec0910e46dda3568ef5a494ed5fb6a9a08f31 # v2.10.0
+    uses: nix-forge/ci/.github/workflows/retry-scorecard.yml@1e0a32faa469994e478ba8a3944875b6aca7e659 # v2.11.0
     with:
       source-run-id: ${{ format('{0}', github.event.workflow_run.id) }}
