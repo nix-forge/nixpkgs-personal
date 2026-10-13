@@ -8,6 +8,7 @@
   makeWrapper,
   python3,
   rcodesign,
+  sqlite,
   swift,
 }:
 
@@ -17,6 +18,7 @@ let
   needsSwift510CompatibilityPatch = lib.versionOlder swift.version "6";
   # Upstream 3.4.1 includes both fan-helper isolation fixes already.
   needsFanHelperConcurrencyPatch = lib.versionOlder source.version "3.4.1";
+
 in
 lib.warnIf (!needsSwift510CompatibilityPatch)
   ''
@@ -54,6 +56,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         rcodesign
         swift
       ];
+      buildInputs = [ sqlite ];
       strictDeps = true;
 
       dontConfigure = true;
@@ -63,6 +66,28 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
 
         buildDir="$PWD/build"
         mkdir -p "$buildDir"
+        mkdir -p "$buildDir/swift-modules/sqlite" \
+          "$buildDir/swift-modules/fan-helper" \
+          "$buildDir/swift-modules/now-playing"
+        # Preserve the SDK's SQLite3 module identity. A second module map on
+        # Swift's search path stalls framework imports or redefines the module.
+        # The read-only overlay supplies only the two omitted standard headers.
+        sqliteOverlay="$buildDir/sqlite-headers.json"
+        python3 ${./write_sqlite_overlay.py} "$SDKROOT" \
+          "${lib.getDev sqlite}/include" "$sqliteOverlay"
+        # Overlay and ordinary SDK contexts must not share host-global PCMs.
+        sqliteFlags=(
+          -module-cache-path "$buildDir/swift-modules/sqlite"
+          -Xcc -ivfsoverlay -Xcc "$sqliteOverlay"
+          -L ${lib.getLib sqlite}/lib -lsqlite3
+          -Xlinker -rpath -Xlinker ${lib.getLib sqlite}/lib
+        )
+
+        # Check import, linking and a real query even on older upstream releases
+        # that do not yet compile the OpenCode reader introduced in 3.4.1.
+        swiftc -swift-version 5 -target arm64-apple-macosx14.0 \
+          "''${sqliteFlags[@]}" ${./check_sqlite.swift} -o "$buildDir/check-sqlite"
+        "$buildDir/check-sqlite"
 
         # Upstream deliberately builds with a plain swiftc invocation. Keep the
         # source discovery explicit and deterministic, while excluding no sources:
@@ -72,11 +97,13 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
           appSources+=("$sourceFile")
         done < <(find Sources/Vorssaint -type f -name '*.swift' | sort)
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
-          -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem "''${appSources[@]}" \
+          -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem \
+          "''${sqliteFlags[@]}" "''${appSources[@]}" \
           -o "$buildDir/PersonalMonitor"
 
         # Native 5.10 and 6.3 checks found a smaller helper with WMO.
         swiftc -O -whole-module-optimization -swift-version 5 -target arm64-apple-macosx14.0 \
+          -module-cache-path "$buildDir/swift-modules/fan-helper" \
           Sources/Vorssaint/Services/FanControl/FanControlSupport.swift \
           Sources/Vorssaint/Services/FanControl/FanControlXPC.swift \
           Sources/Vorssaint/Services/SystemMonitor/SMCClient.swift \
@@ -87,6 +114,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         "$buildDir/io.github.ianhollow.personalmonitor.fan-control" --selftest
 
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
+          -module-cache-path "$buildDir/swift-modules/now-playing" \
           -emit-library -module-name PersonalMonitorNowPlaying \
           Sources/NowPlayingAdapter/NowPlayingAdapter.swift \
           Sources/NowPlayingAdapter/NowPlayingQueue.swift \
