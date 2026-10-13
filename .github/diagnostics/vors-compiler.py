@@ -5,10 +5,12 @@ import logging
 import os
 import shutil
 import signal
+import sys
 import time
 from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
+SCRIPT = str(Path(__file__).resolve())
 
 ROOT = Path("diagnostic-work").resolve()
 ROOT.mkdir(exist_ok=True)
@@ -48,18 +50,48 @@ RESULTS = []
 
 
 async def terminate(process):
+    # The supervisor ignores TERM and remains the live group leader after the
+    # compiler exits. Its PID therefore anchors ownership until our final KILL.
+    # Unexpected supervisor exit makes group ownership unprovable: fail closed.
     if process.returncode is not None:
         return
-    try:
+    with contextlib.suppress(ProcessLookupError):
         os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        return
     try:
-        await asyncio.wait_for(asyncio.shield(process.wait()), 5)
-    except TimeoutError, asyncio.CancelledError:
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGKILL)
+        await asyncio.sleep(0.25)
+    finally:
+        if process.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
         await process.wait()
+
+
+async def completed(process, result_path):
+    while not result_path.exists():
+        if process.returncode is not None:
+            raise RuntimeError("Owned compiler supervisor exited unexpectedly")
+        await asyncio.sleep(0.05)
+    return json.loads(result_path.read_text())["returncode"]
+
+
+def supervise(result_path, command):
+    # Preserve the group leader even if the compiler leaves live descendants.
+    # Only the compiler receives normal signal dispositions.
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(sig, signal.SIG_IGN)
+
+    child = os.fork()
+    if child == 0:
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            signal.signal(sig, signal.SIG_DFL)
+        # Fixed owned compiler arguments, no shell or upstream helper execution.
+        os.execvpe(command[0], command, os.environ)  # ruff: ignore[start-process-with-no-shell] - owned argv, no shell
+    _, status = os.waitpid(child, 0)
+    temporary = result_path.with_suffix(".partial")
+    temporary.write_text(json.dumps({"returncode": os.waitstatus_to_exitcode(status)}))
+    temporary.replace(result_path)
+    while True:
+        signal.pause()
 
 
 async def spawn(*args, **kwargs):
@@ -76,8 +108,15 @@ async def run(name, args, limit, executable=None):
     start = time.monotonic()
     command = [executable or SWIFT, *args]
     LOGGER.info("start %s deadline=%ss", name, limit)
+    result_path = ROOT / (name + ".exit.json")
+    result_path.unlink(missing_ok=True)
+    returncode = None
     with (ROOT / (name + ".log")).open("wb") as log:
         process = await spawn(
+            sys.executable,
+            SCRIPT,
+            "--supervise",
+            str(result_path),
             *command,
             cwd=SOURCE,
             env=ENV,
@@ -87,7 +126,7 @@ async def run(name, args, limit, executable=None):
         )
         timed_out = False
         try:
-            await asyncio.wait_for(process.wait(), limit)
+            returncode = await asyncio.wait_for(completed(process, result_path), limit)
         except TimeoutError:
             timed_out = True
             LOGGER.info("%s exceeded its deadline", name)
@@ -96,7 +135,7 @@ async def run(name, args, limit, executable=None):
     result = {
         "name": name,
         "elapsed": round(time.monotonic() - start, 3),
-        "returncode": process.returncode,
+        "returncode": returncode,
         "timed_out": timed_out,
         "command": [
             part.replace(str(SOURCE), "<source>").replace(
@@ -216,7 +255,9 @@ def publish_reports():
         (REPORT / "results.json").write_text(json.dumps(RESULTS, indent=2) + "\n")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--supervise":
+    supervise(Path(sys.argv[2]), sys.argv[3:])
+elif __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     try:
         asyncio.run(main())
