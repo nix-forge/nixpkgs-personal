@@ -66,6 +66,9 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
 
         buildDir="$PWD/build"
         mkdir -p "$buildDir"
+        mkdir -p "$buildDir/swift-modules/sqlite" \
+          "$buildDir/swift-modules/fan-helper" \
+          "$buildDir/swift-modules/now-playing"
         # Preserve the SDK's SQLite3 module identity. A second module map on
         # Swift's search path stalls framework imports or redefines the module.
         # The read-only overlay supplies only the two omitted standard headers.
