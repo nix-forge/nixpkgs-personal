@@ -32,6 +32,8 @@ def expression(value, event="workflow_dispatch", ref=SOURCE, cancelled=False):
 
     """
     value = value.removeprefix("${{").removesuffix("}}").strip()
+    if value in {"true", "false"}:
+        return value == "true"
     replacements = {
         "github.event.repository.default_branch": "'main'",
         "github.event_name": repr(event),
@@ -43,6 +45,7 @@ def expression(value, event="workflow_dispatch", ref=SOURCE, cancelled=False):
         value = value.replace(old, new)
     value = value.replace("&&", " and ").replace("||", " or ")
     value = value.replace("!cancelled()", "not cancelled()")
+    value = value.replace("!startsWith(", "not startsWith(")
     tree = ast.parse(value, mode="eval")
     allowed = (
         ast.Expression,
@@ -346,6 +349,20 @@ class SourceNotificationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(len(calls), 3)
         self.assertIn("::warning::", result.stdout + result.stderr)
+
+    def test_failed_completion_is_blocking_only_for_source_producers(self):
+        for workflow in self.workflows.values():
+            completion = workflow["jobs"]["queue-completion"]
+            policy = completion["continue-on-error"]
+            phase = completion["steps"][0]["with"]["source-activity"]
+            for ref, ignored in [(SOURCE, False), (QUEUE, True)]:
+                with self.subTest(ref=ref):
+                    self.assertTrue(expression(completion["if"], ref=ref))
+                    result, calls = self.invoke(expression(phase, ref=ref), fail=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(len(calls), 3)
+                    self.assertIn("::warning::", result.stdout + result.stderr)
+                    self.assertIs(expression(policy, ref=ref), ignored)
 
     def test_actual_collector_ignores_skipped_start_without_waiving_real_jobs(self):
         checks = json.loads(

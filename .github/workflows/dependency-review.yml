@@ -41,7 +41,7 @@ jobs:
       base-ref: ${{ inputs.base_ref }}
       head-ref: ${{ inputs.head_ref }}
   queue-completion:
-    continue-on-error: true
+    continue-on-error: ${{ !startsWith(github.ref, 'refs/heads/automation/package-updates-') }}
     name: Queue completion callback
     if: >-
       always() && github.event_name == 'workflow_dispatch' && (startsWith(github.ref, format('refs/heads/gh-readonly-queue/{0}/',
