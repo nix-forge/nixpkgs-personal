@@ -180,15 +180,32 @@ async def main():
     owner = asyncio.current_task()
     for sig in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]:
         loop.add_signal_handler(sig, owner.cancel)
-    ui = ROOT / "import-ui.swift"
-    ui.write_text("import AppKit\nimport SwiftUI\nlet color = NSColor.red\n_ = color\n")
-    # Keep linking identical while changing only Clang module/header discovery.
+    combined = ROOT / "combined-framework-sqlite.swift"
+    combined.write_text(
+        "import AppKit\nimport SwiftUI\n"
+        + await asyncio.to_thread(
+            Path(os.environ["DIAGNOSTIC_SQLITE_SMOKE"]).read_text, encoding="utf-8"
+        )
+    )
+    overlay = ROOT / "sqlite-header-overlay.json"
+    overlay.write_text(
+        json.dumps({
+            "version": 0,
+            "case-sensitive": "true",
+            "use-external-names": False,
+            "roots": [
+                {
+                    "type": "file",
+                    "name": SDK + "/usr/include/sqlite3.h",
+                    "external-contents": HEADER,
+                }
+            ],
+        })
+    )
     linking = SQLITE[2:]
     discovery = {
         "baseline": [],
-        "swift-module-search": SQLITE[:2],
-        "clang-header-search": ["-Xcc", "-I", "-Xcc", str(Path(HEADER).parent)],
-        "clang-explicit-map": ["-Xcc", "-fmodule-map-file=" + str(module_map)],
+        "sdk-header-overlay": ["-Xcc", "-ivfsoverlay", "-Xcc", str(overlay)],
     }
     metadata = {
         key: ENV.get(key, "").replace(str(SOURCE), "<source>")
@@ -198,24 +215,11 @@ async def main():
         json.dumps(metadata, indent=2) + "\n"
     )
     for name, flags in discovery.items():
-        cache = ROOT / (name + "-cache")
+        cache = ROOT / (name + "-combined-cache")
         cache.mkdir(exist_ok=True)
-        await run(
-            name + "-ui",
-            [
-                *BASE,
-                "-typecheck",
-                "-v",
-                "-module-cache-path",
-                str(cache),
-                *flags,
-                str(ui),
-            ],
-            60,
-        )
-        binary = ROOT / (name + "-sqlite")
+        binary = ROOT / (name + "-combined")
         smoke = await run(
-            name + "-sqlite-compile",
+            name + "-combined-compile",
             [
                 *BASE,
                 "-v",
@@ -223,14 +227,34 @@ async def main():
                 str(cache),
                 *flags,
                 *linking,
-                os.environ["DIAGNOSTIC_SQLITE_SMOKE"],
+                str(combined),
                 "-o",
                 str(binary),
             ],
-            60,
+            120,
         )
         if smoke["returncode"] == 0:
-            await run(name + "-sqlite-query", [], 10, executable=str(binary))
+            await run(name + "-combined-query", [], 10, executable=str(binary))
+            if flags:
+                await run(
+                    name + "-app-typecheck",
+                    [
+                        *BASE,
+                        "-typecheck",
+                        "-v",
+                        "-Xfrontend",
+                        "-debug-time-function-bodies",
+                        "-module-cache-path",
+                        str(cache),
+                        *flags,
+                        "-I",
+                        "Sources/VMStatisticsCompat",
+                        "-I",
+                        "Sources/HIDEventSystem",
+                        *APP,
+                    ],
+                    120,
+                )
 
 
 def publish_reports():
