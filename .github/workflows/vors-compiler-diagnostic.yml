@@ -1,0 +1,46 @@
+name: Vors compiler diagnostic (non-production)
+on:
+  push:
+    branches: [codex/vorssaint-hosted-diagnostic-c9800445]
+    paths:
+      - .github/diagnostics/vors-compiler.py
+      - .github/diagnostics/vors-compiler.nix
+      - .github/workflows/vors-compiler-diagnostic.yml
+permissions:
+  contents: read
+concurrency:
+  group: vors-compiler-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  diagnostic:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
+        with:
+          cache: 'false'
+      - name: Run bounded native compiler comparisons
+        shell: bash
+        run: |
+          nix build --impure --file .github/diagnostics/vors-compiler.nix --out-link diagnostic-result -L
+          echo 'Diagnostic completion is not production build validation.' >> "$GITHUB_STEP_SUMMARY"
+          cat diagnostic-result/results.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload classified diagnostic logs (no binaries)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vors-compiler-diagnostic
+          path: diagnostic-result/*.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload compiler stage logs (no binaries)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vors-compiler-stages
+          path: diagnostic-result/*.log
+          if-no-files-found: warn
+          retention-days: 7
