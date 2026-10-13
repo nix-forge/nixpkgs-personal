@@ -34,7 +34,7 @@ jobs:
       actions: read # Read workflow metadata for Actions analysis.
       contents: read
       security-events: write # Upload code scanning results.
-    uses: nix-forge/ci/.github/workflows/codeql.yml@1e0a32faa469994e478ba8a3944875b6aca7e659 # v2.11.0
+    uses: nix-forge/ci/.github/workflows/codeql.yml@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
     with:
       languages: actions
   analyze-python:
@@ -48,7 +48,7 @@ jobs:
     permissions:
       contents: read
       security-events: write # Upload code scanning results.
-    uses: nix-forge/ci/.github/workflows/codeql.yml@1e0a32faa469994e478ba8a3944875b6aca7e659 # v2.11.0
+    uses: nix-forge/ci/.github/workflows/codeql.yml@ab8e486d3d1c48edd116578e097a46eb0c8f5097 # v2.12.0
     with:
       languages: ${{ matrix.language }}
   analyze:
