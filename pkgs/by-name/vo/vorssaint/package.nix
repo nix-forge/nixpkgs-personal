@@ -70,26 +70,8 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         # Swift's search path stalls framework imports or redefines the module.
         # The read-only overlay supplies only the two omitted standard headers.
         sqliteOverlay="$buildDir/sqlite-headers.json"
-        python3 - "$SDKROOT" "${lib.getDev sqlite}/include" "$sqliteOverlay" <<'PY'
-        import json
-        import sys
-        from pathlib import Path
-
-        sdk, headers, output = sys.argv[1:]
-        Path(output).write_text(json.dumps({
-            "version": 0,
-            "case-sensitive": "true",
-            "use-external-names": False,
-            "roots": [
-                {
-                    "type": "file",
-                    "name": f"{sdk}/usr/include/{header}",
-                    "external-contents": f"{headers}/{header}",
-                }
-                for header in ("sqlite3.h", "sqlite3ext.h")
-            ],
-        }), encoding="utf-8")
-        PY
+        python3 ${./write_sqlite_overlay.py} "$SDKROOT" \
+          "${lib.getDev sqlite}/include" "$sqliteOverlay"
         sqliteFlags=(
           -Xcc -ivfsoverlay -Xcc "$sqliteOverlay"
           -L ${lib.getLib sqlite}/lib -lsqlite3
