@@ -8,18 +8,30 @@ import json
 import re
 import tempfile
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 
 from font_support import faces
-from update_support import HTTPS_CONTEXT
+from update_support import HTTPS_CONTEXT, github_api_headers
 
 API = "https://api.github.com/repos/samuelngs/apple-emoji-ttf"
 
 
 def fetch_json(url):
+    headers = github_api_headers("nixpkgs-personal-font-updater")
+    authorization = headers.pop("Authorization", None)
+    request = Request(url, headers=headers)
+    origin = urlsplit(url)
+    if (
+        authorization
+        and origin.scheme == "https"
+        and origin.netloc in {"api.github.com", "api.github.com:443"}
+    ):
+        # urllib copies ordinary headers when redirecting; unredirected headers
+        # stay on this exact request, keeping credentials off redirected hosts.
+        request.add_unredirected_header("Authorization", authorization)
     with urlopen(
-        Request(url, headers={"User-Agent": "nixpkgs-personal-font-updater"}),
+        request,
         context=HTTPS_CONTEXT,
         timeout=30,
     ) as response:
