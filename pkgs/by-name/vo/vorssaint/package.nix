@@ -72,7 +72,9 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         sqliteOverlay="$buildDir/sqlite-headers.json"
         python3 ${./write_sqlite_overlay.py} "$SDKROOT" \
           "${lib.getDev sqlite}/include" "$sqliteOverlay"
+        # Overlay and ordinary SDK contexts must not share host-global PCMs.
         sqliteFlags=(
+          -module-cache-path "$buildDir/swift-modules/sqlite"
           -Xcc -ivfsoverlay -Xcc "$sqliteOverlay"
           -L ${lib.getLib sqlite}/lib -lsqlite3
           -Xlinker -rpath -Xlinker ${lib.getLib sqlite}/lib
@@ -98,6 +100,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
 
         # Native 5.10 and 6.3 checks found a smaller helper with WMO.
         swiftc -O -whole-module-optimization -swift-version 5 -target arm64-apple-macosx14.0 \
+          -module-cache-path "$buildDir/swift-modules/fan-helper" \
           Sources/Vorssaint/Services/FanControl/FanControlSupport.swift \
           Sources/Vorssaint/Services/FanControl/FanControlXPC.swift \
           Sources/Vorssaint/Services/SystemMonitor/SMCClient.swift \
