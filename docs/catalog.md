@@ -276,7 +276,7 @@ Microsoft Teams.
 
 [Recipe](../pkgs/by-name/mi/microsoft-teams/package.nix) · [Package guide](../pkgs/by-name/mi/microsoft-teams/README.md) · [Upstream](https://teams.microsoft.com)
 
-- `aarch64-darwin`: 26246.1709.5146.8945; unfree; includes unfree terms.
+- `aarch64-darwin`: 26261.303.5165.1465; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#microsoft-teams
