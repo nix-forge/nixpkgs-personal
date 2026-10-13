@@ -369,7 +369,7 @@ OpenAI desktop app with ChatGPT, Work, and Codex.
 
 [Recipe](../pkgs/by-name/op/openai-codex-desktop/package.nix) · [Package guide](../pkgs/by-name/op/openai-codex-desktop/README.md) · [Upstream](https://chatgpt.com/download/)
 
-- `aarch64-darwin`: 26.1007.30912; unfree; includes unfree terms.
+- `aarch64-darwin`: 26.1007.41230; unfree; includes unfree terms.
 - `aarch64-linux`: 26.1007.21434; unfree; includes unfree terms.
 - `x86_64-linux`: 26.1007.21434; unfree; includes unfree terms.
 
