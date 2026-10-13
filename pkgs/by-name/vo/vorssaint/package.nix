@@ -111,6 +111,7 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
         "$buildDir/io.github.ianhollow.personalmonitor.fan-control" --selftest
 
         swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
+          -module-cache-path "$buildDir/swift-modules/now-playing" \
           -emit-library -module-name PersonalMonitorNowPlaying \
           Sources/NowPlayingAdapter/NowPlayingAdapter.swift \
           Sources/NowPlayingAdapter/NowPlayingQueue.swift \
