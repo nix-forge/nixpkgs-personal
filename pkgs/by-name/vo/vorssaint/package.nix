@@ -15,6 +15,8 @@ let
   pname = "vorssaint";
   source = import ./source.nix;
   needsSwift510CompatibilityPatch = lib.versionOlder swift.version "6";
+  # Upstream 3.4.1 includes both fan-helper isolation fixes already.
+  needsFanHelperConcurrencyPatch = lib.versionOlder source.version "3.4.1";
 in
 lib.warnIf (!needsSwift510CompatibilityPatch)
   ''
@@ -32,9 +34,9 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
       # Nixpkgs currently ships Swift 5.10.1.  Do not carry this workaround into
       # Swift 6 silently: skipping it both validates the upstream source and
       # prompts removal of the now-dead patch via the warning above.
-      patches = lib.optionals needsSwift510CompatibilityPatch [ ./swift-5.10-concurrency.patch ] ++ [
-        ./fan-helper-concurrency.patch
-      ];
+      patches =
+        lib.optionals needsSwift510CompatibilityPatch [ ./swift-5.10-concurrency.patch ]
+        ++ lib.optionals needsFanHelperConcurrencyPatch [ ./fan-helper-concurrency.patch ];
       postPatch = ''
         python3 ${./rebrand.py} .
       '';
