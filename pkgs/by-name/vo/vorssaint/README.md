@@ -56,7 +56,9 @@ Swift 6.3.3 also reports an expression-diagnostic failure in
 `MenuPanelView.swift`. The helper has non-Sendable captures in its serial-queue
 callbacks. The package keeps its logger on the controller and reads startup
 arguments through Foundation, removing four pinned-toolchain diagnostics without
-changing queue or XPC behavior. Complete helper checking still reports 19
+changing queue or XPC behavior. Upstream 3.4.1 includes those two helper fixes,
+so the local `fan-helper-concurrency.patch` applies only to older releases.
+Complete helper checking still reports 19
 Swift 5.10 warnings, including callback captures and the imported
 `mach_task_self_` global. The existing locked `AsyncResultBox` compatibility
 bridge still uses `@unchecked Sendable`; a complete migration must review the AVFoundation values
