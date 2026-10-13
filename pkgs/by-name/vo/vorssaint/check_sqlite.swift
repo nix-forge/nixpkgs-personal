@@ -1,3 +1,5 @@
+import AppKit
+import SwiftUI
 import SQLite3
 
 guard sqlite3_libversion_number() == SQLITE_VERSION_NUMBER else {

@@ -10,7 +10,6 @@
   rcodesign,
   sqlite,
   swift,
-  writeTextDir,
 }:
 
 let
@@ -19,14 +18,7 @@ let
   needsSwift510CompatibilityPatch = lib.versionOlder swift.version "6";
   # Upstream 3.4.1 includes both fan-helper isolation fixes already.
   needsFanHelperConcurrencyPatch = lib.versionOlder source.version "3.4.1";
-  # The Nix Apple SDK removes SQLite headers in favor of the separate library.
-  sqliteModule = writeTextDir "module.modulemap" ''
-    module SQLite3 [system] {
-      header "${lib.getDev sqlite}/include/sqlite3.h"
-      link "sqlite3"
-      export *
-    }
-  '';
+
 in
 lib.warnIf (!needsSwift510CompatibilityPatch)
   ''
@@ -74,8 +66,33 @@ lib.warnIf (!needsSwift510CompatibilityPatch)
 
         buildDir="$PWD/build"
         mkdir -p "$buildDir"
+        # Preserve the SDK's SQLite3 module identity. A second module map on
+        # Swift's search path stalls framework imports or redefines the module.
+        # The read-only overlay supplies only the two omitted standard headers.
+        sqliteOverlay="$buildDir/sqlite-headers.json"
+        python3 - "$SDKROOT" "${lib.getDev sqlite}/include" "$sqliteOverlay" <<'PY'
+        import json
+        import sys
+        from pathlib import Path
+
+        sdk, headers, output = sys.argv[1:]
+        Path(output).write_text(json.dumps({
+            "version": 0,
+            "case-sensitive": "true",
+            "use-external-names": False,
+            "roots": [
+                {
+                    "type": "file",
+                    "name": f"{sdk}/usr/include/{header}",
+                    "external-contents": f"{headers}/{header}",
+                }
+                for header in ("sqlite3.h", "sqlite3ext.h")
+            ],
+        }), encoding="utf-8")
+        PY
         sqliteFlags=(
-          -I ${sqliteModule} -L ${lib.getLib sqlite}/lib -lsqlite3
+          -Xcc -ivfsoverlay -Xcc "$sqliteOverlay"
+          -L ${lib.getLib sqlite}/lib -lsqlite3
           -Xlinker -rpath -Xlinker ${lib.getLib sqlite}/lib
         )
 

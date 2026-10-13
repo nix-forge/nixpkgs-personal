@@ -35,11 +35,15 @@ GUI and verifying macOS permissions require a separate native smoke test.
 
 ## Compiler checks and optimization
 
-The application links the pinned Nixpkgs SQLite library through an explicit
-Clang module map because the Nix Apple SDK omits its SQLite headers. Native
-builds compile and run an in-memory SQL query with the same import and linker
-flags before compiling the app. This covers the OpenCode reader added in 3.4.1
-while retaining the older source pin until its update passes validation.
+The application links the pinned Nixpkgs SQLite library. A read-only Clang
+filesystem overlay supplies the SDK's missing `sqlite3.h` and `sqlite3ext.h`
+from that library while preserving the SDK's existing `SQLite3` module map.
+Defining a second `SQLite3` module conflicts with AppKit and SwiftUI imports.
+Native builds compile those frameworks together with SQLite, check that the
+imported header and runtime versions match, and run an in-memory SQL query
+with the app's import and linker flags before compiling the app. This covers
+the OpenCode reader added in 3.4.1 while retaining the older source pin until
+its update passes validation.
 
 The Now Playing adapter enforces complete concurrency diagnostics with warnings
 as errors in Swift 5 language mode. The full application and fan helper still
