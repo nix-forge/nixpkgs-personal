@@ -26,9 +26,13 @@ REPORT = Path(os.environ["DIAGNOSTIC_REPORT"])
 REPORT.mkdir(exist_ok=True)
 MAP = ROOT / "sqlite-module"
 MAP.mkdir(exist_ok=True)
-(MAP / "module.modulemap").write_text(
+module_map = MAP / "module.modulemap"
+module_bytes = (
     f'module SQLite3 [system] {{\n header "{HEADER}"\n link "sqlite3"\n export *\n}}\n'
 )
+if not module_map.exists() or module_map.read_text() != module_bytes:
+    module_map.write_text(module_bytes)
+
 BASE = ["-swift-version", "5", "-target", "arm64-apple-macosx14.0", "-sdk", SDK]
 SQLITE = [
     "-I",
@@ -176,93 +180,57 @@ async def main():
     owner = asyncio.current_task()
     for sig in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]:
         loop.add_signal_handler(sig, owner.cancel)
-    old_cache = ROOT / "old-cache"
-    new_cache = ROOT / "new-cache"
-    shared_cache = ROOT / "shared-cache"
-    for cache in [old_cache, new_cache, shared_cache]:
+    ui = ROOT / "import-ui.swift"
+    ui.write_text("import AppKit\nimport SwiftUI\nlet color = NSColor.red\n_ = color\n")
+    # Keep linking identical while changing only Clang module/header discovery.
+    linking = SQLITE[2:]
+    discovery = {
+        "baseline": [],
+        "swift-module-search": SQLITE[:2],
+        "clang-header-search": ["-Xcc", "-I", "-Xcc", str(Path(HEADER).parent)],
+        "clang-explicit-map": ["-Xcc", "-fmodule-map-file=" + str(module_map)],
+    }
+    metadata = {
+        key: ENV.get(key, "").replace(str(SOURCE), "<source>")
+        for key in ("SDKROOT", "NIX_CFLAGS_COMPILE", "NIX_LDFLAGS")
+    }
+    (REPORT / "compiler-environment.json").write_text(
+        json.dumps(metadata, indent=2) + "\n"
+    )
+    for name, flags in discovery.items():
+        cache = ROOT / (name + "-cache")
         cache.mkdir(exist_ok=True)
-    app = ["-I", "Sources/VMStatisticsCompat", "-I", "Sources/HIDEventSystem", *APP]
-    diagnostics = ["-v", "-Xfrontend", "-debug-time-function-bodies"]
-    await run(
-        "old-typecheck",
-        [*BASE, "-typecheck", "-module-cache-path", str(old_cache), *diagnostics, *app],
-        120,
-    )
-    await run(
-        "new-typecheck-isolated",
-        [
-            *BASE,
-            "-typecheck",
-            "-module-cache-path",
-            str(new_cache),
-            *SQLITE,
-            *diagnostics,
-            *app,
-        ],
-        120,
-    )
-    smoke = await run(
-        "sqlite-smoke",
-        [
-            *BASE,
-            "-module-cache-path",
-            str(shared_cache),
-            *SQLITE,
-            os.environ["DIAGNOSTIC_SQLITE_SMOKE"],
-            "-o",
-            str(ROOT / "check-sqlite"),
-        ],
-        45,
-    )
-    if smoke["returncode"] != 0:
-        return
-    runtime = await run(
-        "sqlite-smoke-runtime", [], 10, executable=str(ROOT / "check-sqlite")
-    )
-    if runtime["returncode"] != 0:
-        return
-    await run(
-        "new-typecheck-primed",
-        [
-            *BASE,
-            "-typecheck",
-            "-module-cache-path",
-            str(shared_cache),
-            *SQLITE,
-            *diagnostics,
-            *app,
-        ],
-        120,
-    )
-    await run(
-        "old-optimized",
-        [
-            *BASE,
-            "-O",
-            "-module-cache-path",
-            str(old_cache),
-            *diagnostics,
-            *app,
-            "-o",
-            str(ROOT / "old-app"),
-        ],
-        360,
-    )
-    await run(
-        "new-optimized-isolated",
-        [
-            *BASE,
-            "-O",
-            "-module-cache-path",
-            str(new_cache),
-            *SQLITE,
-            *diagnostics,
-            *app,
-            "-o",
-            str(ROOT / "new-app"),
-        ],
-        360,
-    )
+        await run(
+            name + "-ui",
+            [
+                *BASE,
+                "-typecheck",
+                "-v",
+                "-module-cache-path",
+                str(cache),
+                *flags,
+                str(ui),
+            ],
+            60,
+        )
+        binary = ROOT / (name + "-sqlite")
+        smoke = await run(
+            name + "-sqlite-compile",
+            [
+                *BASE,
+                "-v",
+                "-module-cache-path",
+                str(cache),
+                *flags,
+                *linking,
+                os.environ["DIAGNOSTIC_SQLITE_SMOKE"],
+                "-o",
+                str(binary),
+            ],
+            60,
+        )
+        if smoke["returncode"] == 0:
+            await run(name + "-sqlite-query", [], 10, executable=str(binary))
 
 
 def publish_reports():
