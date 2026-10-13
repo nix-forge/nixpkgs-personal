@@ -66,15 +66,14 @@ async def terminate(process):
         await process.wait()
 
 
-async def completed(process, result_path):
-    while not result_path.exists():
-        if process.returncode is not None:
-            raise RuntimeError("Owned compiler supervisor exited unexpectedly")
-        await asyncio.sleep(0.05)
-    return json.loads(result_path.read_text())["returncode"]
+async def completed(reader):
+    message = await reader.readline()
+    if not message:
+        raise RuntimeError("Owned compiler supervisor exited without a result")
+    return json.loads(message)["returncode"]
 
 
-def supervise(result_path, command):
+def supervise(result_fd, command):
     # Preserve the group leader even if the compiler leaves live descendants.
     # Only the compiler receives normal signal dispositions.
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
@@ -84,12 +83,15 @@ def supervise(result_path, command):
     if child == 0:
         for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
             signal.signal(sig, signal.SIG_DFL)
+        os.close(result_fd)
         # Fixed owned compiler arguments, no shell or upstream helper execution.
         os.execvpe(command[0], command, os.environ)  # ruff: ignore[start-process-with-no-shell] - owned argv, no shell
     _, status = os.waitpid(child, 0)
-    temporary = result_path.with_suffix(".partial")
-    temporary.write_text(json.dumps({"returncode": os.waitstatus_to_exitcode(status)}))
-    temporary.replace(result_path)
+    os.write(
+        result_fd,
+        (json.dumps({"returncode": os.waitstatus_to_exitcode(status)}) + "\n").encode(),
+    )
+    os.close(result_fd)
     while True:
         signal.pause()
 
@@ -108,30 +110,49 @@ async def run(name, args, limit, executable=None):
     start = time.monotonic()
     command = [executable or SWIFT, *args]
     LOGGER.info("start %s deadline=%ss", name, limit)
-    result_path = ROOT / (name + ".exit.json")
-    result_path.unlink(missing_ok=True)
     returncode = None
-    with (ROOT / (name + ".log")).open("wb") as log:
-        process = await spawn(
-            sys.executable,
-            SCRIPT,
-            "--supervise",
-            str(result_path),
-            *command,
-            cwd=SOURCE,
-            env=ENV,
-            stdout=log,
-            stderr=asyncio.subprocess.STDOUT,
-            start_new_session=True,
+    read_fd, write_fd = os.pipe()
+    reader = asyncio.StreamReader(limit=1024)
+    protocol = asyncio.StreamReaderProtocol(reader)
+    transport = None
+    try:
+        transport, _ = await asyncio.get_running_loop().connect_read_pipe(
+            lambda: protocol, os.fdopen(read_fd, "rb", buffering=0)
         )
-        timed_out = False
-        try:
-            returncode = await asyncio.wait_for(completed(process, result_path), limit)
-        except TimeoutError:
-            timed_out = True
-            LOGGER.info("%s exceeded its deadline", name)
-        finally:
-            await terminate(process)
+        with (ROOT / (name + ".log")).open("wb") as log:
+            try:
+                process = await spawn(
+                    sys.executable,
+                    SCRIPT,
+                    "--supervise",
+                    str(write_fd),
+                    *command,
+                    cwd=SOURCE,
+                    env=ENV,
+                    stdout=log,
+                    stderr=asyncio.subprocess.STDOUT,
+                    start_new_session=True,
+                    pass_fds=(write_fd,),
+                )
+            finally:
+                os.close(write_fd)
+                write_fd = None
+            timed_out = False
+            try:
+                returncode = await asyncio.wait_for(completed(reader), limit)
+            except TimeoutError:
+                timed_out = True
+                LOGGER.info("%s exceeded its deadline", name)
+            finally:
+                await terminate(process)
+    finally:
+        if write_fd is not None:
+            os.close(write_fd)
+        if transport is not None:
+            transport.close()
+        else:
+            with contextlib.suppress(OSError):
+                os.close(read_fd)
     result = {
         "name": name,
         "elapsed": round(time.monotonic() - start, 3),
@@ -256,7 +277,7 @@ def publish_reports():
 
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--supervise":
-    supervise(Path(sys.argv[2]), sys.argv[3:])
+    supervise(int(sys.argv[2]), sys.argv[3:])
 elif __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     try:
