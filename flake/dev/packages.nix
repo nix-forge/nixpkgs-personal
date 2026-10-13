@@ -51,6 +51,32 @@ in
         );
     }
     // lib.optionalAttrs (system == "x86_64-linux") {
+      source-notification-contract =
+        let
+          source = lib.fileset.toSource {
+            root = ../..;
+            fileset = lib.fileset.unions [
+              ../../.github/workflows
+              ../../tests/test_source_notifications.py
+            ];
+          };
+          sharedRelease = pkgs.fetchurl {
+            url = "https://github.com/nix-forge/ci/releases/download/v2.12.0/nix-forge-ci-v2.12.0.tar.gz";
+            hash = "sha256-7B6QmbYvxPZzjM6+8IA+QX/Zerp+B4OFo1NXBVkLqeQ=";
+          };
+        in
+        pkgs.runCommand "package-source-notification-contract"
+          {
+            nativeBuildInputs = [
+              pkgs.bash
+              (pkgs.python3.withPackages (p: [ p.pyyaml ]))
+            ];
+          }
+          ''
+            export SHARED_CI_ARCHIVE=${sharedRelease}
+            python3 -B ${source}/tests/test_source_notifications.py -v
+            touch "$out"
+          '';
       # Build the complete Python dependency environment without the large
       # model derivation. This keeps every automated Python pin update
       # observable in normal CI while the multi-gigabyte model audit remains
