@@ -234,7 +234,9 @@ async def main():
             120,
         )
         if smoke["returncode"] == 0:
-            await run(name + "-combined-query", [], 10, executable=str(binary))
+            query = await run(name + "-combined-query", [], 10, executable=str(binary))
+            if query["returncode"] != 0:
+                continue
             if flags:
                 await run(
                     name + "-app-typecheck",
