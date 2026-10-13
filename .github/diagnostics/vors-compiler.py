@@ -198,7 +198,12 @@ async def main():
                     "type": "file",
                     "name": SDK + "/usr/include/sqlite3.h",
                     "external-contents": HEADER,
-                }
+                },
+                {
+                    "type": "file",
+                    "name": SDK + "/usr/include/sqlite3ext.h",
+                    "external-contents": str(Path(HEADER).with_name("sqlite3ext.h")),
+                },
             ],
         })
     )
