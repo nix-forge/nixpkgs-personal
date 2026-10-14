@@ -1,7 +1,7 @@
 {
-  version = "2.31226.1";
+  version = "2.37337.1";
   src = {
-    url = "https://downloads.claude.ai/releases/darwin/universal/2.31226.1/Claude-8576520051724193e9f74fc538f9ce8125e9ddd2.zip";
-    hash = "sha256-POh5eEUHFHJn5lbIHF7qlpefTbRiw1aaTZy55cItGVM=";
+    url = "https://downloads.claude.ai/releases/darwin/universal/2.37337.1/Claude-ba51ab579cc4029765083ec9f9f0bd23d37a32ee.zip";
+    hash = "sha256-BhheNlUtrV+oD2+93cDMl4TY+CzI0+yU0xqBQP6pkKQ=";
   };
 }
