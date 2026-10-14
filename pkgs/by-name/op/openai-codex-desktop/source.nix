@@ -2,20 +2,20 @@
   appName = "ChatGPT";
   sources = {
     aarch64-darwin = {
-      version = "26.1007.41230";
-      url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-26.1007.41230.zip";
-      hash = "sha256-xUK565d6L01lmKlR43de3RKUB+6ckmROFrMVOBbz9Ws=";
-      buildVersion = "20324";
+      version = "26.1007.71326";
+      url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-26.1007.71326.zip";
+      hash = "sha256-igaIm9tafy4IBj+dZd1D0GwiPZteFfoSzcdq1fB9qXM=";
+      buildVersion = "20398";
     };
     aarch64-linux = {
-      version = "26.1007.21434";
-      url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.1007.21434_arm64.deb";
-      hash = "sha256-Vfrh4/sdYGmpBiDp5wc33Pi/IlVgTRV+KCzGdIobr0k=";
+      version = "26.1007.71326";
+      url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.1007.71326_arm64.deb";
+      hash = "sha256-2fvYVKFSLtsrU8dVo+pez6Z7P4wDUxNAW1CWckLvugo=";
     };
     x86_64-linux = {
-      version = "26.1007.21434";
-      url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.1007.21434_amd64.deb";
-      hash = "sha256-J2tTQcPXSyYdOtUhBvf6ft3gaEHkdn/ipAy1QJmx8+0=";
+      version = "26.1007.71326";
+      url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.1007.71326_amd64.deb";
+      hash = "sha256-DgBrSTFxL1qQ1M0ElyxuC1M87c39srUZRtW5NnRx9VY=";
     };
   };
 }
