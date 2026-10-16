@@ -134,7 +134,7 @@ Secure and free password manager for all of your devices.
 
 [Recipe](../pkgs/by-name/bi/bitwarden-desktop/package.nix) · [Package guide](../pkgs/by-name/bi/bitwarden-desktop/README.md) · [Upstream](https://bitwarden.com)
 
-- `aarch64-darwin`: 2026.9.1; [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html).
+- `aarch64-darwin`: 2026.10.0; [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#bitwarden-desktop
