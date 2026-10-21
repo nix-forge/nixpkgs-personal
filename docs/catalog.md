@@ -425,7 +425,7 @@ Fast command-line access to Apple Reminders.
 
 [Recipe](../pkgs/by-name/re/remindctl/package.nix) · [Package guide](../pkgs/by-name/re/remindctl/README.md) · [Upstream](https://remindctl.sh)
 
-- `aarch64-darwin`: 0.3.8; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: 0.3.9; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#remindctl
