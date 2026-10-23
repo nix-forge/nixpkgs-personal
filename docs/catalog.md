@@ -146,7 +146,7 @@ Anthropic's official Claude AI desktop app.
 
 [Recipe](../pkgs/by-name/cl/claude-desktop/package.nix) · [Package guide](../pkgs/by-name/cl/claude-desktop/README.md) · [Upstream](https://claude.com/download)
 
-- `aarch64-darwin`: 3.1623.3; unfree; includes unfree terms.
+- `aarch64-darwin`: 3.6556.2; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#claude-desktop
