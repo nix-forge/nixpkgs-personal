@@ -3,7 +3,7 @@
   src = {
     owner = "cursor";
     repo = "plugins";
-    rev = "519d36aa98955bf680db01bcde5fdfba686dc901";
-    hash = "sha256-BHLbamlLNZmPn6uqO2pKAghL/l9TqtQI3YQTZnUQ2Cg=";
+    rev = "c742dd61706fbacc1b95f1a20b7b988cf096ce6c";
+    hash = "sha256-YB+9AIZJ6aR5Yx1OC22Xc6HdoxvDDjja/z2yMUt5gWs=";
   };
 }
