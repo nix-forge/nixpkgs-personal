@@ -1,9 +1,9 @@
 {
   app = {
-    version = "3.6.4";
-    tag = "v3.6.4";
-    rev = "3564511de3c0b8d537afb1ff3aa11f06ec064af0";
-    hash = "sha256-lnizALDG2Meoa7H0zM8xCtZF/tEfzdWd8tc+3ryzBcE=";
+    version = "3.7.0";
+    tag = "v3.7.0";
+    rev = "63436f417acd8f3a45152a4e9c47c15f3f3e5d2c";
+    hash = "sha256-9X8ur7Ji7LYAvavC4uSB9jF+txl3IwWgcCQpzwscPqc=";
   };
 
   compatibility = {
