@@ -519,7 +519,7 @@ PersonalMonitor, an unofficial build of the Vorssaint macOS toolkit.
 
 [Recipe](../pkgs/by-name/vo/vorssaint/package.nix) · [Package guide](../pkgs/by-name/vo/vorssaint/README.md) · [Upstream](https://vorssaint.com/)
 
-- `aarch64-darwin`: 3.4.2; [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html).
+- `aarch64-darwin`: 3.4.3; [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#vorssaint
