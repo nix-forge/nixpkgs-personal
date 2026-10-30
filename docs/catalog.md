@@ -225,7 +225,7 @@ Comprehensive, professional-quality productivity suite.
 
 [Recipe](../pkgs/by-name/li/libreoffice/package.nix) · [Package guide](../pkgs/by-name/li/libreoffice/README.md) · [Upstream](https://www.libreoffice.org/)
 
-- `aarch64-darwin`: 26.8.1; [MPL-2.0](https://spdx.org/licenses/MPL-2.0.html).
+- `aarch64-darwin`: 26.8.2; [MPL-2.0](https://spdx.org/licenses/MPL-2.0.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#libreoffice
