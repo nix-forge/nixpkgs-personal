@@ -107,7 +107,7 @@ Self-hosted music discovery and sonic analysis for media servers.
 
 [Recipe](../pkgs/by-name/au/audiomuse-ai/package.nix) · [Package guide](../pkgs/by-name/au/audiomuse-ai/README.md) · [Upstream](https://github.com/NeptuneHub/AudioMuse-AI)
 
-- `x86_64-linux`: 3.6.4; [AGPL-3.0-only](https://spdx.org/licenses/AGPL-3.0-only.html).
+- `x86_64-linux`: 3.7.0; [AGPL-3.0-only](https://spdx.org/licenses/AGPL-3.0-only.html).
 
 Hosted CI: Manual CI audit: the ML package requires a 1.1 GiB download, a 4 GiB unpacked closure, and tens of thousands of upstream dependency tests on x86 Linux.
 
