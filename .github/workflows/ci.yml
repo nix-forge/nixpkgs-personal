@@ -204,6 +204,13 @@ jobs:
         with:
           cache: 'false'
           cache-scope: ci-build
+      - name: Reclaim unused hosted Linux SDK space
+        if: runner.os == 'Linux'
+        run: |
+          df -h /
+          # Native dependencies come from Nix, not these preinstalled SDKs.
+          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
       - name: Build every declared native CI check
         uses: nix-forge/ci/actions/flake-checks@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
