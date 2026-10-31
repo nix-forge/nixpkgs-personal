@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import concurrent.futures
-import datetime
+import datetime as dt
 import difflib
 import hashlib
 import json
@@ -211,7 +211,7 @@ def update(cache: Path, old: dict, developers_only: bool = False) -> dict:
     result["version"] = (
         old["version"]
         if result == comparable
-        else datetime.datetime.now(datetime.UTC).date().isoformat()
+        else dt.datetime.now(dt.UTC).date().isoformat()
     )
     return result
 
