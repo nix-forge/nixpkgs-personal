@@ -107,7 +107,7 @@ Self-hosted music discovery and sonic analysis for media servers.
 
 [Recipe](../pkgs/by-name/au/audiomuse-ai/package.nix) · [Package guide](../pkgs/by-name/au/audiomuse-ai/README.md) · [Upstream](https://github.com/NeptuneHub/AudioMuse-AI)
 
-- `x86_64-linux`: 3.6.4; [AGPL-3.0-only](https://spdx.org/licenses/AGPL-3.0-only.html).
+- `x86_64-linux`: 3.7.0; [AGPL-3.0-only](https://spdx.org/licenses/AGPL-3.0-only.html).
 
 Hosted CI: Manual CI audit: the ML package requires a 1.1 GiB download, a 4 GiB unpacked closure, and tens of thousands of upstream dependency tests on x86 Linux.
 
@@ -134,7 +134,7 @@ Secure and free password manager for all of your devices.
 
 [Recipe](../pkgs/by-name/bi/bitwarden-desktop/package.nix) · [Package guide](../pkgs/by-name/bi/bitwarden-desktop/README.md) · [Upstream](https://bitwarden.com)
 
-- `aarch64-darwin`: 2026.10.1; [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html).
+- `aarch64-darwin`: 2026.10.2; [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#bitwarden-desktop
@@ -146,7 +146,7 @@ Anthropic's official Claude AI desktop app.
 
 [Recipe](../pkgs/by-name/cl/claude-desktop/package.nix) · [Package guide](../pkgs/by-name/cl/claude-desktop/README.md) · [Upstream](https://claude.com/download)
 
-- `aarch64-darwin`: 3.6556.2; unfree; includes unfree terms.
+- `aarch64-darwin`: 4.4212.0; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#claude-desktop
@@ -225,7 +225,7 @@ Comprehensive, professional-quality productivity suite.
 
 [Recipe](../pkgs/by-name/li/libreoffice/package.nix) · [Package guide](../pkgs/by-name/li/libreoffice/README.md) · [Upstream](https://www.libreoffice.org/)
 
-- `aarch64-darwin`: 26.8.1; [MPL-2.0](https://spdx.org/licenses/MPL-2.0.html).
+- `aarch64-darwin`: 26.8.2; [MPL-2.0](https://spdx.org/licenses/MPL-2.0.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#libreoffice
@@ -262,9 +262,9 @@ Matt Pocock's Agent Skills catalog.
 
 [Recipe](../pkgs/by-name/ma/mattpocock-skills/package.nix) · [Package guide](../pkgs/by-name/ma/mattpocock-skills/README.md) · [Upstream](https://github.com/mattpocock/skills)
 
-- `aarch64-darwin`: unstable-2026-10-19; [MIT](https://spdx.org/licenses/MIT.html).
-- `aarch64-linux`: unstable-2026-10-19; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: unstable-2026-10-19; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: unstable-2026-10-29; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: unstable-2026-10-29; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: unstable-2026-10-29; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#mattpocock-skills
@@ -369,9 +369,9 @@ OpenAI desktop app with ChatGPT, Work, and Codex.
 
 [Recipe](../pkgs/by-name/op/openai-codex-desktop/package.nix) · [Package guide](../pkgs/by-name/op/openai-codex-desktop/README.md) · [Upstream](https://chatgpt.com/download/)
 
-- `aarch64-darwin`: 26.1021.31345; unfree; includes unfree terms.
-- `aarch64-linux`: 26.1021.22027; unfree; includes unfree terms.
-- `x86_64-linux`: 26.1021.22027; unfree; includes unfree terms.
+- `aarch64-darwin`: 26.1027.30824; unfree; includes unfree terms.
+- `aarch64-linux`: 26.1027.30824; unfree; includes unfree terms.
+- `x86_64-linux`: 26.1027.30824; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#openai-codex-desktop
@@ -411,9 +411,9 @@ pstack Agent Skills catalog.
 
 [Recipe](../pkgs/by-name/ps/pstack-skills/package.nix) · [Package guide](../pkgs/by-name/ps/pstack-skills/README.md) · [Upstream](https://github.com/cursor/plugins/tree/main/pstack)
 
-- `aarch64-darwin`: unstable-2026-10-25; [MIT](https://spdx.org/licenses/MIT.html).
-- `aarch64-linux`: unstable-2026-10-25; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: unstable-2026-10-25; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: unstable-2026-10-27; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: unstable-2026-10-27; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: unstable-2026-10-27; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#pstack-skills
@@ -519,7 +519,7 @@ PersonalMonitor, an unofficial build of the Vorssaint macOS toolkit.
 
 [Recipe](../pkgs/by-name/vo/vorssaint/package.nix) · [Package guide](../pkgs/by-name/vo/vorssaint/README.md) · [Upstream](https://vorssaint.com/)
 
-- `aarch64-darwin`: 3.4.2; [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html).
+- `aarch64-darwin`: 3.4.3; [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#vorssaint
