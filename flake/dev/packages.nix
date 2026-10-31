@@ -166,6 +166,7 @@ in
                 p.pyyaml
               ]))
               pkgs.fontconfig
+              pkgs.git
               pkgs.nodejs_24
               pkgs.pnpm_11
             ];
