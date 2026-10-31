@@ -280,7 +280,7 @@ def _resolve_nixpkgs(selector: str) -> Path:
         [
             _get_nix_binary(),
             "flake",
-            "metadata",
+            "prefetch",
             "--json",
             "--no-write-lock-file",
             selector,
@@ -296,14 +296,10 @@ def _resolve_nixpkgs(selector: str) -> Path:
     try:
         metadata = json.loads(completed.stdout)
     except json.JSONDecodeError as exc:
-        _fail(f"could not parse Nixpkgs metadata: {exc}")
-    store_path = metadata.get("path") if isinstance(metadata, dict) else None
-    if store_path is None and isinstance(metadata, dict):
-        resolved = metadata.get("resolved")
-        if isinstance(resolved, dict):
-            store_path = resolved.get("path")
+        _fail(f"could not parse Nixpkgs prefetch output: {exc}")
+    store_path = metadata.get("storePath") if isinstance(metadata, dict) else None
     if not isinstance(store_path, str) or not Path(store_path).is_absolute():
-        _fail("Nixpkgs metadata did not include an absolute source path")
+        _fail("Nixpkgs prefetch output did not include an absolute source path")
     return Path(store_path)
 
 

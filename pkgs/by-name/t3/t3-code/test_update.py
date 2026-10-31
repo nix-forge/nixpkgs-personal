@@ -78,7 +78,7 @@ class UpdateTests(unittest.TestCase):
 
     def test_nixpkgs_selector_is_resolved_once(self) -> None:
         result = subprocess.CompletedProcess(
-            [], 0, json.dumps({"path": "/nix/store/upstream"}), ""
+            [], 0, json.dumps({"storePath": "/nix/store/upstream"}), ""
         )
         with patch.object(update.subprocess, "run", return_value=result) as run:
             self.assertEqual(
@@ -86,10 +86,11 @@ class UpdateTests(unittest.TestCase):
                 Path("/nix/store/upstream"),
             )
         self.assertEqual(run.call_args.args[0][-1], "github:NixOS/nixpkgs/revision")
+        self.assertEqual(run.call_args.args[0][1:4], ["flake", "prefetch", "--json"])
 
-    def test_nixpkgs_selector_accepts_resolved_path(self) -> None:
+    def test_nixpkgs_selector_materializes_registry_source(self) -> None:
         result = subprocess.CompletedProcess(
-            [], 0, json.dumps({"resolved": {"path": "/nix/store/upstream"}}), ""
+            [], 0, json.dumps({"storePath": "/nix/store/upstream"}), ""
         )
         with patch.object(update.subprocess, "run", return_value=result):
             self.assertEqual(
@@ -157,8 +158,14 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(resolve.call_args.kwargs["nixpkgs"], "path:/upstream")
         self.assertEqual(self.source.read_bytes(), self.original)
 
-    def test_invalid_nixpkgs_metadata_fails(self) -> None:
-        for stdout in ("invalid json", "[]", '{"path": "relative"}'):
+    def test_invalid_nixpkgs_prefetch_fails(self) -> None:
+        for stdout in (
+            "invalid json",
+            "[]",
+            "{}",
+            '{"path": "/nix/store/metadata-only"}',
+            '{"storePath": "relative"}',
+        ):
             with self.subTest(stdout=stdout):
                 result = subprocess.CompletedProcess([], 0, stdout, "")
                 with (

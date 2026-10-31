@@ -145,6 +145,14 @@
                   file ${codexDesktop}/lib/chatgpt/ChatGPT | grep -F 'ELF 64-bit'
                   patchelf --print-interpreter ${codexDesktop}/lib/chatgpt/ChatGPT | grep -F /nix/store/
                   ${codexDesktop}/lib/chatgpt/resources/codex --version | grep -F codex-cli
+                  # Resolve the shipped hardware-key module's real ELF dependencies.
+                  device_key=${codexDesktop}/lib/chatgpt/resources/native/remote-control-device-key.node
+                  test -f "$device_key"
+                  ${pkgs.glibc.bin}/bin/ldd "$device_key" > device-key-libraries
+                  cat device-key-libraries
+                  if grep -F 'not found' device-key-libraries; then
+                    exit 1
+                  fi
                   asar list --is-pack ${codexDesktop}/lib/chatgpt/resources/app.asar > asar-files
                   if grep -E '^pack[[:space:]]*: .*\.node$' asar-files; then
                     echo 'Native modules must stay unpacked for autoPatchelf' >&2
