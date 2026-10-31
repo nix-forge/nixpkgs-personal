@@ -49,7 +49,8 @@ from the tagged source, then pins both inputs. It also records the reviewed
 Alpha or Beta application name and the source's pnpm/Node major pair. Alpha
 uses pnpm 11 with Node 24; Beta uses pnpm 12 with Node 26. Both the dependency
 fetcher and application build use the selected Nixpkgs toolchain. New major
-combinations require review before the updater will accept them. The runtime version comes from
+combinations require review before the updater will accept them. The runtime
+version comes from
 `apps/desktop/package.json` so vendored native prebuilds keep their ABI.
 
 The package expression records platform support, licensing, and build checks.
@@ -65,4 +66,5 @@ updates, failed-update cleanup, dependency cycles, peer contexts, and pnpm's
 staged dependency enumeration. A separate Linux check repeats the T3 tests
 with pnpm 12 and Node 26, including the bootstrap document in the root lockfile
 and the workspace-only installed lockfile. Automated T3 updates run on Linux
-so their dependency mirrors can be rebuilt without a remote builder.
+so their dependency mirrors can be rebuilt without a remote builder. The workflow
+passes the repository's locked Nixpkgs input when refreshing mirror hashes.

@@ -75,7 +75,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PACKAGE: ${{ matrix.package }}
-        run: nix develop --command python scripts/update-packages.py --package "$PACKAGE"
+        run: |
+          args=(--package "$PACKAGE")
+          if [[ "$PACKAGE" == t3-code ]]; then
+            # Mirror hashes must use the same fetcher as the published package.
+            nixpkgs_path=$(nix eval --impure --raw --expr \
+              '(builtins.getFlake (toString ./.)).inputs.nixpkgs.outPath')
+            args+=(-- --nixpkgs "path:$nixpkgs_path")
+          fi
+          nix develop --command python scripts/update-packages.py "${args[@]}"
       - name: Publish package pull request
         env:
           GH_TOKEN: ${{ github.token }}

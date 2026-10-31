@@ -22,6 +22,64 @@ sys.modules[SPEC.name] = update_packages
 SPEC.loader.exec_module(update_packages)
 
 
+class UpdateToolchainTests(unittest.TestCase):
+    def test_workflow_passes_locked_fetcher_only_to_t3(self) -> None:
+        workflow = SCRIPT.parents[1] / ".github/workflows/update-packages.yml"
+        step = (
+            workflow
+            .read_text()
+            .split("      - name: Update pinned source\n", 1)[1]
+            .split("      - name: Publish package pull request\n", 1)[0]
+        )
+        shell = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "scripts").mkdir()
+            (root / "scripts/update-packages.py").write_text(
+                "import json, pathlib, sys\npathlib.Path('arguments.json').write_text(json.dumps(sys.argv[1:]))\n"
+            )
+            binary = root / "bin"
+            binary.mkdir()
+            nix = binary / "nix"
+            nix.write_text(
+                f"#!{sys.executable}\n"
+                "import os, sys\n"
+                "if sys.argv[1] == 'eval':\n"
+                "    print('/nix/store/locked-package-nixpkgs')\n"
+                "elif sys.argv[1:4] == ['develop', '--command', 'python']:\n"
+                "    os.execv(sys.executable, [sys.executable, *sys.argv[4:]])\n"
+                "else:\n    raise SystemExit('unexpected Nix invocation')\n"
+            )
+            nix.chmod(0o755)
+            for package in ("t3-code", "apple-fonts"):
+                with self.subTest(package=package):
+                    result = subprocess.run(
+                        ["bash", "-euo", "pipefail", "-c", shell],
+                        cwd=root,
+                        env={
+                            **os.environ,
+                            "PACKAGE": package,
+                            "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                        },
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    self.assertEqual(
+                        result.returncode, 0, result.stdout + result.stderr
+                    )
+                    expected = ["--package", package]
+                    if package == "t3-code":
+                        expected += [
+                            "--",
+                            "--nixpkgs",
+                            "path:/nix/store/locked-package-nixpkgs",
+                        ]
+                    self.assertEqual(
+                        json.loads((root / "arguments.json").read_text()), expected
+                    )
+
+
 class PartialUpdateTests(unittest.TestCase):
     def setUp(self) -> None:
         self.updaters = {
