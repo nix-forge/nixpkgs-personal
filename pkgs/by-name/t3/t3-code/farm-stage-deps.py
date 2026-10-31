@@ -40,6 +40,30 @@ def read_yaml(path: Path) -> dict:
     return data
 
 
+def read_lockfile(path: Path) -> tuple[dict, list[dict]]:
+    documents = list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
+    if not documents or any(not isinstance(document, dict) for document in documents):
+        raise TypeError(f"expected YAML objects in {path}")
+    if len(documents) == 1:
+        return documents[0], []
+    if len(documents) != 2:
+        raise ValueError(f"unreviewed lockfile document layout in {path}")
+    bootstrap, workspace = documents
+    bootstrap_importer = bootstrap.get("importers", {}).get(".", {})
+    if (
+        set(bootstrap.get("importers", {})) != {"."}
+        or "packageManagerDependencies" not in bootstrap_importer
+        or not {"apps/desktop", "apps/server"} <= workspace.get("importers", {}).keys()
+        or not all(
+            isinstance(document.get(key), dict)
+            for document in documents
+            for key in ("importers", "packages", "snapshots")
+        )
+    ):
+        raise ValueError(f"unreviewed bootstrap/workspace lockfile layout in {path}")
+    return workspace, [bootstrap]
+
+
 def manifest(path: Path) -> dict:
     return json.loads((path / "package.json").read_text(encoding="utf-8"))
 
@@ -111,7 +135,7 @@ def link(source: Path, destination: Path) -> None:
 
 
 def stage(source: Path, target: Path, lockfile: Path) -> int:
-    lock = read_yaml(lockfile)
+    lock, bootstrap = read_lockfile(lockfile)
     staged = manifest(target)
     modules = target / "node_modules"
     if modules.exists():
@@ -189,7 +213,12 @@ def stage(source: Path, target: Path, lockfile: Path) -> int:
 
     lock["importers"] = {".": importer}
     serialized = yaml.safe_dump(lock, sort_keys=False)
-    (target / "pnpm-lock.yaml").write_text(serialized, encoding="utf-8")
+    # pnpm 12 preserves its environment/bootstrap graph only in the wanted
+    # root lock; its installed virtual-store lock contains the workspace graph.
+    wanted = yaml.safe_dump_all(
+        [*bootstrap, lock], sort_keys=False, explicit_start=bool(bootstrap)
+    )
+    (target / "pnpm-lock.yaml").write_text(wanted, encoding="utf-8")
     (modules / ".pnpm/lock.yaml").write_text(serialized, encoding="utf-8")
     settings = read_yaml(source / "node_modules/.modules.yaml")
     settings.update({"virtualStoreDir": ".pnpm", "hoistedDependencies": {}})

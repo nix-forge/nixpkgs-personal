@@ -44,7 +44,8 @@ jobs:
       matrix:
         package: ${{ fromJSON(needs.discover.outputs.packages) }}
     name: Update ${{ matrix.package }}
-    runs-on: macos-26
+    # T3 rebuilds Linux dependency mirrors; Apple package updaters require macOS.
+    runs-on: ${{ matrix.package == 't3-code' && 'ubuntu-24.04' || 'macos-26' }}
     timeout-minutes: 90
     permissions:
       actions: write # Dispatch validation suppressed by GITHUB_TOKEN.
@@ -54,6 +55,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Reclaim unused hosted Linux SDK space
+        if: runner.os == 'Linux'
+        run: |
+          df -h /
+          # Native dependencies come from Nix, not these preinstalled SDKs.
+          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
       - name: Set up Nix
         uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:

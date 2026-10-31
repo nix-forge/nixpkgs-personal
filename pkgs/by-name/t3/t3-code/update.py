@@ -70,11 +70,12 @@ SOURCE_PATTERN: Final = re.compile(
     r'    electronShasumsHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
     r'    electronHeadersUrl = "([^"]+)";\n'
     r'    electronHeadersHash = "(sha256-[A-Za-z0-9+/=]+)";\n'
+    r"(?:    pnpmMajor = (11|12);\n    nodeMajor = (24|26);\n)?"
     r"  };\n"
     r"\}\n\Z"
 )
 HTTP_USER_AGENT: Final = "nix-conf-updater/1.0 (+https://github.com/NixOS/nixpkgs)"
-EXPECTED_APP_NAME: Final = "T3 Code (Alpha)"
+SUPPORTED_APP_NAMES: Final = ("T3 Code (Alpha)", "T3 Code (Beta)")
 FAKE_HASH: Final = "sha256-" + "A" * 43 + "="
 
 
@@ -97,6 +98,9 @@ class _Release:
     electron_dist_url: str
     electron_shasums_url: str
     electron_headers_url: str
+    app_name: str = "T3 Code (Alpha)"
+    pnpm_major: int = 11
+    node_major: int = 24
 
 
 @dataclass(frozen=True)
@@ -120,6 +124,8 @@ class _ExistingSource:
     electron_shasums_hash: str
     electron_headers_url: str
     electron_headers_hash: str
+    pnpm_major: int = 11
+    node_major: int = 24
 
 
 @dataclass(frozen=True)
@@ -340,34 +346,34 @@ def _nix_build_fod_hash(
     return match.group(1)
 
 
-def _electron_version_from_tarball(tarball: Path, *, rev: str) -> str:
+def _manifest_from_tarball(tarball: Path, *, rev: str, path: str) -> dict:
     try:
         with tarfile.open(tarball, "r:gz") as archive:
-            member = next(
-                (
-                    m
-                    for m in archive.getmembers()
-                    if m.isfile()
-                    and m.name.endswith("apps/desktop/package.json")
-                    and m.size < 1024 * 1024
-                ),
-                None,
-            )
-            if member is None:
-                _fail(
-                    f"{rev} source archive has no apps/desktop/package.json; "
-                    "cannot pin the Electron runtime"
-                )
-            extracted = archive.extractfile(member)
+            members = [
+                item
+                for item in archive.getmembers()
+                if item.isfile()
+                and item.name.partition("/")[2] == path
+                and item.size < 1024 * 1024
+            ]
+            if len(members) != 1:
+                _fail(f"{rev} source archive has no unique {path}")
+            extracted = archive.extractfile(members[0])
             if extracted is None:
-                _fail(f"could not read apps/desktop/package.json from {rev}")
+                _fail(f"could not read {path} from {rev}")
             with io.TextIOWrapper(extracted, encoding="utf-8") as handle:
                 manifest = json.load(handle)
-    except tarfile.TarError as exc:
-        _fail(f"failed to inspect the {rev} source archive: {exc}")
-    except json.JSONDecodeError as exc:
-        _fail(f"failed to parse apps/desktop/package.json from {rev}: {exc}")
+    except (tarfile.TarError, json.JSONDecodeError) as exc:
+        _fail(f"failed to inspect {path} from {rev}: {exc}")
+    if not isinstance(manifest, dict):
+        _fail(f"{path} from {rev} is not a JSON object")
+    return manifest
 
+
+def _electron_version_from_tarball(tarball: Path, *, rev: str) -> str:
+    manifest = _manifest_from_tarball(
+        tarball, rev=rev, path="apps/desktop/package.json"
+    )
     dependencies = manifest.get("dependencies")
     version = dependencies.get("electron") if isinstance(dependencies, dict) else None
     if (
@@ -376,6 +382,28 @@ def _electron_version_from_tarball(tarball: Path, *, rev: str) -> str:
     ):
         _fail(f"{rev} has an unexpected Electron version: {version!r}")
     return version
+
+
+def _toolchain_from_tarball(tarball: Path, *, rev: str) -> tuple[str, int, int]:
+    desktop = _manifest_from_tarball(tarball, rev=rev, path="apps/desktop/package.json")
+    root = _manifest_from_tarball(tarball, rev=rev, path="package.json")
+    name = desktop.get("productName")
+    if name not in SUPPORTED_APP_NAMES:
+        _fail(f"{rev} has an unreviewed productName: {name!r}")
+    manager = re.fullmatch(
+        r"pnpm@(11|12)\.[0-9]+\.[0-9]+", str(root.get("packageManager"))
+    )
+    engines = root.get("engines")
+    node = re.fullmatch(
+        r"\^?(24|26)\.[0-9]+\.[0-9]+",
+        str(engines.get("node") if isinstance(engines, dict) else None),
+    )
+    if manager is None or node is None:
+        _fail(f"{rev} has an unreviewed pnpm or Node toolchain")
+    majors = (int(manager[1]), int(node[1]))
+    if majors not in {(11, 24), (12, 26)}:
+        _fail(f"{rev} has an unreviewed pnpm/Node combination: {majors}")
+    return str(name), *majors
 
 
 def _spdx_revision_from_tarball(tarball: Path, *, rev: str) -> str:
@@ -482,12 +510,18 @@ def _discover_release(meta: _ReleaseMeta) -> _Release:
     )
     tarball_path = _prefetch_store_path(tarball_url, label="T3 Code source archive")
     electron_version = _electron_version_from_tarball(tarball_path, rev=meta.linux_rev)
+    app_name, pnpm_major, node_major = _toolchain_from_tarball(
+        tarball_path, rev=meta.linux_rev
+    )
     spdx_rev = _spdx_revision_from_tarball(tarball_path, rev=meta.linux_rev)
     electron_dist_url, electron_shasums_url, electron_headers_url = (
         _electron_artifact_urls(electron_version)
     )
     return _Release(
         version=meta.version,
+        app_name=app_name,
+        pnpm_major=pnpm_major,
+        node_major=node_major,
         darwin_url=meta.darwin_url,
         darwin_hash_sri=meta.darwin_hash_sri,
         linux_rev=meta.linux_rev,
@@ -523,10 +557,14 @@ def _parse_existing(content: str) -> _ExistingSource:
         electron_shasums_hash,
         electron_headers_url,
         electron_headers_hash,
+        pnpm_major,
+        node_major,
     ) = match.groups()
     return _ExistingSource(
         version=version,
         app_name=app_name,
+        pnpm_major=int(pnpm_major or 11),
+        node_major=int(node_major or 24),
         darwin_url=darwin_url,
         darwin_hash=darwin_hash,
         linux_rev=linux_rev,
@@ -552,7 +590,7 @@ def _render_source(resolved: _ResolvedSource) -> str:
     return (
         "{\n"
         f'  version = "{release.version}";\n'
-        f'  appName = "{EXPECTED_APP_NAME}";\n'
+        f'  appName = "{release.app_name}";\n'
         "  darwin = {\n"
         f'    url = "{release.darwin_url}";\n'
         f'    hash = "{resolved.darwin_hash_sri}";\n'
@@ -573,6 +611,8 @@ def _render_source(resolved: _ResolvedSource) -> str:
         f'    electronShasumsHash = "{resolved.electron_shasums_hash_sri}";\n'
         f'    electronHeadersUrl = "{release.electron_headers_url}";\n'
         f'    electronHeadersHash = "{resolved.electron_headers_hash_sri}";\n'
+        f"    pnpmMajor = {release.pnpm_major};\n"
+        f"    nodeMajor = {release.node_major};\n"
         "  };\n"
         "}\n"
     )
@@ -730,7 +770,7 @@ def _quick_matches(existing: _ExistingSource, meta: _ReleaseMeta) -> bool:
     # revision, so matching release metadata means the pins are current.
     return (
         existing.version == meta.version
-        and existing.app_name == EXPECTED_APP_NAME
+        and existing.app_name in SUPPORTED_APP_NAMES
         and existing.darwin_url == meta.darwin_url
         and existing.linux_rev == meta.linux_rev
     )

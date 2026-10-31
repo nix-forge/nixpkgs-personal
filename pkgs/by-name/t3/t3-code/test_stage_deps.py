@@ -30,6 +30,82 @@ class StageTests(unittest.TestCase):
             path.write_text(json.dumps(metadata, indent=2))
             self.assertEqual(farm.read_yaml(path), metadata)
 
+    def test_pnpm12_lock_preserves_bootstrap_and_separates_installed_graph(
+        self,
+    ) -> None:
+        package = self.package("runtime", "1.0.0")
+        self.root_dependency("runtime", package, "1.0.0")
+        self.lock["importers"]["apps/server"] = {}
+        self.lock["snapshots"]["runtime@1.0.0"] = {}
+        (self.target / "package.json").write_text(
+            json.dumps({"dependencies": self.seeds})
+        )
+        bootstrap = {
+            "lockfileVersion": "9.0",
+            "importers": {
+                ".": {
+                    "packageManagerDependencies": {
+                        "pnpm": {"specifier": "12.14.0", "version": "12.14.0"}
+                    }
+                }
+            },
+            "packages": {"pnpm@12.14.0": {}},
+            "snapshots": {"pnpm@12.14.0": {}},
+        }
+        lockfile = self.source / "pnpm-lock.yaml"
+        lockfile.write_text(yaml.safe_dump_all([bootstrap, self.lock], sort_keys=False))
+        self.assertEqual(farm.stage(self.source, self.target, lockfile), 1)
+        wanted = list(yaml.safe_load_all((self.target / "pnpm-lock.yaml").read_text()))
+        installed = list(
+            yaml.safe_load_all(
+                (self.target / "node_modules/.pnpm/lock.yaml").read_text()
+            )
+        )
+        self.assertTrue(
+            (self.target / "pnpm-lock.yaml").read_text().startswith("---\n")
+        )
+        self.assertFalse(
+            (self.target / "node_modules/.pnpm/lock.yaml")
+            .read_text()
+            .startswith("---\n")
+        )
+        self.assertEqual(wanted[0], bootstrap)
+        self.assertEqual(installed, [wanted[1]])
+        self.assertEqual(set(installed[0]["importers"]), {"."})
+        self.assertNotIn("pnpm@12.14.0", installed[0]["packages"])
+        if shutil.which("pnpm") and subprocess.check_output(
+            ["pnpm", "--version"], text=True
+        ).startswith("12."):
+            result = subprocess.run(
+                [
+                    "pnpm",
+                    "list",
+                    "--prod",
+                    "--json",
+                    "--depth",
+                    "Infinity",
+                    "--silent",
+                    "--loglevel=error",
+                ],
+                cwd=self.target,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            tree = json.loads(result.stdout)[0]["dependencies"]["runtime"]
+            self.assertEqual(tree["version"], "1.0.0")
+            self.assertTrue(Path(tree["path"]).is_relative_to(self.target))
+
+    def test_rejects_ambiguous_multidocument_lock(self) -> None:
+        path = self.source / "pnpm-lock.yaml"
+        path.write_text(yaml.safe_dump_all([self.lock, self.lock]))
+        with self.assertRaisesRegex(ValueError, "unreviewed"):
+            farm.read_lockfile(path)
+        path.write_text(yaml.safe_dump_all([self.lock] * 3))
+        with self.assertRaisesRegex(ValueError, "unreviewed"):
+            farm.read_lockfile(path)
+
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

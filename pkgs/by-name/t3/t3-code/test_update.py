@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import io
 import json
 import shutil
@@ -43,6 +44,66 @@ class UpdateTests(unittest.TestCase):
         self.enterContext(patch.object(update, "_get_nix_binary", return_value="nix"))
         self.enterContext(contextlib.redirect_stdout(io.StringIO()))
         self.enterContext(contextlib.redirect_stderr(io.StringIO()))
+
+    def test_discovers_reviewed_beta_toolchain_and_rejects_unreviewed_metadata(
+        self,
+    ) -> None:
+        path = Path(self.temporary.name) / "source.tar.gz"
+
+        def archive(name: str, manager: str, node: str) -> None:
+            with tarfile.open(path, "w:gz") as target:
+                for filename, manifest in {
+                    "package.json": {
+                        "packageManager": manager,
+                        "engines": {"node": node},
+                    },
+                    "apps/desktop/package.json": {"productName": name},
+                }.items():
+                    content = json.dumps(manifest).encode()
+                    member = tarfile.TarInfo("source/" + filename)
+                    member.size = len(content)
+                    target.addfile(member, io.BytesIO(content))
+
+        archive("T3 Code (Beta)", "pnpm@12.14.0", "26.12.1")
+        self.assertEqual(
+            update._toolchain_from_tarball(path, rev="v0.1.6"),
+            ("T3 Code (Beta)", 12, 26),
+        )
+        archive("T3 Code (Alpha)", "pnpm@11.10.0", "^24.13.1")
+        self.assertEqual(
+            update._toolchain_from_tarball(path, rev="v0.0.45"),
+            ("T3 Code (Alpha)", 11, 24),
+        )
+        for name, manager, node in [
+            ('T3 ${builtins.abort "unsafe"}', "pnpm@12.14.0", "26.12.1"),
+            ("T3 Code (Beta)", "pnpm@13.0.0", "26.12.1"),
+            ("T3 Code (Beta)", "pnpm@12.14.0", "24.13.1"),
+        ]:
+            archive(name, manager, node)
+            with self.assertRaises(SystemExit):
+                update._toolchain_from_tarball(path, rev="test")
+
+    def test_updated_metadata_round_trips_through_source(self) -> None:
+        release = dataclasses.replace(
+            self.release, app_name="T3 Code (Beta)", pnpm_major=12, node_major=26
+        )
+        with (
+            patch.object(
+                update, "_prefetch_hash", return_value=self.existing.darwin_hash
+            ),
+            patch.object(
+                update, "_resolve_nixpkgs", return_value=Path("/nix/store/upstream")
+            ),
+            patch.object(
+                update, "_nix_build_fod_hash", return_value=self.existing.pnpm_hash
+            ),
+        ):
+            resolved = update._resolve_hashes(self.existing, release, nixpkgs="nixpkgs")
+        result = update._parse_existing(update._render_source(resolved))
+        self.assertEqual(
+            (result.app_name, result.pnpm_major, result.node_major),
+            ("T3 Code (Beta)", 12, 26),
+        )
 
     def test_help_from_copied_package_without_nix(self) -> None:
         result = subprocess.run(

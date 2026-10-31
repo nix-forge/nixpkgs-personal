@@ -45,7 +45,11 @@ when the local host cannot build them.
 re-downloads every artifact and rebuilds the offline pnpm/cargo mirrors to
 refresh their hashes, which downloads the full dependency closures once per
 revision. The updater reads the Electron runtime and SPDX license data revision
-from the tagged source, then pins both inputs. The runtime version comes from
+from the tagged source, then pins both inputs. It also records the reviewed
+Alpha or Beta application name and the source's pnpm/Node major pair. Alpha
+uses pnpm 11 with Node 24; Beta uses pnpm 12 with Node 26. Both the dependency
+fetcher and application build use the selected Nixpkgs toolchain. New major
+combinations require review before the updater will accept them. The runtime version comes from
 `apps/desktop/package.json` so vendored native prebuilds keep their ABI.
 
 The package expression records platform support, licensing, and build checks.
@@ -58,4 +62,7 @@ Repository CI evaluates every supported platform and builds affected packages
 on a matching runner. GUI interaction and authenticated provider sessions
 require separate native smoke tests. The package tests cover copied-directory
 updates, failed-update cleanup, dependency cycles, peer contexts, and pnpm's
-staged dependency enumeration.
+staged dependency enumeration. A separate Linux check repeats the T3 tests
+with pnpm 12 and Node 26, including the bootstrap document in the root lockfile
+and the workspace-only installed lockfile. Automated T3 updates run on Linux
+so their dependency mirrors can be rebuilt without a remote builder.
