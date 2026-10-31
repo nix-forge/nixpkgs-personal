@@ -141,6 +141,22 @@ in
           '';
       # These tests exercise architecture-neutral package tooling. Running them
       # once avoids rebuilding Python, Node.js, and font tooling on every host.
+      t3-beta-toolchain-tests =
+        pkgs.runCommand "t3-beta-toolchain-tests"
+          {
+            nativeBuildInputs = [
+              (pkgs.python3.withPackages (p: [ p.pyyaml ]))
+              pkgs.nodejs_26
+              pkgs.pnpm_12
+            ];
+          }
+          ''
+            cp -R ${../../pkgs/by-name/t3/t3-code} t3-code
+            chmod -R u+w t3-code
+            cd t3-code
+            python3 -B -m unittest -v test_update test_stage_deps
+            touch "$out"
+          '';
       package-unit-tests =
         pkgs.runCommand "package-unit-tests"
           {

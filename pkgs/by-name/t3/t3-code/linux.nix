@@ -7,7 +7,9 @@
   fetchzip,
   pnpmConfigHook,
   pnpm_11,
+  pnpm_12,
   nodejs_24,
+  nodejs_26,
   rustPlatform,
   cargo,
   rustc,
@@ -58,6 +60,14 @@
   commonAttrs,
   source,
 }:
+let
+  pnpm =
+    if (source.linux.pnpmMajor or 11) == 12 then
+      pnpm_12.override { nodejs-slim = nodejs; }
+    else
+      pnpm_11;
+  nodejs = if (source.linux.nodeMajor or 24) == 26 then nodejs_26 else nodejs_24;
+in
 stdenv.mkDerivation (
   finalAttrs:
   commonAttrs
@@ -75,7 +85,7 @@ stdenv.mkDerivation (
     pnpmDeps = fetchPnpmDeps {
       pname = "${commonAttrs.pname}-pnpm-deps";
       inherit (finalAttrs) version src;
-      pnpm = pnpm_11;
+      inherit pnpm;
       fetcherVersion = 4;
       hash = source.linux.pnpmHash;
     };
@@ -137,13 +147,13 @@ stdenv.mkDerivation (
         echo "package.json no longer pins pnpm; drop the packageManager rewrite" >&2
         exit 1
       fi
-      if [ "''${upstreamPin%%.*}" != "${lib.versions.major pnpm_11.version}" ]; then
-        echo "upstream pnpm pin $upstreamPin left major ${pnpm_11.version}; review the pnpm toolchain" >&2
+      if [ "''${upstreamPin%%.*}" != "${lib.versions.major pnpm.version}" ]; then
+        echo "upstream pnpm pin $upstreamPin left major ${pnpm.version}; review the pnpm toolchain" >&2
         exit 1
       fi
       substituteInPlace package.json \
         --replace-fail '"packageManager": "pnpm@'"$upstreamPin"'"' \
-        '"packageManager": "pnpm@${pnpm_11.version}"'
+        '"packageManager": "pnpm@${pnpm.version}"'
 
       mkdir -p native/kde-snap-shot/.cargo native/hyprland-snap-shot/.cargo
       cat > native/kde-snap-shot/.cargo/config.toml <<EOF
@@ -208,8 +218,8 @@ stdenv.mkDerivation (
     };
 
     nativeBuildInputs = [
-      nodejs_24
-      pnpm_11
+      nodejs
+      pnpm
       pnpmConfigHook
       rustPlatform.cargoSetupHook
       cargo
