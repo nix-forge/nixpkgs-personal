@@ -11,7 +11,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from datetime import date
 from email.message import Message
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 import skills_updater
@@ -177,14 +177,14 @@ class PublicGitTests(unittest.TestCase):
         )
         for failure in failures:
             output = io.StringIO()
-            options = (
-                {"side_effect": failure}
+            replacement = (
+                Mock(side_effect=failure)
                 if isinstance(failure, Exception)
-                else {"return_value": failure}
+                else Mock(return_value=failure)
             )
             with (
                 self.subTest(failure=type(failure).__name__),
-                patch.object(skills_updater.subprocess, "run", **options),
+                patch.object(skills_updater.subprocess, "run", replacement),
                 redirect_stderr(output),
                 self.assertRaises(SystemExit),
             ):
