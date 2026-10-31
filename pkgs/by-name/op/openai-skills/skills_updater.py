@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 from urllib.error import HTTPError, URLError
@@ -102,6 +102,80 @@ def _fetch_latest_commit(owner: str, repo: str) -> tuple[str, date]:
     return revision, commit_date
 
 
+def _fetch_public_git_commit(owner: str, repo: str) -> tuple[str, date]:
+    """Read public branch metadata without API credentials or API rate limits.
+
+    Returns:
+        The fetched main revision and its authored date in UTC.
+
+    """
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if (not key.startswith("GIT_") or key.startswith("GIT_SSL_"))
+        and key not in {"GH_TOKEN", "GITHUB_TOKEN", "SSH_ASKPASS"}
+    }
+    environment.update(
+        GIT_CONFIG_GLOBAL=os.devnull,
+        GIT_CONFIG_NOSYSTEM="1",
+        GIT_TERMINAL_PROMPT="0",
+        GIT_ASKPASS="false",
+        SSH_ASKPASS="false",
+    )
+    with tempfile.TemporaryDirectory(prefix="skills-commit-") as temporary_dir:
+        environment["HOME"] = temporary_dir
+        commands = (
+            ["init", "--quiet"],
+            [
+                "fetch",
+                "--quiet",
+                "--depth=1",
+                "--filter=blob:none",
+                "--no-tags",
+                f"https://github.com/{owner}/{repo}.git",
+                "refs/heads/main",
+            ],
+            ["show", "--no-patch", "--format=%H%n%aI", "FETCH_HEAD"],
+        )
+        for arguments in commands:
+            try:
+                completed = subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        temporary_dir,
+                        "-c",
+                        "credential.helper=",
+                        "-c",
+                        "http.extraHeader=",
+                        *arguments,
+                    ],
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=120,
+                    env=environment,
+                )
+            except OSError, subprocess.TimeoutExpired:
+                _fail(f"failed to read public Git metadata for {owner}/{repo}")
+            if completed.returncode != 0:
+                _fail(f"failed to read public Git metadata for {owner}/{repo}")
+
+    try:
+        revision, authored_value = completed.stdout.splitlines()
+    except ValueError:
+        _fail("public Git metadata did not contain a full revision and authored date")
+    if REVISION_PATTERN.fullmatch(revision) is None:
+        _fail("public Git metadata did not contain a full revision and authored date")
+    try:
+        authored = datetime.fromisoformat(authored_value)
+    except ValueError:
+        _fail("public Git metadata contained an invalid authored date")
+    if authored.tzinfo is None:
+        _fail("public Git metadata did not contain an authored timezone")
+    return revision, authored.astimezone(UTC).date()
+
+
 def _prefetch_source(owner: str, repo: str, revision: str) -> str:
     archive_url = f"https://github.com/{owner}/{repo}/archive/{revision}.tar.gz"
     completed = subprocess.run(
@@ -171,6 +245,8 @@ def main(
     expected_repo: str,
     package_dir: Path,
     argv: Sequence[str] | None = None,
+    *,
+    public_git: bool = False,
 ) -> int:
     """Update one provider's source pin from its GitHub main branch.
 
@@ -195,7 +271,8 @@ def main(
     if (match["owner"], match["repo"]) != (expected_owner, expected_repo):
         _fail(f"{source_path} does not pin {expected_owner}/{expected_repo}")
 
-    revision, commit_date = _fetch_latest_commit(expected_owner, expected_repo)
+    fetch_commit = _fetch_public_git_commit if public_git else _fetch_latest_commit
+    revision, commit_date = fetch_commit(expected_owner, expected_repo)
     content_hash = _prefetch_source(expected_owner, expected_repo, revision)
     new_source = _render_source(
         expected_owner,
