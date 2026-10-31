@@ -34,9 +34,11 @@
   libxkbcommon,
   nspr,
   nss,
+  openssl,
   pango,
   pipewire,
   systemd,
+  tpm2-tss,
   libX11,
   libXcomposite,
   libXdamage,
@@ -190,9 +192,11 @@ stdenvNoCC.mkDerivation (
       libxkbcommon
       nspr
       nss
+      openssl
       pango
       stdenv.cc.cc.lib
       systemd
+      tpm2-tss
       libX11
       libXcomposite
       libXdamage
