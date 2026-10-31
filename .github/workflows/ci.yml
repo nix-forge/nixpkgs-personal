@@ -106,7 +106,7 @@ jobs:
       - name: Test safe release archive inspection
         run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
       - name: Test GitHub skill updater error diagnostics
-        run: python3 -B -m unittest discover -s pkgs/by-name/ps/pstack-skills -p test_update.py
+        run: nix develop --command python3 -B -m unittest discover -s pkgs/by-name/ps/pstack-skills -p test_update.py
       - name: Test AudioMuse AI dependency updater
         run: python3 -B -m unittest discover -s pkgs/by-name/au/audiomuse-ai -p 'test_*.py'
       - name: Check package discovery catalog
