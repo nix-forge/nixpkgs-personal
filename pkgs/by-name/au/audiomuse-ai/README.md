@@ -1,6 +1,6 @@
 # AudioMuse-AI
 
-This recipe installs AudioMuse-AI 3.6.0 from its tagged source. It uses the
+This recipe installs AudioMuse-AI from the tagged source pinned in source.nix. It uses the
 pinned Nixpkgs Python 3.13 package set and fetches each upstream ONNX/model
 release artifact by SHA-256. It does not use the upstream container or
 PyInstaller bundle. Python 3.13 is the closest cache-backed Nixpkgs interpreter
@@ -65,3 +65,13 @@ Python source hashes.
 After an accepted update, build audiomuse-ai and perform a service-level smoke
 test on the target host. The large model closure remains separate from the
 automated Python dependency check.
+
+The Mistral SDK recipe removes Invoke from its runtime dependencies. Upstream
+uses that task runner only in the repository's development tasks, outside the
+SDK wheel. Keeping it as a runtime dependency caused issue #157 when the
+consumer's Nixpkgs supplied Invoke 3 while the SDK metadata required Invoke 2.
+The recipe uses `pythonRemoveDeps` rather than a version pin or a relaxed
+constraint; all remaining runtime requirements are still checked. Every SDK
+build also exercises a chat completion with an in-memory HTTP transport and
+Invoke imports blocked. Automatic SDK updates run the same check and must
+remain usable without the development task runner.
