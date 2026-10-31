@@ -62,9 +62,9 @@ anthropic Agent Skills with reviewed component selection.
 
 [Recipe](../pkgs/by-name/an/anthropic-skills/package.nix) · [Package guide](../pkgs/by-name/an/anthropic-skills/README.md) · [Upstream](https://github.com/anthropics/skills)
 
-- `aarch64-darwin`: unstable-2026-10-09; [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html).
-- `aarch64-linux`: unstable-2026-10-09; [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html).
-- `x86_64-linux`: unstable-2026-10-09; [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html).
+- `aarch64-darwin`: unstable-2026-10-28; [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html).
+- `aarch64-linux`: unstable-2026-10-28; [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html).
+- `x86_64-linux`: unstable-2026-10-28; [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#anthropic-skills
@@ -331,8 +331,8 @@ Noctalia greeter with keyboard status, clock, and confirmed power actions.
 
 [Recipe](../pkgs/by-name/no/noctalia-greeter-personal/package.nix) · [Package guide](../pkgs/by-name/no/noctalia-greeter-personal/README.md) · [Upstream](https://github.com/noctalia-dev/noctalia-greeter)
 
-- `aarch64-linux`: 1.6.0; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: 1.6.0; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: 1.7.0; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: 1.7.0; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#noctalia-greeter-personal
