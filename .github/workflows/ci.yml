@@ -105,6 +105,9 @@ jobs:
         run: python3 -m unittest discover -s .github/tests
       - name: Test safe release archive inspection
         run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
+      - name: Test GitHub skill updater error diagnostics
+        run: nix develop --command python3 -B -m unittest discover -s pkgs/by-name/ps/pstack-skills -p
+          test_update.py
       - name: Test AudioMuse AI dependency updater
         run: python3 -B -m unittest discover -s pkgs/by-name/au/audiomuse-ai -p 'test_*.py'
       - name: Check package discovery catalog
@@ -201,6 +204,13 @@ jobs:
         with:
           cache: 'false'
           cache-scope: ci-build
+      - name: Reclaim unused hosted Linux SDK space
+        if: runner.os == 'Linux'
+        run: |
+          df -h /
+          # Native dependencies come from Nix, not these preinstalled SDKs.
+          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
       - name: Build every declared native CI check
         uses: nix-forge/ci/actions/flake-checks@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:

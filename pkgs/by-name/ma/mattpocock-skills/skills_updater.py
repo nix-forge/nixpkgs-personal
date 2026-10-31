@@ -15,7 +15,7 @@ import tempfile
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from update_support import HTTPS_CONTEXT, github_api_headers
@@ -41,6 +41,35 @@ def _fail(message: str) -> NoReturn:
     raise SystemExit(1)
 
 
+def _github_http_error(exc: HTTPError) -> str:
+    """Describe only recognized GitHub failures and numeric retry metadata.
+
+    Returns:
+        A diagnostic without arbitrary response contents.
+
+    """
+    details = [f"HTTP {exc.code}"]
+    try:
+        body = json.loads(exc.read(4096))
+    except ValueError, UnicodeError:
+        body = {}
+    message = body.get("message", "") if isinstance(body, dict) else ""
+    if isinstance(message, str) and message.startswith("API rate limit exceeded"):
+        details.append("GitHub API rate limit exceeded")
+    elif isinstance(message, str) and message in {
+        "Resource not accessible by integration",
+        "Resource not accessible by personal access token",
+        "Bad credentials",
+        "Not Found",
+    }:
+        details.append(message)
+    for name in ("X-RateLimit-Remaining", "X-RateLimit-Reset", "Retry-After"):
+        value = exc.headers.get(name, "")
+        if value.isascii() and value.isdecimal():
+            details.append(f"{name}={value}")
+    return "; ".join(details)
+
+
 def _fetch_latest_commit(owner: str, repo: str) -> tuple[str, date]:
     url = f"https://api.github.com/repos/{owner}/{repo}/commits/main"
     request = Request(
@@ -50,6 +79,8 @@ def _fetch_latest_commit(owner: str, repo: str) -> tuple[str, date]:
     try:
         with urlopen(request, timeout=30, context=HTTPS_CONTEXT) as response:
             payload = json.load(response)
+    except HTTPError as exc:
+        _fail(f"failed to fetch {owner}/{repo} main branch: {_github_http_error(exc)}")
     except URLError as exc:
         _fail(f"failed to fetch {owner}/{repo} main branch: {exc}")
 
