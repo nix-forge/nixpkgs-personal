@@ -8,6 +8,7 @@
   pnpmConfigHook,
   pnpm_11,
   pnpm_12,
+  buildGoModule,
   nodejs_24,
   nodejs_26,
   rustPlatform,
@@ -63,7 +64,16 @@
 let
   pnpm =
     if (source.linux.pnpmMajor or 11) == 12 then
-      pnpm_12.override { nodejs-slim = nodejs; }
+      import ./pnpm.nix {
+        inherit
+          pnpm_12
+          nodejs
+          rustPlatform
+          buildGoModule
+          fetchFromGitHub
+          fetchurl
+          ;
+      }
     else
       pnpm_11;
   nodejs = if (source.linux.nodeMajor or 24) == 26 then nodejs_26 else nodejs_24;

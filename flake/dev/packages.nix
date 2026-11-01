@@ -142,13 +142,26 @@ in
       # These tests exercise architecture-neutral package tooling. Running them
       # once avoids rebuilding Python, Node.js, and font tooling on every host.
       t3-beta-toolchain-tests =
+        let
+          pnpm = import ../../pkgs/by-name/t3/t3-code/pnpm.nix {
+            inherit (pkgs)
+              pnpm_12
+              rustPlatform
+              buildGoModule
+              fetchFromGitHub
+              fetchurl
+              ;
+            nodejs = pkgs.nodejs_26;
+          };
+        in
         pkgs.runCommand "t3-beta-toolchain-tests"
           {
             nativeBuildInputs = [
               (pkgs.python3.withPackages (p: [ p.pyyaml ]))
               pkgs.nodejs_26
-              pkgs.pnpm_12
+              pnpm
             ];
+            T3_BETA_TOOLCHAIN = "1";
           }
           ''
             cp -R ${../../pkgs/by-name/t3/t3-code} t3-code

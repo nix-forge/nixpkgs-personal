@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -22,6 +23,58 @@ SPEC.loader.exec_module(farm)
 
 
 class StageTests(unittest.TestCase):
+    @unittest.skipUnless(
+        os.environ.get("T3_BETA_TOOLCHAIN"), "requires the native Beta toolchain check"
+    )
+    def test_beta_workspace_permissions_are_preserved(self) -> None:
+        version = subprocess.check_output(["pnpm", "--version"], text=True).strip()
+        self.assertEqual(version, "12.14.0")
+        workspace = self.root / "permissions"
+        workspace.mkdir()
+        names = ("@tanstack/router-plugin", "drizzle-kit", "expo-sqlite")
+        (workspace / "package.json").write_text(
+            json.dumps({
+                "name": "beta-permissions-fixture",
+                "private": True,
+                "packageManager": f"pnpm@{version}",
+                "scripts": {
+                    "probe": "node -e \"console.log('beta-permissions-probe')\""
+                },
+            })
+        )
+        (workspace / "pnpm-workspace.yaml").write_text(
+            yaml.safe_dump({
+                "packages": ["."],
+                "verifyDepsBeforeRun": False,
+                "permissions": {name: {"skills": False} for name in names},
+            })
+        )
+        environment = {
+            **os.environ,
+            "HOME": str(workspace),
+            "CI": "1",
+            "NO_COLOR": "1",
+            # Match Nixpkgs' fetcher/config hook: use the asserted Nix tool.
+            "pnpm_config_pm_on_fail": "ignore",
+        }
+        for command in (["run", "probe"], ["permissions", "list"]):
+            result = subprocess.run(
+                ["pnpm", "--offline", *command],
+                cwd=workspace,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            if command[0] == "run":
+                self.assertIn("beta-permissions-probe", result.stdout)
+            else:
+                self.assertIn("Denied:\n", result.stdout)
+                denied = result.stdout.split("Denied:\n", maxsplit=1)[1]
+                entries = {tuple(line.split()) for line in denied.splitlines() if line}
+                self.assertEqual(entries, {(name, "skills") for name in names})
+
     def test_reads_pnpm_json_modules_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".modules.yaml"
