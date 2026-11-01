@@ -98,7 +98,14 @@ def seed(source: Path, lock: dict, name: str, spec: str) -> tuple[Path, str]:
                 continue
             reference = str(record["version"])
             if spec not in {str(record["specifier"]), base_version(reference)}:
-                continue
+                # Overrides replace the lock's specifier, while the artifact
+                # manifest retains the original importer's request. Follow
+                # that importer's frozen resolution, including patch/peers.
+                origin = source / importer
+                if not (origin / "package.json").is_file():
+                    continue
+                if manifest(origin).get(section, {}).get(name) != spec:
+                    continue
             path = source / importer / "node_modules" / name
             if path.is_dir() and compatible(manifest(path)):
                 candidates.append((path.resolve(), reference))
