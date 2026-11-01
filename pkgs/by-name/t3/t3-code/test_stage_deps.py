@@ -240,6 +240,65 @@ class StageTests(unittest.TestCase):
         }
         farm.link(path, self.source / "apps/desktop/node_modules" / name)
 
+    def _overridden_prerelease(self) -> tuple[Path, str]:
+        reference = "1.2.0-beta.15(patch_hash=reviewed)(peer@2.0.0)"
+        package = self.package(
+            "node-pty", reference, "module.exports = require('peer');"
+        )
+        peer = self.package("peer", "2.0.0", "module.exports = 2;")
+        self.edge(package, peer, "2.0.0")
+        self.package("node-pty", "1.2.0-beta.16", "module.exports = 16;")
+        importer = self.source / "apps/server"
+        farm.link(package, importer / "node_modules/node-pty")
+        original = "^1.2.0-beta.15"
+        (importer / "package.json").write_text(
+            json.dumps({"dependencies": {"node-pty": original}})
+        )
+        self.lock["importers"]["apps/server"] = {
+            "dependencies": {
+                "node-pty": {"specifier": "1.2.0-beta.15", "version": reference}
+            }
+        }
+        self.lock["overrides"] = {"node-pty": "1.2.0-beta.15"}
+        self.seeds["node-pty"] = original
+        return package, reference
+
+    @unittest.skipUnless(
+        shutil.which("node"), "Node.js is needed to check runtime resolution"
+    )
+    def test_overridden_prerelease_preserves_locked_patch_and_peer_context(
+        self,
+    ) -> None:
+        _, reference = self._overridden_prerelease()
+        self.assertEqual(self.run_stage(), 2)
+        lock = farm.read_yaml(self.target / "pnpm-lock.yaml")
+        self.assertEqual(
+            lock["importers"]["."]["dependencies"]["node-pty"]["version"], reference
+        )
+        shutil.rmtree(self.source)
+        result = subprocess.run(
+            ["node", "-e", "console.log(require('node-pty'))"],
+            cwd=self.target,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(result.stdout.strip(), "2")
+
+    def test_undeclared_range_is_not_resolved_from_global_snapshots(self) -> None:
+        self._overridden_prerelease()
+        self.seeds["node-pty"] = "^1.2.0-beta.14"
+        with self.assertRaisesRegex(ValueError, "unambiguously resolve"):
+            self.run_stage()
+
+    def test_overridden_prerelease_rejects_stale_installed_version(self) -> None:
+        package, _ = self._overridden_prerelease()
+        data = farm.manifest(package)
+        data["version"] = "1.2.0-beta.16"
+        (package / "package.json").write_text(json.dumps(data))
+        with self.assertRaisesRegex(ValueError, "installed version differs"):
+            self.run_stage()
+
     def run_stage(self) -> int:
         (self.target / "package.json").write_text(
             json.dumps({
