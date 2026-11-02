@@ -2,10 +2,10 @@
   appName = "ChatGPT";
   sources = {
     aarch64-darwin = {
-      version = "26.1027.51404";
-      url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-26.1027.51404.zip";
-      hash = "sha256-k5k77tXuUqYRR8qXMpDiBSuw+j2hF2NNVxJnBxcgu10=";
-      buildVersion = "23880";
+      version = "26.1027.61615";
+      url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-26.1027.61615.zip";
+      hash = "sha256-oi6B/55S5/MAbGV/8gBsA0mCh2paigArv5wA+/gwfyM=";
+      buildVersion = "24141";
     };
     aarch64-linux = {
       version = "26.1027.51404";
