@@ -1,7 +1,7 @@
 {
-  version = "26276.505.5234.9924";
+  version = "26289.204.5281.6363";
   src = {
-    url = "https://statics.teams.cdn.office.net/production-osx/26276.505.5234.9924/MicrosoftTeams.pkg";
-    hash = "sha256-vQKcICOpQ9x2yaA0EMkfBti5LAcRXa+XY9W5R1qrqHw=";
+    url = "https://statics.teams.cdn.office.net/production-osx/26289.204.5281.6363/MicrosoftTeams.pkg";
+    hash = "sha256-OT4lNpGYBownFfPzKtIA3nEqdNkYSTTDnOHVxCs5zCw=";
   };
 }
