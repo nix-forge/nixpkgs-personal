@@ -104,6 +104,10 @@ jobs:
           # The updater must never edit this shared artifact itself. Only the
           # trusted default-branch generator runs after the package-only guard.
           nix develop --command python scripts/package_catalog.py
+          # Updaters emit generated JSON/Nix that commit hooks may reformat.
+          # Normalize before staging so those hooks validate the published tree.
+          # The final scope guard also checks all formatter changes.
+          nix fmt -- "$package_path" docs/catalog.md
           git add -A
           while IFS= read -r -d '' path; do
             if [[ "$path" != "$package_path/"* && "$path" != docs/catalog.md ]]; then

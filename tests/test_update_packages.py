@@ -298,7 +298,7 @@ class DiscoveryTests(unittest.TestCase):
                 self.assertFalse((self.root / "injected").exists())
 
 
-class PublisherTests(unittest.TestCase):
+class PublisherFixture(unittest.TestCase):
     """Execute the real publish step with isolated Git and API/tool adapters."""
 
     def setUp(self) -> None:
@@ -428,6 +428,15 @@ import sys
 from pathlib import Path
 with Path(os.environ["NIX_LOG"]).open("a") as log:
     log.write(json.dumps(sys.argv[1:]) + "\n")
+if sys.argv[1] == "fmt":
+    if os.environ.get("FORMATTER_FAIL"):
+        raise SystemExit(1)
+    assert sys.argv[2:] == ["--", "pkgs/by-name/fi/first", "docs/catalog.md"]
+    source = Path(sys.argv[3]) / "source.txt"
+    source.write_text(source.read_text().strip() + "\n")
+    if os.environ.get("FORMATTER_EXTRA"):
+        Path("README.md").write_text("unexpected formatter mutation\n")
+    raise SystemExit(0)
 if os.environ.get("GENERATOR_FAIL"):
     raise SystemExit(1)
 rows = [name + "=" + Path("pkgs/by-name/" + name[:2] + "/" + name + "/source.txt").read_text().strip()
@@ -507,6 +516,8 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.git("switch", "-q", "main")
         self.env["EXISTING_PR"] = "https://github.com/example/repository/pull/1"
 
+
+class PublisherTests(PublisherFixture):
     def test_published_update_contains_generated_catalog_and_one_package(self) -> None:
         self.write("pkgs/by-name/fi/first/source.txt", "2\n")
         result = self._publish()
@@ -776,6 +787,34 @@ if os.environ.get("GENERATOR_EXTRA"):
         self.assertTrue(
             any(call[:2] == ["workflow", "run"] for call in self.api_calls())
         )
+
+
+class PublisherFormattingTests(PublisherFixture):
+    def test_formats_updater_output_before_commit_hooks(self) -> None:
+        self.write("pkgs/by-name/fi/first/source.txt", " 2 \n")
+        hook = self.checkout / ".git/hooks/pre-commit"
+        hook.write_text(
+            "#!/bin/sh\ngit show :pkgs/by-name/fi/first/source.txt | grep -qx '2'\n"
+        )
+        hook.chmod(0o755)
+        result = self._publish()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.git("show", "HEAD:pkgs/by-name/fi/first/source.txt"), "2")
+        self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def test_formatter_failure_never_publishes(self) -> None:
+        self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+        self.env["FORMATTER_FAIL"] = "1"
+        self.assertNotEqual(self._publish().returncode, 0)
+        self.assertEqual(self.api_calls(), [])
+
+    def test_formatter_cannot_edit_additional_repository_files(self) -> None:
+        self.write("pkgs/by-name/fi/first/source.txt", "2\n")
+        self.env["FORMATTER_EXTRA"] = "1"
+        result = self._publish()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("outside", result.stderr)
+        self.assertEqual(self.api_calls(), [])
 
 
 class SourceDcoTests(unittest.TestCase):
