@@ -14,7 +14,7 @@ import notification_process
 import pytest
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
 _FAILURE_STATUS = 7
 _PORTABLE_PIPE_BUF = 512
@@ -23,6 +23,18 @@ FIXTURE = Path(__file__).with_name("fixtures") / "command.py"
 
 def _command(mode: str) -> list[str]:
     return [sys.executable, str(FIXTURE), mode]
+
+
+@pytest.fixture
+def interruptible_sigint() -> Generator[None]:
+    """Establish interruption semantics even when a build runner ignores SIGINT."""
+    previous_handler = signal.signal(signal.SIGINT, signal.default_int_handler)
+    previous_mask = signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGINT})
+    try:
+        yield
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        signal.signal(signal.SIGINT, previous_handler)
 
 
 @pytest.mark.parametrize("payload", [b"", b"hello", b"x" * 100_000])
@@ -94,6 +106,7 @@ def test_exited_leader_cannot_leave_a_pipe_holding_descendant() -> None:
             os.close(descriptor)
 
 
+@pytest.mark.usefixtures("interruptible_sigint")
 def test_keyboard_interrupt_cleans_up_the_owned_command() -> None:
     """Reap the owned command when its caller receives an interrupt."""
     with pytest.raises(KeyboardInterrupt):
@@ -190,6 +203,7 @@ def test_writable_pipe_backpressure_retries_on_notification(
     assert max(writes) <= _PORTABLE_PIPE_BUF
 
 
+@pytest.mark.usefixtures("interruptible_sigint")
 def test_cancellation_during_observer_start_retains_cleanup_ownership(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
