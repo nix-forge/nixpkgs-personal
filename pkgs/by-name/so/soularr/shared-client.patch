@@ -1,0 +1,278 @@
+--- a/soularr.py
++++ b/soularr.py
+@@ -6,6 +6,7 @@
+ import os
+ import sys
+ import time
++from transfer_ownership import TransferOwnership
+ import shutil
+ import difflib
+ import operator
+@@ -192,17 +193,29 @@
+     return valid_characters.strip()
+ 
+ 
++def peer_cooldowns():
++    path = os.path.join(os.environ.get("STATE_DIRECTORY", "."), "peer-cooldowns.json")
++    try:
++        with open(path) as handle:
++            data = json.load(handle)
++    except FileNotFoundError:
++        data = {}
++    return path, {user: expiry for user, expiry in data.items() if expiry > time.time()}
++
++
++def cooldown_peer(username):
++    path, data = peer_cooldowns()
++    data[username] = time.time() + 7200
++    temporary = path + ".tmp"
++    with open(temporary, "w") as handle:
++        json.dump(data, handle)
++    os.replace(temporary, path)
++
++
+ def cancel_and_delete(files):
+-    for file in files:
+-        try:
+-            slskd.transfers.cancel_download(username=file["username"], id=file["id"])
+-        except Exception:
+-            logger.warning(f"Failed to cancel download {file['filename']} for {file['username']}", exc_info=True)
+-        delete_dir = file["file_dir"].split("\\")[-1]
+-        os.chdir(slskd_download_dir)
+-
+-        if os.path.exists(delete_dir):
+-            shutil.rmtree(delete_dir)
++    for username in {file["username"] for file in files}:
++        cooldown_peer(username)
++    transfer_owner.finish(files, quarantine=True)
+ 
+ 
+ def release_trackcount_mode(releases):
+@@ -589,24 +602,44 @@
+     return True
+ 
+ 
+-def slskd_do_enqueue(username, files, file_dir):
++def slskd_do_enqueue(username, files, file_dir, owned_ids=frozenset()):
+     """
+     Takes a list of files to download and returns a list of files that were successfully added to the download queue
+     It also adds to each file the details needed to track that specific file.
+     """
+     downloads = []
++    if username in peer_cooldowns()[1]:
++        logger.info("Skipping peer during failed-transfer cooldown")
++        return None
++    try:
++        # Another consumer may own this directory, including finished files.
++        # Refuse it before enqueue rather than adopting its transfer IDs.
++        local_name = file_dir.replace("\\", "/").rstrip("/").split("/")[-1]
++        if not owned_ids and os.path.exists(os.path.join(slskd_download_dir, local_name)):
++            return None
++        existing = slskd.transfers.get_all_downloads()
++        if any(d["directory"].replace("\\", "/").rstrip("/").split("/")[-1] == local_name
++               and any(f["id"] not in owned_ids for f in d.get("files", []))
++               for peer in existing
++               for d in peer.get("directories", [])):
++            logger.info("Skipping directory already used by another transfer")
++            return None
++    except Exception:
++        logger.warning("Cannot establish transfer ownership; skipping peer")
++        return None
++    transfer_owner.begin(username, files, file_dir)
+     try:
+         enqueue = slskd.transfers.enqueue(username=username, files=files)
+     except Exception:
+-        logger.debug("Enqueue failed", exc_info=True)
+-        return None
++        logger.error("Enqueue result uncertain; journal retained for restart")
++        raise SystemExit(1)
+     if enqueue:
+         time.sleep(5)
+         try:
+             download_list = slskd.transfers.get_downloads(username=username)
+         except Exception:
+-            logger.warning(f"Failed to get download status for {username} after enqueue", exc_info=True)
+-            return None
++            logger.error("Transfer readback failed; journal retained for restart")
++            raise SystemExit(1)
+         for file in files:
+             for directory in download_list["directories"]:
+                 if directory["directory"] == file_dir:
+@@ -624,16 +657,12 @@
+         tracked = {d["filename"] for d in downloads}
+         missing = [file["filename"] for file in files if file["filename"] not in tracked]
+         if missing:
+-            logger.warning(f"slskd did not report {len(missing)} of {len(files)} enqueued files from {username} in {file_dir}; treating enqueue as failed")
+-            for download in downloads:
+-                try:
+-                    slskd.transfers.cancel_download(username=username, id=download["id"])
+-                except Exception:
+-                    logger.warning(f"Failed to cancel download {download['filename']} for {username}", exc_info=True)
+-            return None
++            logger.error("Partial enqueue; journal retained for restart")
++            raise SystemExit(1)
+         return downloads
+     else:
+-        return None
++        logger.error("Enqueue rejected; reconcile saved intent before retry")
++        raise SystemExit(1)
+ 
+ 
+ def slskd_download_status(downloads):
+@@ -816,7 +845,10 @@
+     results = search_cache[album_id]
+     for allowed_filetype in allowed_filetypes:
+         logger.info(f"Checking for Quality: {allowed_filetype}")
+-        releases = lidarr.get_album(album_id)["releases"]
++        current_album = lidarr.get_album(album_id)
++        releases = current_album["releases"]
++        if use_selected_lidarr_release or not current_album.get("anyReleaseOk", False):
++            releases = [r for r in releases if r.get("monitored")]
+         num_releases = len(releases)
+         for _ in range(0, num_releases):
+             if len(releases) == 0:
+@@ -829,6 +861,7 @@
+ 
+             if found:
+                 grab_list[album_id] = {}
++                grab_list[album_id]["release_id"] = release_id
+                 grab_list[album_id]["files"] = downloads
+                 grab_list[album_id]["filetype"] = allowed_filetype
+                 grab_list[album_id]["title"] = album["title"]
+@@ -839,6 +872,7 @@
+                 found, downloads = try_multi_enqueue(release, all_tracks, results, allowed_filetype)
+                 if found:
+                     grab_list[album_id] = {}
++                    grab_list[album_id]["release_id"] = release_id
+                     grab_list[album_id]["files"] = downloads
+                     grab_list[album_id]["filetype"] = allowed_filetype
+                     grab_list[album_id]["title"] = album["title"]
+@@ -868,6 +902,20 @@
+                 time.sleep(remaining)
+ 
+     return grab_list, failed_search, failed_grab
++
++
++
++def prepare_lidarr_release(album_id, release_id):
++    """Import the complete matched edition without overriding a pinned edition."""
++    album = lidarr.get_album(album_id)
++    release = next(r for r in album["releases"] if r["id"] == release_id)
++    if release.get("monitored"):
++        return
++    if not album.get("anyReleaseOk", False):
++        raise RuntimeError("Requested edition changed during download; files preserved")
++    for candidate in album["releases"]:
++        candidate["monitored"] = candidate["id"] == release_id
++    lidarr.upd_album(album)
+ 
+ 
+ def downloaded_file_path(file):
+@@ -945,25 +993,27 @@
+                 song.save()
+             except Exception:
+                 logger.exception(f"Error writing tags for: {file['import_path']}")
++        prepare_lidarr_release(album_data["album_id"], album_data["release_id"])
+         command = lidarr.post_command(
+             name="DownloadedAlbumsScan",
+             path=album_data["import_folder"],
+         )  # Album all tagged up and in a correctly named folder. This should work more reliably
+         logger.info(f"Starting Lidarr import for: {album_data['title']} ID: {command['id']}")
+ 
+-        poll_start = time.time()
++        import_deadline = time.monotonic() + 300
+         while True:
+             current_task = lidarr.get_command(command["id"])
+             # Lidarr commands can also end as aborted, cancelled or orphaned, not just completed/failed.
+             if current_task["status"] not in ("queued", "started"):
+                 break
+-            if time.time() - poll_start > IMPORT_POLL_TIMEOUT:
+-                logger.warning(
+-                    f"Lidarr import of {album_data['title']} still '{current_task['status']}' after "
+-                    f"{IMPORT_POLL_TIMEOUT}s. No longer waiting; Lidarr may still complete it."
+-                )
+-                return
++            if time.monotonic() >= import_deadline:
++                raise TimeoutError("Lidarr import exceeded five minutes; files preserved")
+             time.sleep(2)
++
++        if current_task.get("status") != "completed":
++            raise RuntimeError("Lidarr import ended without success; files preserved")
++        if not isinstance(current_task.get("message"), str) or not current_task["message"].strip():
++            raise RuntimeError("Lidarr import result was not confirmed; files preserved")
+ 
+         try:
+             logger.info(f"{current_task['commandName']} {current_task['message']} from: {current_task['body']['path']}")
+@@ -1003,7 +1053,10 @@
+         """Requeue a single errored file. Returns True on success, False if enqueue failed."""
+         data_dict = [{"filename": file["filename"], "size": file["size"]}]
+         logger.info(f"Download error. Requeue file: {file['filename']}")
+-        requeue = slskd_do_enqueue(file["username"], data_dict, file["file_dir"])
++        requeue = slskd_do_enqueue(
++            file["username"], data_dict, file["file_dir"],
++            owned_ids={f["id"] for f in grab_list[album_id]["files"]},
++        )
+         if requeue is not None:
+             file["id"] = requeue[0]["id"]
+             time.sleep(1)
+@@ -1091,6 +1144,7 @@
+                 album_data["album_id"] = album_id
+                 logger.info(f"Completed download of Album: {album_data['title']} Artist: {album_data['artist']}")
+                 process_completed_album(album_data, failed_grab)
++                transfer_owner.finish(album_data["files"])
+                 del grab_list[album_id]
+                 continue
+ 
+@@ -1319,7 +1373,7 @@
+                     next_page = lidarr.get_queue(page=page, sort_key="albums.title", sort_dir="ascending")
+                 except LIDARR_CONNECTION_ERRORS as ex:
+                     logger.error(f"Failed to get queue details: {ex}")
+-                    break
++                    return []
+                 current_queue.extend(next_page["records"])
+                 page += 1
+ 
+@@ -1345,7 +1399,8 @@
+             logging.info("No records wanted that arent already queued")
+             wanted_records = []
+     except LIDARR_CONNECTION_ERRORS as ex:
+-        logger.error(f"Failed to get queue details so not filtering based on queue: {ex}")
++        logger.error(f"Failed to get queue details; refusing to start downloads: {ex}")
++        return []
+ 
+     return wanted_records
+ 
+@@ -1447,6 +1502,7 @@
+ 
+ 
+ def main():
++    global transfer_owner
+     global \
+         slskd_api_key, \
+         lidarr_api_key, \
+@@ -1633,6 +1689,8 @@
+         broken_user = []
+ 
+         slskd = slskd_api.SlskdClient(host=slskd_host_url, api_key=slskd_api_key, url_base=slskd_url_base)
++        transfer_owner = TransferOwnership(slskd.transfers, args.var_dir, slskd_download_dir)
++        transfer_owner.recover()
+         lidarr = LidarrAPI(lidarr_host_url, lidarr_api_key)
+         wanted_records = []
+         try:
+@@ -1658,13 +1716,13 @@
+ 
+                 if os.path.exists(lock_file_path) and not is_docker():
+                     os.remove(lock_file_path)
+-                sys.exit(0)
++                sys.exit(1)
+             if failed == 0:
+                 logger.info("Soularr finished. Exiting...")
+-                slskd.transfers.remove_completed_downloads()
++                # Leave shared-client transfer history for its owning consumers.
+             else:
+                 logger.info(f"{failed}: releases failed to find a match in the search results and are still wanted.")
+-                slskd.transfers.remove_completed_downloads()
++                # Leave shared-client transfer history for its owning consumers.
+         else:
+             logger.info("No releases wanted. Exiting...")
+ 

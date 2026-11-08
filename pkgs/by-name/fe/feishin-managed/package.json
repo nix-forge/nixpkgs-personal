@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "tsc --project tsconfig.json --outDir dist && node --test --test-timeout=30000 dist/*.test.cjs",
+    "lint": "oxlint --type-aware --deny-warnings --config .oxlintrc.json *.cts",
+    "format:check": "prettier --check \"*.cts\" .oxlintrc.json package.json tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.6",
+    "oxlint": "1.87.0",
+    "oxlint-tsgolint": "7.0.2004",
+    "prettier": "3.9.10",
+    "typescript": "7.0.2",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2"
+  }
+}

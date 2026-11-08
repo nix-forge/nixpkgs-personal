@@ -1,0 +1,4 @@
+    mpvInstance = null;
+  }
+}));
+require$$0.ipcMain.handle("player-is-running",

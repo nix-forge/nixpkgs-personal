@@ -1,0 +1,3 @@
+    if (!isWindows()) {
+      try {
+        await promises.rm(socketPath);

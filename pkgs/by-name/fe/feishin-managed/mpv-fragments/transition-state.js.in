@@ -1,0 +1,2 @@
+let mpvCreatePromise = null;
+let mpvTransition = Promise.resolve();

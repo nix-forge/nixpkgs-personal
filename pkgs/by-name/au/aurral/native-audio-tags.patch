@@ -1,0 +1,144 @@
+--- a/backend/services/audioTags.ts
++++ b/backend/services/audioTags.ts
+@@ -253,7 +253,20 @@
+   }
+ }
+ 
+-const isLegacyMarker = (value: unknown) => text(value).startsWith(AURRAL_IDENTITY_PREFIX);
++const isLegacyMarker = (value: unknown) =>
++  text(value).startsWith(AURRAL_IDENTITY_PREFIX) && parseIdentity(value) !== null;
++
++function readLegacyIdentity(file: TagLib.File) {
++  const tag: { grouping?: string; comment?: string } = file.tag;
++  const xiph = file.getTag(TagTypes.Xiph, false) as TagLib.XiphComment | undefined;
++  const id3 = file.getTag(TagTypes.Id3v2, false) as TagLib.Id3v2Tag | undefined;
++  const comments = (id3?.getFramesByClassType<TagLib.Id3v2UserTextInformationFrame>(
++    Id3v2FrameClassType.UserTextInformationFrame,
++  ) || []).filter((frame) => frame.description.toLowerCase() === "comment")
++    .flatMap((frame) => frame.text || []);
++  return Object.assign({}, ...[...(xiph?.getField("DESCRIPTION") || []), ...comments,
++    tag.comment, tag.grouping].filter(isLegacyMarker).map(parseIdentity));
++}
+ 
+ // ffmpeg wrote the old comment marker to Vorbis comments as DESCRIPTION, which
+ // taglib does not read as the comment.
+@@ -315,15 +328,6 @@
+     if (fillOnly && !isEmpty(current[field])) continue;
+     changes[field] = wanted;
+   }
+-  if (
+-    !fillOnly &&
+-    changes.releaseGroupMbid &&
+-    current.releaseGroupMbid &&
+-    current.releaseMbid &&
+-    !changes.releaseMbid
+-  ) {
+-    changes.releaseMbid = null;
+-  }
+   return changes;
+ }
+ 
+@@ -349,9 +353,12 @@
+   let changes: Record<string, TagFieldValue>;
+   let identityChanged: boolean;
+   let legacyIdentity: boolean;
+-  try {
++  let mergedIdentity: object | null = null;
++  try {
++    if (identity) mergedIdentity = { ...readLegacyIdentity(preview),
++      ...(readIdentity(preview) || {}), ...identity };
+     changes = planChanges(readFields(preview.tag), values, fillOnly);
+-    identityChanged = Boolean(identity) && !same(readIdentity(preview), identity);
++    identityChanged = Boolean(mergedIdentity) && !same(readIdentity(preview), mergedIdentity);
+     legacyIdentity = Boolean(identity) && hasLegacyIdentity(preview);
+   } finally {
+     preview.dispose();
+@@ -364,6 +371,7 @@
+     path.dirname(source),
+     `.${path.basename(source, extension)}.${randomUUID()}.tagging${extension}`,
+   );
++  const sourceStat = await fs.stat(source);
+   await fs.copyFile(source, working, fs.constants.COPYFILE_FICLONE);
+   try {
+     const file = await openFile(working);
+@@ -379,13 +387,15 @@
+         );
+       }
+       if (identity) {
+-        writeIdentity(file, identity);
++        writeIdentity(file, mergedIdentity!);
+         clearLegacyIdentity(file);
+       }
+       file.save();
+     } finally {
+       file.dispose();
+     }
++    await fs.chmod(working, sourceStat.mode);
++    await fs.chown(working, sourceStat.uid, sourceStat.gid);
+     await fs.rename(working, source);
+   } catch (error) {
+     await fs.rm(working, { force: true }).catch(() => {});
+--- a/backend/services/downloadUtils.ts
++++ b/backend/services/downloadUtils.ts
+@@ -131,12 +131,16 @@
+   const tag = nativeTags(metadata).find((entry) => OWN_IDENTITY_TAG.test(String(entry?.id || "")));
+   let own = null;
+   try {
+-    const parsed = JSON.parse(String(tag?.value ?? ""));
++    const value = String(tag?.value ?? "");
++    const parsed = JSON.parse(value.startsWith(AURRAL_IDENTITY_PREFIX)
++      ? value.slice(AURRAL_IDENTITY_PREFIX.length) : value);
+     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) own = parsed;
+   } catch {}
+   const legacy = readLegacyAurralIdentity(metadata);
+   return own || legacy ? { ...(legacy || {}), ...(own || {}) } : null;
+ }
++
++export const readNativeAurralIdentity = readAurralIdentity;
+ 
+ export function buildResolvedJobTrack(
+   job: DownloadTrackFields,
+@@ -309,6 +313,8 @@
+   const performer = isVariousArtistsCredit(metadata.artistName, metadata.artistMbid)
+     ? metadata.artistAliases?.[0]
+     : null;
++  const parsed = await parseFile(filePath, { skipCovers: true });
++  const identity = { ...(readAurralIdentity(parsed) || {}), ...(buildAurralIdentity(metadata) || {}) };
+   return writeAudioTags(
+     filePath,
+     {
+@@ -319,12 +325,13 @@
+       artistMbid: performer ? undefined : metadata.artistMbid,
+       albumArtistMbid: metadata.artistMbid,
+       releaseGroupMbid: metadata.albumMbid,
++      releaseMbid: metadata.releaseMbid,
+       recordingMbid: metadata.trackMbid,
+       year: metadata.releaseYear,
+       trackNumber: metadata.trackNumber,
+       discNumber: metadata.discNumber,
+     },
+-    { identity: buildAurralIdentity(metadata) },
++    { identity: Object.keys(identity).length ? identity : null },
+   );
+ }
+ 
+--- a/.tests/download/audio-tags.test.ts
++++ b/.tests/download/audio-tags.test.ts
+@@ -110,7 +110,7 @@
+   });
+ });
+ 
+-test("tagging an M4A keeps its freeform tags and the tags the job has no value for, and drops a release ID from another album", async () => {
++test("tagging an M4A keeps its freeform tags and the tags the job has no value for, and preserves a genuine release ID when no replacement is supplied", async () => {
+   const filePath = makeAudio("uploaded.m4a", ["-c:a", "aac"]);
+   tagAsUploader(filePath, (file) => {
+     const apple = file.getTag(taglib.TagTypes.Apple, true);
+@@ -126,7 +126,7 @@
+ 
+   const { common } = await parseFile(filePath);
+   assert.equal(common.musicbrainz_releasegroupid, job.albumMbid);
+-  assert.equal(common.musicbrainz_albumid, undefined);
++  assert.equal(common.musicbrainz_albumid, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+   assert.equal(common.musicbrainz_recordingid, "cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+   assert.equal(common.track.no, 7);
+   assert.equal(common.replaygain_track_gain?.dB, -4.2);

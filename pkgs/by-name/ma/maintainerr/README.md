@@ -5,8 +5,9 @@ Node.js 26 and the checked-in Yarn lockfile. Nix fetches the Yarn dependency
 cache separately, and the sandboxed build has no network access. The build
 compiles `better-sqlite3`, `canvas`, and `sharp` against Node 26 and Nixpkgs
 libraries, then removes their bundled cross-platform native binaries.
-The current `sharp` release requires libvips 8.18.7, which this recipe pins
-locally until that version is available from Nixpkgs.
+The current `sharp` release requires libvips 8.18.7. The recipe uses Nixpkgs'
+unmodified library when it meets that minimum; a source backport remains only
+for standalone consumers with older Nixpkgs pins.
 
 Run the service with a writable `DATA_DIR`. The executable stages the web UI
 under that directory so it can replace the runtime `BASE_PATH` placeholder,

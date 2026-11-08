@@ -1,0 +1,82 @@
+--- a/src/plugins/htmlVideoPlayer/style.scss
++++ b/src/plugins/htmlVideoPlayer/style.scss
+@@ -41,7 +41,7 @@
+ }
+ 
+ .htmlvideoplayer::-webkit-media-text-track-container {
+-    font-size: 170% !important; /* Override element inline style */
++    font-size: max(1rem, 2.5vmin) !important; /* Override element inline style */
+     line-height: 50%; /* Child element cannot set line height smaller than its parent has. This allow smaller values for children */
+ }
+ 
+@@ -57,7 +57,7 @@
+     left: 0;
+     right: 0;
+     color: #fff;
+-    font-size: 170%;
++    font-size: max(1rem, 2.5vmin);
+     padding-left: env(safe-area-inset-left);
+     padding-right: env(safe-area-inset-right);
+     padding-bottom: env(safe-area-inset-bottom);
+@@ -90,3 +90,11 @@
+         opacity: initial;
+     }
+ }
++
++// Keep corners and padding proportional to the caption font, including HiDPI.
++.videoSubtitlesInner,
++.videoSecondarySubtitlesInner {
++    border-radius: 0.18em;
++    padding: 0.08em 0.22em;
++    box-sizing: border-box;
++}
+--- a/src/components/subtitlesettings/subtitlesettings.scss
++++ b/src/components/subtitlesettings/subtitlesettings.scss
+@@ -16,7 +16,7 @@
+ .subtitleappearance-fullpreview-window {
+     position: absolute;
+     width: 100%;
+-    font-size: 170%;
++    font-size: max(1rem, 2.5vmin);
+     text-align: center;
+ }
+ 
+@@ -24,3 +24,10 @@
+     display: inline-block;
+     max-width: 70%;
+ }
++
++.subtitleappearance-preview-text,
++.subtitleappearance-fullpreview-text {
++    border-radius: 0.18em;
++    padding: 0.08em 0.22em;
++    box-sizing: border-box;
++}
+--- a/src/plugins/htmlVideoPlayer/plugin.js
++++ b/src/plugins/htmlVideoPlayer/plugin.js
+@@ -1435,7 +1435,7 @@
+                 libassMemoryLimit: 40,
+                 libassGlyphLimit: 40,
+                 targetFps: videoStream?.ReferenceFrameRate || 24,
+-                prescaleFactor: 0.8,
++                prescaleFactor: 1.0,
+                 prescaleHeightLimit: 1080,
+                 maxRenderHeight: 2160,
+                 resizeVariation: 0.2,
+@@ -1603,7 +1603,15 @@
+      */
+     getCueCss(appearance, selector) {
+         return `${selector}::cue {
+-                ${appearance.text.map((s) => s.value !== undefined && s.value !== '' ? `${s.name}:${s.value}!important;` : '').join('')}
++                ${appearance.text.map((s) => {
++                    if (s.value === undefined || s.value === '') return '';
++                    // Native cues have different inherited font metrics by browser.
++                    // Match the HTML renderer's viewport-relative baseline.
++                    const value = s.name === 'font-size'
++                        ? `calc(max(1rem, 2.5vmin) * ${s.value === 'inherit' ? 1 : parseFloat(s.value)})`
++                        : s.value;
++                    return `${s.name}:${value}!important;`;
++                }).join('')}
+             }`;
+     }
+ 

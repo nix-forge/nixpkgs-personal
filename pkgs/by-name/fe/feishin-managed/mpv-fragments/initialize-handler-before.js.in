@@ -1,0 +1,8 @@
+  "player-initialize",
+  async (_event, data) => {
+    try {
+      mpvLog({
+        action: `Attempting to initialize mpv with parameters: ${JSON.stringify(data)}`,
+        level: "debug"
+      });
+      mpvCreatePromise = createMpv(data);

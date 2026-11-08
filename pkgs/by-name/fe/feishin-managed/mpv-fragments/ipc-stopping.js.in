@@ -1,0 +1,2 @@
+const quit$1 = async (instance) => {
+  require("./mpv-readiness.cjs").setIpcReady(false);

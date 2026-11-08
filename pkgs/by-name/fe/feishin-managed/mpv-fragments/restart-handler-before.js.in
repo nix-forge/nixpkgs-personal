@@ -1,0 +1,14 @@
+  async (_event, data) => {
+    try {
+      mpvLog({
+        action: `Attempting to initialize mpv with parameters: ${JSON.stringify(data)}`,
+        level: "debug"
+      });
+      suppressRendererPlaybackEvents = true;
+      playbackEventGeneration += 1;
+      getMpvInstance()?.stop();
+      getMpvInstance()?.quit().catch((error) => {
+        mpvLog({ action: "Failed to quit existing MPV" }, error);
+      });
+      mpvInstance = null;
+      mpvCreatePromise = createMpv(data);

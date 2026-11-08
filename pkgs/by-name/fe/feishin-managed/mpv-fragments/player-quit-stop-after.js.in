@@ -1,0 +1,3 @@
+  try {
+    // quit already stops playback and has a bounded child-exit fallback.
+    await quit$1();

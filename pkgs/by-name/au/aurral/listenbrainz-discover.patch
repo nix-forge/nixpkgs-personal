@@ -1,0 +1,382 @@
+--- a/backend/routes/discovery/handlers/main.ts
++++ b/backend/routes/discovery/handlers/main.ts
+@@ -1,3 +1,5 @@
++import { getListenHistory } from "../../../services/listeningHistory.ts";
++import { getListenbrainzRecordingCharts } from "../../../services/discovery/listenbrainzCharts.js";
+ import { Hono } from "hono";
+ import * as v from "valibot";
+ import { requireAuth } from "../../../middleware/guards.ts";
+@@ -33,6 +35,17 @@
+ const pageQuery = v.object({ limit: v.optional(v.string()), offset: v.optional(v.string()) });
+ 
+ export default new Hono<AppEnv>()
++  .get("/listenbrainz", requireAuth, async (c) => {
++    const username = getListenHistory(c.var.user.id).listenbrainz;
++    const profile = { listenHistoryProvider: "listenbrainz", listenHistoryUsername: username };
++    const { body } = getUserDiscovery(c.var.user.id, 0, 0);
++    // The service's JS compatibility input accepts the new pipeline's artist IDs.
++    const charts = await getListenbrainzRecordingCharts(profile, {
++      count: 30, recommendedArtists: body.recommendations,
++    });
++    c.header("Cache-Control", "private, no-store");
++    return c.json({ ...charts, configured: Boolean(username) }, 200);
++  })
+   .get("/status", requireAuth, (c) => {
+     c.header("Cache-Control", "no-store");
+     return c.json(getDiscoveryStatus(c.var.user.id), 200);
+--- /dev/null
++++ b/backend/services/discovery/listenbrainzCharts.js
+@@ -0,0 +1,222 @@
++import { listenbrainzRequest } from "../apiClients/index.ts";
++const getListenHistoryProfile = (profile) => profile || {};
++import { parseListenBrainzPlaylist } from "../importLists/listenbrainzTracks.ts";
++import { UUID_REGEX } from "../../../lib/uuid.ts";
++import createCache from "../apiClients/simpleCache.ts";
++
++const artistRecordingCache = createCache(6 * 60 * 60);
++const validMbid = (value) => UUID_REGEX.test(String(value || "")) ? value : null;
++
++export const coverForRelease = (releaseMbid) =>
++  UUID_REGEX.test(String(releaseMbid || ""))
++    ? `https://coverartarchive.org/release/${releaseMbid}/front-1200`
++    : null;
++
++export const normalizeReleaseGroup = (item) => {
++  const name = String(item?.release_group_name || "").trim();
++  const artistName = String(item?.artist_name || "").trim();
++  if (!name || !artistName) return null;
++  return {
++    name,
++    artistName,
++    albumMbid: UUID_REGEX.test(String(item?.release_group_mbid || "")) ? item.release_group_mbid : null,
++    releaseMbid: UUID_REGEX.test(String(item?.caa_release_mbid || "")) ? item.caa_release_mbid : null,
++    coverUrl: validMbid(item?.release_group_mbid)
++      ? `https://coverartarchive.org/release-group/${item.release_group_mbid}/front-1200`
++      : coverForRelease(item?.caa_release_mbid),
++    listenCount: Number(item?.listen_count || 0),
++  };
++};
++
++export const normalizeRecording = (item) => {
++  const artistName = String(item?.artist_name || "").trim();
++  const trackName = String(item?.track_name || "").trim();
++  if (!artistName || !trackName) return null;
++  return {
++    artistName,
++    trackName,
++    albumName: String(item?.release_name || "").trim() || null,
++    artistMbid: (Array.isArray(item?.artist_mbids) ? item.artist_mbids.find(Boolean) : null) || null,
++    // ListenBrainz returns a release MBID here; Aurral's albumMbid means a
++    // release-group MBID. Keep it separate to avoid a false library match.
++    albumMbid: null,
++    releaseMbid: item?.release_mbid || null,
++    // ListenBrainz may identify a different release whose art is curated for
++    // this recording. Prefer that ID for the image, not for library matching.
++    coverUrl: coverForRelease(item?.caa_release_mbid || item?.release_mbid),
++    trackMbid: item?.recording_mbid || null,
++    listenCount: Number(item?.listen_count || 0),
++  };
++};
++
++export function rankRecentListens(listens, count = 30) {
++  const byTrack = new Map();
++  for (const listen of Array.isArray(listens) ? listens : []) {
++    const metadata = listen?.track_metadata || {};
++    const mapping = metadata.mbid_mapping || {};
++    const submitted = metadata.additional_info || {};
++    const artistName = String(metadata.artist_name || "").trim();
++    const trackName = String(metadata.track_name || "").trim();
++    if (!artistName || !trackName) continue;
++    const trackMbid = validMbid(mapping.recording_mbid) || validMbid(submitted.recording_mbid);
++    const key = `${artistName.toLowerCase()}\0${trackName.toLowerCase()}`;
++    const existing = byTrack.get(key);
++    const next = {
++      artistName,
++      trackName,
++      albumName: String(metadata.release_name || "").trim() || null,
++      artistMbid: validMbid(mapping.artist_mbids?.[0]) || validMbid(submitted.artist_mbids?.[0]),
++      albumMbid: validMbid(mapping.release_group_mbid) || validMbid(submitted.release_group_mbid),
++      releaseMbid: validMbid(mapping.release_mbid) || validMbid(submitted.release_mbid),
++      trackMbid,
++      coverUrl: coverForRelease(mapping.caa_release_mbid || submitted.caa_release_mbid || mapping.release_mbid || submitted.release_mbid),
++      listenCount: (existing?.listenCount || 0) + 1,
++      lastListenedAt: Math.max(Number(existing?.lastListenedAt || 0), Number(listen?.listened_at || 0)),
++    };
++    byTrack.set(key, existing ? {
++      ...existing,
++      listenCount: next.listenCount,
++      lastListenedAt: next.lastListenedAt,
++      albumName: existing.albumName || next.albumName,
++      albumMbid: existing.albumMbid || next.albumMbid,
++      releaseMbid: existing.releaseMbid || next.releaseMbid,
++      trackMbid: existing.trackMbid || next.trackMbid,
++      coverUrl: existing.coverUrl || next.coverUrl,
++    } : next);
++  }
++  return [...byTrack.values()]
++    .sort((left, right) => right.listenCount - left.listenCount || right.lastListenedAt - left.lastListenedAt)
++    .slice(0, count);
++}
++
++/** @param {Array<{id?: string | null, mbid?: string | null}>} artists */
++export async function getListenbrainzRecommendedTracksFromArtists(
++  artists = [], { request = listenbrainzRequest } = {},
++) {
++  const artistMbids = [...new Set((Array.isArray(artists) ? artists : [])
++    .map((artist) => validMbid(artist?.id || artist?.mbid))
++    .filter(Boolean))].slice(0, 6);
++  const results = await Promise.all(artistMbids.map(async (mbid) => {
++    const cached = artistRecordingCache.get(mbid);
++    if (Array.isArray(cached)) return cached;
++    const response = await request(`/1/popularity/top-recordings-for-artist/${mbid}`).catch(() => null);
++    if (!Array.isArray(response)) return [];
++    const tracks = response
++      .map((entry) => normalizeRecording({
++        ...entry,
++        track_name: entry.recording_name,
++        listen_count: entry.total_listen_count,
++      }))
++      .filter(Boolean)
++      .slice(0, 3);
++    artistRecordingCache.set(mbid, tracks);
++    return tracks;
++  }));
++  const picked = [];
++  const seen = new Set();
++  for (let index = 0; index < 3; index++) {
++    for (const tracks of results) {
++      const track = tracks[index];
++      if (!track) continue;
++      const key = track.trackMbid || `${track.artistName.toLowerCase()}\0${track.trackName.toLowerCase()}`;
++      if (seen.has(key)) continue;
++      seen.add(key);
++      picked.push(track);
++    }
++  }
++  return picked;
++}
++
++/** @param {{listenHistoryProvider?: string, listenHistoryUsername?: string | null}} profile
++ * @param {{count?: number, request?: Function, recommendedArtists?: Array<{id?: string | null, mbid?: string | null}>}} options */
++export async function getListenbrainzRecordingCharts(profile, { count = 30, request = listenbrainzRequest, recommendedArtists = [] } = {}) {
++  let unavailable = false;
++  const providerRequest = request;
++  request = async (...args) => {
++    try { return await providerRequest(...args); }
++    catch (error) { unavailable = true; throw error; }
++  };
++  const safeCount = Math.max(1, Math.min(50, Number(count) || 30));
++  const normalized = getListenHistoryProfile(profile);
++  const requests = [
++    request("/1/stats/sitewide/recordings", { count: safeCount, range: "week" }),
++    normalized.listenHistoryProvider === "listenbrainz" && normalized.listenHistoryUsername
++      ? request(
++          `/1/stats/user/${encodeURIComponent(normalized.listenHistoryUsername)}/recordings`,
++          { count: safeCount, range: "all_time" },
++        )
++      : Promise.resolve(null),
++    request("/1/stats/sitewide/release-groups", { count: safeCount, range: "week" }),
++    normalized.listenHistoryProvider === "listenbrainz" && normalized.listenHistoryUsername
++      ? getListenbrainzRecommendedPlaylists(normalized, { request })
++      : Promise.resolve([]),
++  ];
++  const [globalResult, userResult, releaseResult, recommendedResult] = await Promise.allSettled(requests);
++  const records = (result) => result.status === "fulfilled" && Array.isArray(result.value?.payload?.recordings)
++    ? result.value.payload.recordings.map(normalizeRecording).filter(Boolean)
++    : [];
++  let personal = records(userResult);
++  let personalRange = "all_time";
++  if (personal.length === 0 && normalized.listenHistoryProvider === "listenbrainz" && normalized.listenHistoryUsername) {
++    const response = await request(
++      `/1/user/${encodeURIComponent(normalized.listenHistoryUsername)}/listens`,
++      { count: 1000 },
++    ).catch(() => null);
++    personal = rankRecentListens(response?.payload?.listens, safeCount);
++    personalRange = "recent";
++  }
++  const generatedTracks = recommendedResult.status === "fulfilled"
++    ? (recommendedResult.value[0]?.tracks || []).slice(0, safeCount)
++    : [];
++  const recommendedTracks = generatedTracks.length > 0
++    ? generatedTracks
++    : (await getListenbrainzRecommendedTracksFromArtists(recommendedArtists, { request })).slice(0, safeCount);
++  return {
++    unavailable,
++    playlists: recommendedResult.status === "fulfilled" ? recommendedResult.value : [],
++    global: records(globalResult),
++    personal,
++    personalRange,
++    trendingAlbums: releaseResult.status === "fulfilled" && Array.isArray(releaseResult.value?.payload?.release_groups)
++      ? releaseResult.value.payload.release_groups.map(normalizeReleaseGroup).filter(Boolean)
++      : [],
++    recommendedTracks,
++    recommendedSource: generatedTracks.length > 0 ? "listenbrainz-playlist" : recommendedTracks.length > 0 ? "artist-popularity" : null,
++    recommendedPlaylistName: recommendedResult.status === "fulfilled"
++      ? recommendedResult.value[0]?.name || null
++      : null,
++  };
++}
++
++export async function getListenbrainzRecommendedPlaylists(profile, { request = listenbrainzRequest } = {}) {
++  const normalized = getListenHistoryProfile(profile);
++  if (normalized.listenHistoryProvider !== "listenbrainz" || !normalized.listenHistoryUsername) return [];
++  const username = encodeURIComponent(normalized.listenHistoryUsername);
++  const response = await request(`/1/user/${username}/playlists/recommendations`).catch(() => null);
++  const entries = Array.isArray(response?.playlists) ? response.playlists : [];
++  const playlistIds = new Set();
++  const selected = entries
++    .map((entry) => entry?.playlist || entry)
++    .map((playlist) => {
++      const id = String(playlist?.identifier || "").match(/\/playlist\/([0-9a-f-]{36})\/?$/i)?.[1];
++      const name = String(playlist?.title || "").trim();
++      if (!id || !name || playlistIds.has(id)) return null;
++      playlistIds.add(id);
++      return { id, name };
++    })
++    .filter(Boolean)
++    .slice(0, 3);
++  const results = await Promise.allSettled(selected.map(async (playlist) => {
++    const payload = await request(`/1/playlist/${encodeURIComponent(playlist.id)}`);
++    const tracks = parseListenBrainzPlaylist(payload).tracks.slice(0, 50).map((track) => ({
++      ...track,
++      releaseMbid: track.releaseMbid,
++      albumMbid: null,
++      coverUrl: coverForRelease(track.releaseMbid),
++    }));
++    return { ...playlist, tracks };
++  }));
++  return results
++    .filter((result) => result.status === "fulfilled" && result.value.tracks.length > 0)
++    .map((result) => result.value);
++}
+--- /dev/null
++++ b/frontend/src/pages/DiscoverListenBrainzSection.tsx
+@@ -0,0 +1,98 @@
++import { useEffect, useState } from "react";
++import { useQuery } from "@tanstack/react-query";
++import { playlistStatusQueryOptions } from "../queryOptions.ts";
++import { parseResponse } from "hono/client";
++import { discoveryClient } from "../utils/api/clients/discovery.ts";
++import { staticPlaylistsClient } from "../utils/api/clients/staticPlaylists.ts";
++import { useAuth } from "../contexts/AuthContext";
++import { useToast } from "../contexts/ToastContext";
++import { DiscoverRail } from "../components/DiscoverRail";
++import RouteLink from "../components/RouteLink";
++import { SettingsLink } from "./Settings/settingsRoute";
++
++type Track = { artistName: string; trackName: string; albumName?: string | null;
++  artistMbid?: string | null; albumMbid?: string | null; releaseMbid?: string | null;
++  trackMbid?: string | null; coverUrl?: string | null; listenCount?: number };
++type Album = { name: string; artistName: string; albumMbid: string | null; coverUrl: string | null };
++type Shelf = { configured: boolean; unavailable: boolean; global: Track[]; personal: Track[]; personalRange: string;
++  recommendedTracks: Track[]; trendingAlbums: Album[];
++  playlists: { id: string; name: string; tracks: Track[] }[] };
++
++export function DiscoverListenBrainzSection() {
++  const { user, hasPermission } = useAuth();
++  const { showSuccess, showError } = useToast();
++  const [saving, setSaving] = useState<{ name: string; playlistId: string; startedAt: number } | null>(null);
++  const [submitting, setSubmitting] = useState(false);
++  const [names, setNames] = useState<Record<string, string>>({});
++  const operation = useQuery({
++    ...playlistStatusQueryOptions(),
++    enabled: saving !== null,
++    refetchInterval: saving !== null ? 1000 : false,
++    retry: 2,
++  });
++  useEffect(() => {
++    if (!saving) return;
++    if (operation.data?.sharedPlaylists?.some((playlist) => playlist.id === saving.playlistId)) {
++      showSuccess(`Added ${saving.name} to Playlists.`);
++      setSaving(null);
++    } else if (operation.error || Date.now() - saving.startedAt > 60_000) {
++      showError("Couldn't confirm this save. Check Playlists before retrying with another name.");
++      setSaving(null);
++    }
++  }, [saving, operation.data, operation.dataUpdatedAt, operation.error, showError, showSuccess]);
++  const { data, isPending, error, refetch } = useQuery({
++    queryKey: ["listenbrainz-recording-shelves", user?.id],
++    enabled: Boolean(user), staleTime: 5 * 60 * 1000,
++    queryFn: async ({ signal }) => parseResponse(discoveryClient.listenbrainz.$get({}, { init: { signal } })) as Promise<Shelf>,
++  });
++  async function save(name: string, tracks: Track[]) {
++    const requestedName = (names[name] ?? name).trim();
++    if (!requestedName) { showError("Enter a playlist name."); return; }
++    setSubmitting(true);
++    try {
++      const current = await operation.refetch({ throwOnError: true });
++      if ([...(current.data?.sharedPlaylists ?? []), ...(current.data?.flows ?? [])].some((playlist) => playlist.ownerUserId === user?.id && playlist.name.trim().toLowerCase() === requestedName.toLowerCase())) {
++        showError("A playlist with that name already exists. Enter another name.");
++        return;
++      }
++      const result = await parseResponse(staticPlaylistsClient["shared-playlists"].$post({
++        json: { name: requestedName, sourceName: "ListenBrainz", tracks },
++      }));
++      setSaving({ name: requestedName, playlistId: result.playlistId, startedAt: Date.now() });
++    } catch { showError("Couldn't submit this playlist. Try again."); }
++    finally { setSubmitting(false); }
++  }
++  if (isPending) return <p role="status">Loading ListenBrainz charts…</p>;
++  if (error) return <div role="alert">ListenBrainz charts didn't load. <button className="btn btn-secondary btn-sm" onClick={() => refetch()}>Try again</button></div>;
++  if (!data) return null;
++  const rows = [
++    { name: data.personalRange === "recent" ? "Your Recent Top Songs" : "Your Most Played", tracks: data.personal },
++    { name: "ListenBrainz Trending", tracks: data.global },
++    { name: "Recommended Songs", tracks: data.recommendedTracks },
++    ...data.playlists.map((playlist) => ({ name: playlist.name, tracks: playlist.tracks })),
++  ];
++  return <section aria-label="ListenBrainz charts and playlists">
++    {data.unavailable ? <p role="alert">Some ListenBrainz data couldn't load. <button className="btn btn-secondary btn-sm" onClick={() => refetch()}>Try again</button></p> : null}
++    {!data.configured ? <p>Connect public listening history for personal charts and recommendations. <SettingsLink to="listening/listenbrainz" className="settings-link">ListenBrainz settings</SettingsLink></p> : null}
++    {rows.filter((row) => row.tracks.length).map(({ name, tracks }) => <DiscoverRail key={name} title={name}
++      headerActions={hasPermission("accessFlow") ? <div>
++        <input aria-label={`Playlist name for ${name}`} value={names[name] ?? name}
++          onChange={(event) => setNames((current) => ({ ...current, [name]: event.target.value }))} />
++        <button className="btn btn-secondary btn-sm" disabled={submitting || saving !== null}
++          onClick={() => save(name, tracks)}>{saving !== null ? "Saving…" : "Save playlist"}</button>
++      </div> : null}>
++      {tracks.map((track, index) => <RouteLink key={`${track.trackMbid || track.trackName}:${index}`}
++        className="discover-card" to={`/search?q=${encodeURIComponent(`${track.artistName} ${track.trackName}`)}`}>
++        {track.coverUrl ? <img src={track.coverUrl} alt="" loading="lazy" width={160} height={160} /> : null}
++        <strong>{track.trackName}</strong><span>{track.artistName}</span>
++      </RouteLink>)}
++    </DiscoverRail>)}
++    {data.trendingAlbums.length ? <DiscoverRail title="ListenBrainz Trending Albums">
++      {data.trendingAlbums.map((album, index) => <RouteLink key={album.albumMbid || index} className="discover-card"
++        to={`/search?q=${encodeURIComponent(`${album.artistName} ${album.name}`)}`}>
++        {album.coverUrl ? <img src={album.coverUrl} alt="" loading="lazy" width={160} height={160} /> : null}
++        <strong>{album.name}</strong><span>{album.artistName}</span>
++      </RouteLink>)}
++    </DiscoverRail> : null}
++  </section>;
++}
+--- a/frontend/src/pages/DiscoverPage.tsx
++++ b/frontend/src/pages/DiscoverPage.tsx
+@@ -1,3 +1,4 @@
++import { DiscoverListenBrainzSection } from "./DiscoverListenBrainzSection";
+ import { useEffect, useMemo, useCallback, type ComponentProps } from "react";
+ import {
+   lookupArtistsInLibraryBatch,
+@@ -758,6 +759,7 @@
+       </section>
+ 
+       <DiscoverHistoryPrompt userId={authUser?.id} />
++      <DiscoverListenBrainzSection />
+ 
+       {discoverSections.filter((section) => section.enabled).map(renderSection)}
+ 
+--- a/frontend/src/pages/DiscoverPlaylistsPage.tsx
++++ b/frontend/src/pages/DiscoverPlaylistsPage.tsx
+@@ -1,3 +1,4 @@
++import { DiscoverListenBrainzSection } from "./DiscoverListenBrainzSection";
+ import { SkeletonRail, SkeletonStatus } from "../components/Skeletons";
+ import { useDocumentTitle } from "../hooks/useDocumentTitle";
+ import { DiscoverPlaylistSection, type EditorialShelfPlaylist } from "./DiscoverPlaylistSection";
+@@ -55,6 +56,7 @@
+         </div>
+       </header>
+       {renderShelf()}
++      <DiscoverListenBrainzSection />
+     </div>
+   );
+ }

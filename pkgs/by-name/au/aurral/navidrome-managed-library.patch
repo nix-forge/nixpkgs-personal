@@ -1,0 +1,51 @@
+--- a/backend/services/navidrome.ts
++++ b/backend/services/navidrome.ts
+@@ -59,6 +59,11 @@
+ 
+ export type NavidromeLibrary = { id: string | number; name: string; path: string };
+ 
++type EnsuredNavidromeLibrary = Pick<NavidromeLibrary, "name" | "path"> &
++  Partial<Pick<NavidromeLibrary, "id">>;
++type NavidromeMusicFolder = { id?: string | number; name?: string };
++
++
+ type NavidromeParams = Record<
+   string,
+   string | number | boolean | (string | number)[] | null | undefined
+@@ -73,6 +78,7 @@
+   playlist?: NavidromePlaylist;
+   searchResult3?: { song?: NavidromeSong | NavidromeSong[] };
+   scanStatus?: { scanning?: boolean };
++  musicFolders?: { musicFolder?: NavidromeMusicFolder | NavidromeMusicFolder[] };
+ };
+ 
+ function normalizeLibraryPath(value: unknown) {
+@@ -641,14 +647,27 @@
+ 
+   async scanLibrary(targets: string | string[] | null = null) {
+     if (!this.isConfigured()) return null;
++    if (process.env.AURRAL_NAVIDROME_MANAGED_LIBRARY === "true") {
++      this._songsByFile.clear();
++      return null;
++    }
+     return this.request("startScan", targets ? { target: targets } : {});
+   }
+ 
+-  async ensureAurralLibrary(libraryPath: string) {
++  async ensureAurralLibrary(libraryPath: string): Promise<EnsuredNavidromeLibrary | null> {
+     if (!this.isConfigured()) return null;
+     const name = PLAYLIST_LIBRARY_NAME;
+     const normalizedPath = normalizeLibraryPath(libraryPath);
+     this._libraryPaths = [normalizedPath];
++    if (process.env.AURRAL_NAVIDROME_MANAGED_LIBRARY === "true") {
++      const data = await this.request("getMusicFolders", {}, { timeout: 30_000 });
++      const raw = data.musicFolders?.musicFolder || [];
++      const folders = Array.isArray(raw) ? raw : [raw];
++      if (!folders.some((folder) => folder && folder.id != null)) {
++        throw new Error("No readable managed Navidrome music library");
++      }
++      return { name, path: normalizedPath };
++    }
+     try {
+       const verifyLibrary = async (libraryId: string | number | null | undefined) => {
+         const refreshed = await this.getLibraries();

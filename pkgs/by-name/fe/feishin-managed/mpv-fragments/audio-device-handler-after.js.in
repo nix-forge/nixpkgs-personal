@@ -1,0 +1,2 @@
+  "player-get-audio-devices",
+  async () => mpvTransition = mpvTransition.then(async () => {

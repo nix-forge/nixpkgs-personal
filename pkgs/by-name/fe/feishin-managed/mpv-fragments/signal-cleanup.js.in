@@ -1,0 +1,2 @@
+  await mpvTransition;
+  await cleanupMpv(true);

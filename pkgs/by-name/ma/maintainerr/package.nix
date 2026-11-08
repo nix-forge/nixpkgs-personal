@@ -1,4 +1,5 @@
 {
+  replaceVars,
   lib,
   stdenv,
   fetchFromGitHub,
@@ -22,33 +23,39 @@
 }:
 let
   source = import ./source.nix;
-  # sharp 0.35.5 requires at least libvips 8.18.7.
-  currentVips = vips.overrideAttrs (_: {
-    version = "8.18.7";
-    src = fetchFromGitHub {
-      owner = "libvips";
-      repo = "libvips";
-      rev = "v8.18.7";
-      hash = "sha256-veceg2RJ0IXZ7zt/Bn9eJgTrpSghwz7+ogrmBT91Odk=";
-    };
-  });
-  # Node 26's V8 source uses CHAR_BIT without including <climits> on arm64.
-  # Keep the repair local to this package until the source includes it.
+  # sharp 0.35.5 requires at least libvips 8.18.7. Current Nixpkgs provides
+  # it; retain the backport only for standalone consumers with older pins.
+  currentVips =
+    if lib.versionAtLeast vips.version "8.18.7" then
+      vips
+    else
+      vips.overrideAttrs (_: {
+        version = "8.18.7";
+        src = fetchFromGitHub {
+          owner = "libvips";
+          repo = "libvips";
+          rev = "v8.18.7";
+          hash = "sha256-veceg2RJ0IXZ7zt/Bn9eJgTrpSghwz7+ogrmBT91Odk=";
+        };
+      });
+  # Node 26.12.0 already includes <limits.h> in V8's memcopy.h. Keep its
+  # substitute-compatible derivation; older consumers may need the backport.
+  # https://github.com/nodejs/node/blob/v26.12.0/deps/v8/src/base/memcopy.h
+  hasUpstreamArmFix =
+    lib.versionAtLeast nodejs-slim_26.version "26.12.0"
+    || lib.any (patch: lib.hasSuffix "/memcpy-climits.patch" (toString patch)) (
+      nodejs-slim_26.patches or [ ]
+    );
   nodejs =
-    if stdenv.hostPlatform.isAarch64 then
+    if stdenv.hostPlatform.isAarch64 && !hasUpstreamArmFix then
       nodejs_26.override {
         nodejs-slim = nodejs-slim_26.overrideAttrs (old: {
-          postPatch = (old.postPatch or "") + ''
-            if ! grep -Fq '#include <climits>' deps/v8/src/base/memcopy.h; then
-              substituteInPlace deps/v8/src/base/memcopy.h \
-                --replace-fail '#include <stdlib.h>' $'#include <climits>\n#include <stdlib.h>'
-            fi
-          '';
+          postPatch = (old.postPatch or "") + (builtins.readFile ./scripts/patch-node-v8-headers.sh);
         });
       }
     else
       nodejs_26;
-  yarn = "${nodejs}/bin/node .yarn/releases/yarn-4.17.1.cjs";
+  yarn = "${nodejs}/bin/node $(find .yarn/releases -maxdepth 1 -name 'yarn-*.cjs' -print -quit)";
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "maintainerr";
@@ -98,117 +105,50 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   postPatch = ''
-    grep -Fq '"version": "${finalAttrs.version}"' package.json
-    grep -Fq '"node": ">=26.0.0"' package.json
-    substituteInPlace apps/server/src/app/config/typeOrmConfig.ts \
-      --replace-fail "/opt/app/apps/server/dist/database/migrations" \
-        "$out/libexec/maintainerr/apps/server/dist/database/migrations"
-    printf '%s\n' 'VITE_BASE_PATH=/__PATH_PREFIX__' >> apps/ui/.env
+    source ${
+      replaceVars ./scripts/post-patch.sh {
+        manifestProgram = "${./scripts/patch-manifest.mts}";
+      }
+    }
   '';
 
   configurePhase = ''
-    runHook preConfigure
-    cmp yarn.lock ${finalAttrs.offlineCache}/yarn.lock
-    export HOME="$TMPDIR/yarn-home"
-    mkdir -p "$HOME" .yarn/cache
-    cp -R ${finalAttrs.offlineCache}/cache/. .yarn/cache/
-    chmod -R u+w .yarn/cache
-    export npm_config_nodedir=${srcOnly nodejs}
-    export npm_config_node_gyp=${nodejs}/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js
-    ${yarn} install --immutable --inline-builds
-    (
-      cd node_modules/better-sqlite3
-      rm -rf build
-      node ../node-gyp/bin/node-gyp.js rebuild --release --force_build=1
-    )
-    mkdir -p "$TMPDIR/build-tools"
-    makeWrapper ${nodejs}/bin/node "$TMPDIR/build-tools/node-gyp" \
-      --add-flags "$PWD/node_modules/node-gyp/bin/node-gyp.js"
-    (
-      cd node_modules/sharp
-      PATH="$TMPDIR/build-tools:$PATH" \
-        SHARP_FORCE_GLOBAL_LIBVIPS=1 node install/build.js
-    )
-    runHook postConfigure
+    source ${
+      replaceVars ./scripts/configure-phase.sh {
+        inherit (finalAttrs) offlineCache;
+        srcOnly_nodejs = srcOnly nodejs;
+        inherit nodejs;
+        inherit yarn;
+      }
+    }
   '';
 
   buildPhase = ''
-    runHook preBuild
-    ${yarn} turbo build
-    YARN_ENABLE_SCRIPTS=false ${yarn} workspaces focus --all --production
-    runHook postBuild
+    source ${replaceVars ./scripts/build-phase.sh { inherit yarn; }}
   '';
 
   installPhase = ''
-    runHook preInstall
-
-    app="$out/libexec/maintainerr"
-    mkdir -p "$app/apps/server/dist" "$app/apps/server/node_modules" \
-      "$app/packages/contracts" "$out/bin" "$out/share/doc/maintainerr"
-
-    cp -R node_modules "$app/"
-    cp -R apps/server/dist/. "$app/apps/server/dist/"
-    cp apps/server/package.json "$app/apps/server/package.json"
-    if [ -d apps/server/node_modules ]; then
-      cp -R apps/server/node_modules/. "$app/apps/server/node_modules/"
-    fi
-    cp -R apps/ui/dist "$app/apps/server/dist/ui"
-    cp -R apps/server/assets "$app/apps/server/dist/assets"
-    cp -R packages/contracts/dist "$app/packages/contracts/dist"
-    cp packages/contracts/package.json "$app/packages/contracts/package.json"
-    if [ -d packages/contracts/node_modules ]; then
-      cp -R packages/contracts/node_modules "$app/packages/contracts/node_modules"
-    else
-      mkdir "$app/packages/contracts/node_modules"
-    fi
-
-    # Retain only runtime artifacts from source-built native addons.
-    rm -rf \
-      "$app/node_modules/better-sqlite3/prebuilds" \
-      "$app/node_modules/better-sqlite3/deps" \
-      "$app/node_modules/better-sqlite3/src" \
-      "$app/node_modules/better-sqlite3/build/Release/obj.target" \
-      "$app/node_modules/better-sqlite3/build/Release/.deps" \
-      "$app/node_modules/canvas/build/Release/obj.target" \
-      "$app/node_modules/canvas/build/Release/.deps" \
-      "$app/node_modules/sharp/src/build/Release/obj.target" \
-      "$app/node_modules/sharp/src/build/Release/.deps" \
-      "$app/node_modules/sharp/src/build/Release/node-addon-api"
-    rm -f \
-      "$app/node_modules/better-sqlite3/build/Release/sqlite3.a" \
-      "$app/node_modules/better-sqlite3/build/Release/test_extension.node"
-    find "$app/node_modules/@img" -mindepth 1 -maxdepth 1 -type d \
-      -name 'sharp-*' -exec rm -rf -- {} +
-
-    install -Dm755 docker/start.sh "$out/libexec/maintainerr/start.sh"
-    substituteInPlace "$out/libexec/maintainerr/start.sh" \
-      --replace-fail '#!/bin/sh' '#!${stdenv.shell}' \
-      --replace-fail '/opt/app/apps/server' "$app/apps/server" \
-      --replace-fail 'user the container runs as' 'service user'
-    makeWrapper "$out/libexec/maintainerr/start.sh" "$out/bin/maintainerr" \
-      --prefix PATH : ${
-        lib.makeBinPath [
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        stdenv_shell = stdenv.shell;
+        buildToolsPath = lib.makeBinPath [
           nodejs
           coreutils
           findutils
           gnused
-        ]
+        ];
       }
-
-    install -Dm644 LICENSE "$out/share/doc/maintainerr/LICENSE"
-    runHook postInstall
+    }
   '';
 
   doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
   nativeInstallCheckInputs = [ nodejs ];
   installCheckPhase = ''
-    runHook preInstallCheck
-    cd "$out/libexec/maintainerr/apps/server"
-    node -e "require('better-sqlite3'); require('canvas'); require('sharp')"
-    test -f dist/main.js
-    test -f dist/ui/index.html
-    test -d dist/assets/fonts
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        nodeModulesCheck = "${./scripts/check_node_modules.mts}";
+      }
+    }
   '';
 
   passthru = {
