@@ -23,7 +23,10 @@ class HookEnvironmentTests(unittest.TestCase):
                                     inputs = {
                                         self.outPath = root;
                                         git-hooks-nix.flakeModule = {};
-                                        git-hooks-nix.lib.${system}.run = settings: settings;
+                                        git-hooks-nix.lib.${system}.run = settings:
+                                            pkgs.runCommand "hook-settings-probe" {
+                                                passthru.hooks = settings.hooks;
+                                            } "";
                                     };
                                 };
                                 result = module.perSystem {
