@@ -16,7 +16,10 @@ Pydantic AI and Pydantic Graph are built from source at the version recorded in
 `engine/uv.lock`, because the engine requires their 1.x API. GenAI Prices is
 also pinned to the lock's 0.0.73 release to satisfy that API's `<0.1` constraint.
 Other dependencies
-come from Nixpkgs. The recipe exercises upstream authentication, encrypted config
+come from Nixpkgs. PostHog's optional MCP test integration uses the maintained
+MCP 1 compatibility package where available, matching the SDK's `<2` test
+requirement. Its full inherited test suite remains enabled and is exposed as
+`passthru.tests.posthog`. The recipe exercises upstream authentication, encrypted config
 cache, document storage, and API tests. Its runtime passthru test starts the
 installed command and checks health and SQLite initialization without an external
 model provider.

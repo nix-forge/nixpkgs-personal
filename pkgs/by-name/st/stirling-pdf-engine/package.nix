@@ -12,6 +12,9 @@
 let
   source = import ./source.nix;
   py = python313Packages;
+  # PostHog 7.x's optional MCP test integration requires MCP <2. Preserve its
+  # complete upstream suite using Nixpkgs' maintained compatibility package.
+  enginePosthog = py.posthog.override { mcp = py.mcp_1 or py.mcp; };
   # The engine explicitly requires Pydantic AI 1.x. Keep both halves on the
   # version in engine/uv.lock instead of taking Nixpkgs' incompatible 2.x.
   aiSource = fetchFromGitHub {
@@ -76,7 +79,7 @@ let
       openai
       opentelemetry-sdk
       pgvector
-      posthog
+      enginePosthog
       psycopg
       psycopg-pool
       pydantic
@@ -121,6 +124,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   installPhase = ''
     source ${replaceVars ./scripts/install-phase.sh { inherit python; }}
   '';
+  passthru.tests.posthog = enginePosthog;
   passthru.tests.runtime =
     runCommand "stirling-pdf-engine-runtime" { nativeBuildInputs = [ curl ]; }
       ''
