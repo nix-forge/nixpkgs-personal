@@ -11,7 +11,9 @@ Tray dependencies retain Linux's `ksni` backend and the native macOS/Windows
 backends. Unused GTK defaults are disabled on every target so Cargo's combined
 lockfile excludes the affected `glib` graph described in
 [GHSA-wrw7-89jp-8q8g](https://github.com/advisories/GHSA-wrw7-89jp-8q8g).
-The lock update removes unused dependencies without upgrading retained versions.
+Rustls is pinned to the fixed stable patch release 0.23.46 across the platform
+locks. The source lock patches retain the existing native TLS backends; other
+retained dependency versions are unchanged by this refresh.
 
 Nix-managed apps are discovered through profiles and macOS application bundles.
 The launcher opens them but refuses to update or remove them, and disables its

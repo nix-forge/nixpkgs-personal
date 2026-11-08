@@ -77,7 +77,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     outputHashes = lib.mapAttrs (_: dependency: dependency.hash) source.gitDependencies;
   };
   # Keep the Linux clipboard backend feature and its dependency closure locked.
-  cargoPatches = lib.optionals stdenv.hostPlatform.isLinux [ ./native-wayland-clipboard.patch ];
+  cargoPatches = [
+    ./rustls-security-update.patch
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ ./native-wayland-clipboard.patch ];
   src = fetchFromGitHub {
     owner = "storytold";
     repo = "pdfcraft";

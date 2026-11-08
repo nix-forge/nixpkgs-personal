@@ -57,6 +57,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     lockFile = ./Cargo.lock;
     outputHashes = lib.mapAttrs (_: dependency: dependency.hash) source.gitDependencies;
   };
+  cargoPatches = [ ./rustls-security-update.patch ];
   src = fetchFromGitHub {
     owner = "storytold";
     repo = "photocraft";

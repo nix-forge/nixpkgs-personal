@@ -85,6 +85,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     lockFile = ./Cargo.lock;
     outputHashes = lib.mapAttrs (_: dependency: dependency.hash) source.gitDependencies;
   };
+  cargoPatches = [ ./rustls-security-update.patch ];
   src = fetchFromGitHub {
     owner = "storytold";
     repo = "craft-launcher";
@@ -173,6 +174,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     CRAFT_LAUNCHER_ENV = lib.getExe' coreutils "env";
   };
   postPatch = ''
+    # The package lock also prunes GTK dependencies after disabling tray defaults.
+    cp ${./Cargo.lock} Cargo.lock
     substituteInPlace crates/native/src/nix.rs --replace-fail '@nixStoreDir@' '${builtins.storeDir}'
     rm -rf docs/brand assets/app-icon
     mkdir -p nix-assets

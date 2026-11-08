@@ -156,6 +156,20 @@
           "removeWhen": "Retain while this distribution needs the documented branding, font selection or immutable-path policy. Remove only when upstream configuration supports the same policy without source edits."
         },
         {
+          "file": "rustls-security-update.patch",
+          "sha256": "49f04119c5c916c7622424d7b3465b3ebeefb75669b1d51f181bbd23611e470b",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
+            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
+            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
+            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
+            "https://github.com/advisories/GHSA-vp88-798v-h67f"
+          ],
+          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
+          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
+        },
+        {
           "file": "unix-restart-test-path-helpers.patch",
           "sha256": "0c82c1f78f774fde05ec5f9706b9b7ab595cf64607983ce8d58214ebb1293eb3",
           "kind": "upstream-candidate",
@@ -327,6 +341,20 @@
           ],
           "reason": "Test actual credits-table column geometry and horizontal scrolling across text sizes without changing production padding; backport the accepted rename fixture from PR472, preserving Cmd coverage everywhere and Ctrl off macOS. PR347 is ready after contributor review of the revised test; the original rename proposal348 closed as a duplicate.",
           "removeWhen": "Retire the rename hunk when the selected source contains merged PR472 and its regression passes. Retire the independent credits-test hunk when the selected source contains an equivalent font-aware geometry regression and the affected tests pass without this patch."
+        },
+        {
+          "file": "rustls-security-update.patch",
+          "sha256": "cf8aa7753f4da08a06473daea536ab1c1029ce86fe6219cc78118e1997726b19",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
+            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
+            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
+            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
+            "https://github.com/advisories/GHSA-vp88-798v-h67f"
+          ],
+          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
+          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
         }
       ]
     },
@@ -351,6 +379,20 @@
           ],
           "reason": "Replace restricted branding in modified distributables; upstream intentionally retains its own product branding.",
           "removeWhen": "Retain while this distribution needs the documented branding, font selection or immutable-path policy. Remove only when upstream configuration supports the same policy without source edits."
+        },
+        {
+          "file": "rustls-security-update.patch",
+          "sha256": "718911ba0f27cad8f61cdff6b9b100a3b79eab6ecc48486e91f66c2e51553170",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
+            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
+            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
+            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
+            "https://github.com/advisories/GHSA-vp88-798v-h67f"
+          ],
+          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
+          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
         },
         {
           "file": "system-font-fixture.patch",
@@ -416,6 +458,20 @@
           ],
           "reason": "Accepted HEIC and HEIF desktop associations, merged after the packaged stable revision. Retain while the selected source lacks those associations for the HEIF-enabled Linux build.",
           "removeWhen": "Remove when the selected release includes the merged HEIF association repair and the unpatched installed desktop entry matches the enabled decoder features."
+        },
+        {
+          "file": "rustls-security-update.patch",
+          "sha256": "b1abafc7c5cc07df86d0928b792174ac22087ecf603af1d2b10869c268493c85",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
+            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
+            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
+            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
+            "https://github.com/advisories/GHSA-vp88-798v-h67f"
+          ],
+          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
+          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
         }
       ]
     },
@@ -502,6 +558,20 @@
           ],
           "reason": "A minimal standard VNNI intrinsic fails with source-built Rust 1.98.1/LLVM 21 and compiles with the same Rust release using its matching official LLVM 22/std. This is a selected compiler/LLVM pairing defect, not an invalid RTen intrinsic. Global LLVM upgrade PR #524570 is the existing owner; maintainers closed the competing Rust-specific pin #544495. Keep local assembly only while the affected selected toolchain requires it.",
           "removeWhen": "Remove after the actual selected compiler compiles the unmodified VNNI probe at O0 and O3, then validate relevant RTen tests and PdfCraft without this vendor patch. Do not infer removal from an official-toolchain comparison or submit a duplicate Rust-specific LLVM pin."
+        },
+        {
+          "file": "rustls-security-update.patch",
+          "sha256": "7f740bb633e4d5fc03abf7d7057448dc22f768d2803a818e0a61af43b49aa06f",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
+            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
+            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
+            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
+            "https://github.com/advisories/GHSA-vp88-798v-h67f"
+          ],
+          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
+          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
         }
       ]
     },
@@ -531,6 +601,20 @@
           ],
           "reason": "Register optional document font faces while preserving existing script and document-face priority. This distribution intentionally exposes every selected permitted input face.",
           "removeWhen": "Retain while this distribution needs the documented branding, font selection or immutable-path policy. Remove only when upstream configuration supports the same policy without source edits."
+        },
+        {
+          "file": "rustls-security-update.patch",
+          "sha256": "9c59989e397b135ccef465b73cca64ff2de664196256a61f47ed7db34545559c",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
+            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
+            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
+            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
+            "https://github.com/advisories/GHSA-vp88-798v-h67f"
+          ],
+          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
+          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
         },
         {
           "file": "statm-rss-sampling.patch",

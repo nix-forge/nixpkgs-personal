@@ -46,6 +46,7 @@ in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "figcraft";
   inherit (source) version;
+  cargoPatches = [ ./rustls-security-update.patch ];
   src = fetchFromGitHub {
     owner = "storytold";
     repo = "figcraft";
