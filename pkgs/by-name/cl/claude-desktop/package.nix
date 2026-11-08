@@ -1,6 +1,9 @@
 {
+  callPackage,
+  replaceVars,
   lib,
   stdenvNoCC,
+  python3,
   fetchurl,
   unzip,
 }:
@@ -24,35 +27,31 @@ stdenvNoCC.mkDerivation {
   dontConfigure = true;
 
   installPhase = ''
-    runHook preInstall
-
-    install -d "$out/Applications" "$out/bin"
-    cp -a Claude.app "$out/Applications/"
-    ln -s "$out/Applications/Claude.app/Contents/MacOS/Claude" "$out/bin/${pname}"
-
-    runHook postInstall
+    source ${replaceVars ./scripts/install-phase.sh { inherit pname; }}
   '';
 
+  nativeInstallCheckInputs = [ python3 ];
+  postInstallCheck = ''
+    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Claude.app" --expected-version ${lib.escapeShellArg source.version}
+  '';
   doInstallCheck = true;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    test -s "$out/Applications/Claude.app/Contents/Info.plist"
-    test -x "$out/Applications/Claude.app/Contents/MacOS/Claude"
-    test -x "$out/bin/claude-desktop"
-    runHook postInstallCheck
-  '';
+  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
-    "python3"
-    "pkgs/by-name/cl/claude-desktop/update.py"
+    (lib.getExe (callPackage ./update.nix { }))
+    "--source-directory"
+    (builtins.unsafeDiscardStringContext (toString ./.))
   ];
 
   meta = {
     description = "Anthropic's official Claude AI desktop app";
     homepage = "https://claude.com/download";
     license = lib.licenses.unfree;
-    mainProgram = pname;
+    mainProgram = "claude-desktop";
     platforms = [ "aarch64-darwin" ];
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-  };
+  }
+  // lib.optionalAttrs (
+    stdenvNoCC.hostPlatform.isDarwin && lib.versionAtLeast (lib.versions.majorMinor lib.version) "26.11"
+  ) { mainDarwinApp = "Claude.app"; };
 }

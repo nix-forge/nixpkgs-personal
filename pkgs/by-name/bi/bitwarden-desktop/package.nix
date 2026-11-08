@@ -1,6 +1,8 @@
 {
+  callPackage,
   lib,
   stdenvNoCC,
+  python3,
   fetchurl,
   undmg,
 }:
@@ -26,32 +28,23 @@ stdenvNoCC.mkDerivation {
   # the stable Developer ID used by Keychain, Touch ID, and native messaging.
   dontFixup = true;
 
-  installPhase = ''
-    runHook preInstall
+  installPhase = builtins.readFile ./scripts/install-phase.sh;
 
-    install -d "$out/Applications" "$out/bin"
-    cp -a Bitwarden.app "$out/Applications/"
-    ln -s "$out/Applications/Bitwarden.app/Contents/MacOS/Bitwarden" "$out/bin/bitwarden"
-
-    runHook postInstall
+  nativeInstallCheckInputs = [ python3 ];
+  postInstallCheck = ''
+    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Bitwarden.app" --expected-version ${lib.escapeShellArg source.version}
   '';
-
   doInstallCheck = true;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    test -s "$out/Applications/Bitwarden.app/Contents/Info.plist"
-    test -x "$out/Applications/Bitwarden.app/Contents/MacOS/Bitwarden"
-    test -x "$out/bin/bitwarden"
-    runHook postInstallCheck
-  '';
+  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
-    "python3"
-    "pkgs/by-name/bi/bitwarden-desktop/update.py"
+    (lib.getExe (callPackage ./update.nix { }))
+    "--source-directory"
+    (builtins.unsafeDiscardStringContext (toString ./.))
   ];
 
   meta = {
-    description = "Secure and free password manager for all of your devices";
+    description = "Password manager with encrypted vaults and cross-device synchronization";
     homepage = "https://bitwarden.com";
     downloadPage = "https://github.com/bitwarden/clients/releases";
     changelog = "https://github.com/bitwarden/clients/releases/tag/desktop-v${source.version}";
@@ -59,5 +52,8 @@ stdenvNoCC.mkDerivation {
     mainProgram = "bitwarden";
     platforms = lib.platforms.darwin;
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-  };
+  }
+  // lib.optionalAttrs (
+    stdenvNoCC.hostPlatform.isDarwin && lib.versionAtLeast (lib.versions.majorMinor lib.version) "26.11"
+  ) { mainDarwinApp = "Bitwarden.app"; };
 }

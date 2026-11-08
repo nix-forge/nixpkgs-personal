@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+import binascii
 import difflib
 import json
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NoReturn
@@ -17,6 +19,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from update_support import HTTPS_CONTEXT
+from update_transaction import commit_files
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -28,6 +31,7 @@ REPO_NAME: Final = "SpotX-Bash"
 DEFAULT_REF: Final = "main"
 SPOTIFY_DOWNLOAD_HOST: Final = "upgrade.scdn.co"
 GITHUB_RAW_HOST: Final = "raw.githubusercontent.com"
+JWT_PART_COUNT: Final = 3
 
 
 @dataclass(frozen=True)
@@ -213,7 +217,23 @@ def _spotify_fauth(script: str) -> str:
     )
     if fauth_header_match is None:
         _fail("could not extract Spotify fauth header from SpotX template")
-    return f"{fauth_header_match.group(1)}.{fauth_suffix}"
+    token = f"{fauth_header_match.group(1)}.{fauth_suffix}"
+    _validate_fauth_expiry(token)
+    return token
+
+
+def _validate_fauth_expiry(token: str) -> None:
+    """Reject an upstream URL that will expire before the next weekly update."""
+    parts = token.split(".")
+    if len(parts) != JWT_PART_COUNT:
+        _fail("Spotify download authorization has an unexpected format")
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(parts[1] + "==="))
+    except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        _fail(f"Spotify download authorization cannot be decoded: {type(exc).__name__}")
+    expiration = payload.get("exp") if isinstance(payload, dict) else None
+    if type(expiration) is not int or expiration <= time.time() + 7 * 24 * 60 * 60:
+        _fail("Spotify download authorization expires within seven days")
 
 
 def _discover_spotify_source(
@@ -331,9 +351,7 @@ def _render_source(source: _SourceState) -> str:
 
 
 def _write_atomic(path: Path, content: str) -> None:
-    temp_path = path.with_name(f"{path.name}.tmp")
-    temp_path.write_text(content, encoding="utf-8", newline="\n")
-    temp_path.replace(path)
+    commit_files({path: content})
 
 
 def _build_diff(old: str, new: str, path: Path) -> str:

@@ -1,6 +1,8 @@
 {
+  callPackage,
   lib,
   stdenvNoCC,
+  python3,
   fetchurl,
   undmg,
 }:
@@ -25,29 +27,19 @@ stdenvNoCC.mkDerivation {
   # Generic fixup would invalidate Wooting's notarized Developer ID signature.
   dontFixup = true;
 
-  installPhase = ''
-    runHook preInstall
+  installPhase = builtins.readFile ./scripts/install-phase.sh;
 
-    test -x Wootility.app/Contents/MacOS/Wootility
-    install -d "$out/Applications" "$out/bin"
-    cp -a Wootility.app "$out/Applications/"
-    ln -s "$out/Applications/Wootility.app/Contents/MacOS/Wootility" "$out/bin/wootility"
-
-    runHook postInstall
+  nativeInstallCheckInputs = [ python3 ];
+  postInstallCheck = ''
+    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Wootility.app" --expected-version ${lib.escapeShellArg source.version}
   '';
-
   doInstallCheck = true;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    test -s "$out/Applications/Wootility.app/Contents/Info.plist"
-    test -x "$out/Applications/Wootility.app/Contents/MacOS/Wootility"
-    test -x "$out/bin/wootility"
-    runHook postInstallCheck
-  '';
+  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
-    "python3"
-    "pkgs/by-name/wo/wootility/update.py"
+    (lib.getExe (callPackage ./update.nix { }))
+    "--source-directory"
+    (builtins.unsafeDiscardStringContext (toString ./.))
   ];
 
   meta = {
@@ -58,5 +50,8 @@ stdenvNoCC.mkDerivation {
     mainProgram = "wootility";
     platforms = [ "aarch64-darwin" ];
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-  };
+  }
+  // lib.optionalAttrs (
+    stdenvNoCC.hostPlatform.isDarwin && lib.versionAtLeast (lib.versions.majorMinor lib.version) "26.11"
+  ) { mainDarwinApp = "Wootility.app"; };
 }
