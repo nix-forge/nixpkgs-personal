@@ -1,0 +1,348 @@
+--- a/config.schema.json
++++ b/config.schema.json
+@@ -160,7 +160,7 @@
+               "type": "array",
+               "items": {
+                 "type": "string",
+-                "enum": ["Device.Disable", "Volume.Slider.Enable", "Switch.DeviceName.Disable", "Frame.RealPowerMode", "Frame.ArtSwitch.Disable", "Frame.PowerSwitch.Disable"]
++                "enum": ["Device.Disable", "Volume.Slider.Enable", "Switch.DeviceName.Disable", "Frame.RealPowerMode", "Frame.ArtSwitch.Disable", "Frame.PowerSwitch.Disable", "PowerState.Strict"]
+               }
+             },
+             "inputs": {
+@@ -231,7 +231,8 @@
+                 "Switch.DeviceName.Disable": "Disable prepending the device name on custom switches",
+                 "Frame.RealPowerMode": "Use the TV tile to turn a Frame fully on and off",
+                 "Frame.ArtSwitch.Disable": "Hide the Art Mode switch",
+-                "Frame.PowerSwitch.Disable": "Hide the Power switch"
++                "Frame.PowerSwitch.Disable": "Hide the Power switch",
++                "PowerState.Strict": "Require corroborated power state for verified non-Frame televisions"
+               }
+             }
+           ]
+--- a/homebridge-ui/src/components/DeviceForm.vue
++++ b/homebridge-ui/src/components/DeviceForm.vue
+@@ -366,6 +366,11 @@
+             <input id="option.Switch.DeviceName.Disable" v-model="form.options" class="form-check-input" type="checkbox" role="switch" value="Switch.DeviceName.Disable" />
+             <label class="form-check-label" for="option.Switch.DeviceName.Disable">Disable prepending device name on custom switches</label>
+           </div>
++
++          <div class="form-check form-switch">
++            <input id="option.PowerState.Strict" v-model="form.options" class="form-check-input" type="checkbox" role="switch" value="PowerState.Strict" />
++            <label class="form-check-label" for="option.PowerState.Strict">Require corroborated power state for a verified non-Frame TV</label>
++          </div>
+         </div>
+ 
+         <hr class="my-4" />
+--- a/src/accessories/television.ts
++++ b/src/accessories/television.ts
+@@ -64,7 +64,8 @@
+     return [...Object.values(this.services).map((wrapper) => wrapper.service), ...this.inputs.map((input) => input.service)];
+   }
+ 
+-  public getMain(): boolean {
++  public async getMain(): Promise<boolean> {
++    if (this.device.hasOption('PowerState.Strict')) return this.device.getPower();
+     if (this.device.isFrame && !this.device.hasOption('Frame.RealPowerMode')) {
+       return this.device.power && !this.device.artmode;
+     }
+@@ -73,6 +74,9 @@
+   }
+ 
+   public setMain(value: boolean): Promise<void> {
++    if (this.device.hasOption('PowerState.Strict')) {
++      return this.device.setPower(value);
++    }
+     if (this.device.isFrame && !this.device.hasOption('Frame.RealPowerMode')) {
+       return this.device.setArtMode(!value);
+     }
+--- a/src/device/controller.ts
++++ b/src/device/controller.ts
+@@ -1,5 +1,6 @@
+ import { IgnorableError, TvAlreadyOffError, TvAlreadyOnError, TvOfflineError, TvPoweringError } from '../errors.js';
+ import { request } from '../lib/http.js';
++import { XMLParser } from 'fast-xml-parser';
+ import { parseCommands } from '../lib/parsers.js';
+ import { isPortReachable, sleep } from '../lib/tools.js';
+ import { wol } from '../lib/wol.js';
+@@ -9,12 +10,14 @@
+ import { TizenApplication, TizenDeviceInfo } from '../types/index.js';
+ import { Device } from './device.js';
+ import { PowerMonitor } from './power.js';
++import { observeStrictPower, StrictPowerCommands, UnsupportedStrictPowerError } from './strict-power.js';
+ 
+ export class DeviceController {
+   private ws: WebSocket;
+   private upnp: UPnPClient;
+   private smartthings: SmartThingsClient;
+   private power: PowerMonitor;
++  private strictPower: StrictPowerCommands;
+   private frame: FrameSocket;
+   private sleepTimeout: NodeJS.Timeout | null = null;
+ 
+@@ -25,6 +28,22 @@
+     this.ws = new WebSocket(this.device);
+     this.upnp = new UPnPClient(this.device, platform);
+     this.smartthings = new SmartThingsClient(this.device, platform);
++    this.strictPower = new StrictPowerCommands({
++      observe: (signal) => {
++        if (this.device.isFrame) {
++          return Promise.reject(new UnsupportedStrictPowerError('Strict power state requires a verified non-Frame TV'));
++        }
++        return observeStrictPower(this.device.config.ip, signal, fetch, (xml) => new XMLParser({ ignoreAttributes: false, parseTagValue: false, processEntities: false }).parse(xml, true));
++      },
++      send: async (value, observed) => {
++        if (value && observed === undefined) {
++          await wol(this.device.config.mac, { ...this.device.config.wol, ip: this.device.config.ip });
++        } else {
++          await this.ws.click('KEY_POWER');
++        }
++      },
++      confirmed: (value) => { this.device.power = value; },
++    });
+     this.power = new PowerMonitor(this.device, this);
+     this.frame = new FrameSocket(this.device);
+   }
+@@ -186,6 +205,9 @@
+   }
+ 
+   public async setArtMode(value: boolean): Promise<void> {
++    if (this.device.hasOption('PowerState.Strict')) {
++      throw new UnsupportedStrictPowerError('Strict power state requires a verified non-Frame TV');
++    }
+     if (!this.device.power && !this.power.isPowering) {
+       await this.powerOn();
+     }
+@@ -219,7 +241,16 @@
+     }
+   }
+ 
++  public getPowerState(): Promise<boolean> {
++    return this.device.hasOption('PowerState.Strict') ? this.strictPower.observe() : Promise.resolve(this.device.power);
++  }
++
+   public async powerOn(): Promise<void> {
++    if (this.device.hasOption('PowerState.Strict')) {
++      await this.strictPower.set(true);
++      this.device.cache.flush();
++      return;
++    }
+     if (this.power.isPowering) {
+       throw new TvPoweringError();
+     }
+@@ -242,6 +273,11 @@
+   }
+ 
+   public async powerOff(): Promise<void> {
++    if (this.device.hasOption('PowerState.Strict')) {
++      await this.strictPower.set(false);
++      this.device.cache.flush();
++      return;
++    }
+     if (this.power.isPowering) {
+       throw new TvPoweringError();
+     }
+@@ -266,10 +302,11 @@
+   }
+ 
+   private waitPowering(): Promise<void> {
+-    return this.power.settled();
++    return this.device.hasOption('PowerState.Strict') ? this.strictPower.settled() : this.power.settled();
+   }
+ 
+   public destroy(): void {
++    this.strictPower.destroy();
+     this.ws.destroy();
+     this.frame.destroy();
+   }
+--- a/src/device/device.ts
++++ b/src/device/device.ts
+@@ -163,6 +163,10 @@
+     return this.power && this.controller.getSleep();
+   }
+ 
++  public getPower(): Promise<boolean> {
++    return this.controller.getPowerState();
++  }
++
+   public async setPower(value: boolean): Promise<void> {
+     if (value) {
+       await this.controller.powerOn();
+@@ -243,7 +247,11 @@
+ 
+   private syncAccessories = debounce(() => {
+     this.accessories.forEach((accessory) => {
+-      Object.values(accessory.services || {}).forEach((wrapper) => void wrapper.updateValue());
++      Object.values(accessory.services || {}).forEach((wrapper) => {
++        void wrapper.updateValue().catch((error: any) => {
++          this.log.debug(`Unable to refresh accessory state: ${error.message || error}`);
++        });
++      });
+     });
+   }, 200);
+ 
+--- a/src/device/power.ts
++++ b/src/device/power.ts
+@@ -5,6 +5,7 @@
+ export type PowerProbe = {
+   ping(): Promise<boolean>;
+   getInfo(): Promise<TizenDeviceInfo>;
++  getPowerState(): Promise<boolean>;
+ };
+ 
+ type Source = 'ssdp' | 'ping' | 'command' | 'frame';
+@@ -29,6 +30,10 @@
+     private readonly probe: PowerProbe,
+   ) {
+     this.device.on('ssdp:update', (event, maxAgeSeconds) => {
++      if (this.device.hasOption('PowerState.Strict')) {
++        void this.confirmStrict();
++        return;
++      }
+       if (Date.now() < this.framePriorityUntil) {
+         return;
+       }
+@@ -41,10 +46,18 @@
+     });
+ 
+     this.device.on('frame:power', (event) => {
++      if (this.device.hasOption('PowerState.Strict')) {
++        void this.confirmStrict();
++        return;
++      }
+       this.handleFramePower(event);
+     });
+ 
+     this.device.on('upnp:update', () => {
++      if (this.device.hasOption('PowerState.Strict')) {
++        void this.confirmStrict();
++        return;
++      }
+       if (this.device.power) {
+         return;
+       }
+@@ -60,6 +73,9 @@
+   }
+ 
+   public async withPowerLatch(value: boolean, action: () => Promise<void>): Promise<void> {
++    if (this.device.hasOption('PowerState.Strict')) {
++      throw new Error('Strict power commands require verified controller observations');
++    }
+     this.latchOptimistic(value);
+ 
+     try {
+@@ -106,7 +122,21 @@
+     }
+   }
+ 
++  private async confirmStrict(): Promise<void> {
++    try {
++      await this.probe.getPowerState();
++    } catch (error: any) {
++      // Unknown observations preserve the last confirmed value. HAP reads
++      // use a fresh observation and propagate the error instead of reporting it.
++      this.device.log.debug(`[Power] Verified power observation failed: ${error.message || error}`);
++    }
++  }
++
+   private async confirmViaPing(trigger: Trigger): Promise<void> {
++    if (this.device.hasOption('PowerState.Strict')) {
++      await this.confirmStrict();
++      return;
++    }
+     if (Date.now() < this.skipPingUntil) {
+       return;
+     }
+--- a/src/lib/switch.ts
++++ b/src/lib/switch.ts
+@@ -45,6 +45,18 @@
+     key: 'power',
+     build: ({ config, device }) => ({
+       set: async (_switchValue: boolean) => {
++        if (device.hasOption('PowerState.Strict')) {
++          let power: boolean;
++          try { power = await device.getPower(); }
++          catch (error) {
++            if (!config.power) throw error;
++            await device.setPower(true);
++            return;
++          }
++          if (!config.power && !power) throw new TvOfflineError();
++          if (!power) await device.setPower(true);
++          return;
++        }
+         if (!config.power && !device.power) {
+           throw new TvOfflineError();
+         }
+--- a/src/services/frame.ts
++++ b/src/services/frame.ts
+@@ -20,7 +20,7 @@
+ 
+ export class FrameService extends ServiceWrapper {
+   public service: LinkedService;
+-  private readonly onGet: () => boolean;
++  private readonly onGet: () => Promise<boolean>;
+   private readonly onSet: (value: CharacteristicValue) => Promise<void>;
+ 
+   constructor(accessory: FrameAccessory, kind: FrameSwitchKind) {
+@@ -38,15 +38,15 @@
+   }
+ 
+   public async updateValue(): Promise<void> {
+-    this.handleUpdateValue(this.characteristic.On, this.onGet());
++    this.handleUpdateValue(this.characteristic.On, await this.onGet());
+   }
+ 
+-  public getArtMode(): boolean {
+-    return this.device.power && this.device.artmode;
++  public async getArtMode(): Promise<boolean> {
++    return await this.device.getPower() && this.device.artmode;
+   }
+ 
+-  public getPower(): boolean {
+-    return this.device.power;
++  public getPower(): Promise<boolean> {
++    return this.device.getPower();
+   }
+ 
+   public async setArtMode(value: CharacteristicValue): Promise<void> {
+--- a/src/services/switch.ts
++++ b/src/services/switch.ts
+@@ -44,8 +44,10 @@
+       return false;
+     }
+ 
++    const power = this.device.hasOption('PowerState.Strict') ? await this.device.getPower() : this.device.power;
++
+     for (const option of this.options) {
+-      if (!option.get || (option.polled && !this.device.power)) {
++      if (!option.get || (option.polled && !power)) {
+         continue;
+       }
+ 
+@@ -54,6 +56,7 @@
+           return true;
+         }
+       } catch (error) {
++        if (this.device.hasOption('PowerState.Strict')) throw error;
+         this.device.log.debug(`Failed to get switch state: ${error?.message || error}`);
+       }
+     }
+--- a/src/services/television.ts
++++ b/src/services/television.ts
+@@ -46,7 +46,7 @@
+   }
+ 
+   private async getActive(): Promise<CharacteristicValue> {
+-    return this.accessory.getMain() ? this.characteristic.Active.ACTIVE : this.characteristic.Active.INACTIVE;
++    return await this.accessory.getMain() ? this.characteristic.Active.ACTIVE : this.characteristic.Active.INACTIVE;
+   }
+ 
+   private async setActive(value: CharacteristicValue) {
+--- a/src/types/device.ts
++++ b/src/types/device.ts
+@@ -80,4 +80,4 @@
+ };
+ 
+ export type DeviceOptions =
+-  'Device.Disable' | 'Volume.Slider.Enable' | 'Switch.DeviceName.Disable' | 'Frame.RealPowerMode' | 'Frame.ArtSwitch.Disable' | 'Frame.PowerSwitch.Disable';
++  'Device.Disable' | 'Volume.Slider.Enable' | 'Switch.DeviceName.Disable' | 'Frame.RealPowerMode' | 'Frame.ArtSwitch.Disable' | 'Frame.PowerSwitch.Disable' | 'PowerState.Strict';
