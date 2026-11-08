@@ -1,0 +1,21 @@
+--- a/apps/figcraft/src/main.rs
++++ b/apps/figcraft/src/main.rs
+@@ -170,6 +170,7 @@
+     let icon = services::window_icon();
+     let mut viewport = egui::ViewportBuilder::default()
+         .with_title("FigCraft")
++        .with_app_id("ai.storyteller.figcraft")
+         .with_inner_size([1440.0, 900.0])
+         .with_min_inner_size([800.0, 500.0])
+         .with_drag_and_drop(true);
+--- a/packaging/linux/ai.storyteller.figcraft.desktop
++++ b/packaging/linux/ai.storyteller.figcraft.desktop
+@@ -8,7 +8,7 @@
+ Icon=ai.storyteller.figcraft
+ Terminal=false
+ StartupNotify=true
+-StartupWMClass=figcraft
++StartupWMClass=ai.storyteller.figcraft
+ Categories=Graphics;2DGraphics;VectorGraphics;X-Design;
+ Keywords=design;interface;ui;ux;prototype;wireframe;mockup;vector;layout;components;
+ MimeType=application/x-figcraft;image/svg+xml;image/png;image/jpeg;x-scheme-handler/figcraft;

@@ -1,0 +1,22 @@
+[
+  {
+    "command": "frame.create",
+    "params": {
+      "preset": "iPhone 16",
+      "x": 0,
+      "y": 0,
+      "name": "Packaging check"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "parent": 2,
+      "x": 24,
+      "y": 64,
+      "text": "Welcome 中文 العربية 日本語",
+      "props": { "fontSize": 32 }
+    }
+  }
+]

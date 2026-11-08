@@ -1,0 +1,16 @@
+[
+  "cadcraft"
+  "craft-launcher"
+  "deckcraft"
+  "designcraft"
+  "effectcraft"
+  "figcraft"
+  "filmcraft"
+  "gridcraft"
+  "lightcraft"
+  "pdfcraft"
+  "photocraft"
+  "soundcraft"
+  "vectorcraft"
+  "wordcraft"
+]

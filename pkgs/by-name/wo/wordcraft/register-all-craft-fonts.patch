@@ -1,0 +1,26 @@
+--- a/crates/fonts/src/fontdb.rs
++++ b/crates/fonts/src/fontdb.rs
+@@ -871,7 +871,10 @@
+     /// without `CRAFT_FONTS_DIR`), whose system font scan reads `font_dirs`.
+     pub fn with_font_dirs(font_dirs: Vec<std::path::PathBuf>) -> Self {
+         let mut faces = Vec::new();
+-        let craft = crate::japanese_document_fonts().into_iter().chain(crate::chinese_fonts()).map(|f| f.bytes);
++        let craft = crate::japanese_document_fonts().into_iter()
++            .chain(crate::chinese_fonts())
++            .chain(crate::CRAFT_FONTS.iter().filter(|f| !f.scripts.contains(&"Jpan") && !f.scripts.contains(&"Hans")))
++            .map(|f| f.bytes);
+         for data in BUNDLED.iter().copied().chain(craft) {
+             for f in enumerate_faces(data) {
+                 if let Some(mut face) = make_face(FontBytes::Static(data), f.index, f.family, f.style, f.legacy, f.coords) {
+--- a/crates/fonts/src/lib.rs
++++ b/crates/fonts/src/lib.rs
+@@ -391,6 +391,9 @@
+         db.set_system_fallback(false);
+         assert_eq!(db.face(DEFAULT_FAMILY, "Regular").family, DEFAULT_FAMILY);
+         assert!(!shape(&db.face(DEFAULT_FAMILY, "Regular"), "Hello", &[], |c| c).is_empty());
++        for cf in CRAFT_FONTS {
++            assert_eq!(db.face(cf.family, cf.style).family, cf.family, "all embedded fonts registered without system fallback");
++        }
+         if CRAFT_FONTS.is_empty() {
+             assert!(japanese_fonts().next().is_none() && japanese_document_fonts().is_empty());
+             let latin = db.face(DEFAULT_FAMILY, "Regular");

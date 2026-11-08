@@ -1,0 +1,17 @@
+# shellcheck shell=bash
+# Nix builder/activation callers and rendered fragments provide external variables.
+# shellcheck disable=SC2154
+export HOME="$TMPDIR"
+# These notices are required for the default fonts embedded by egui.
+for notice in "@package@/share/doc/@pname@/licenses/dependencies"/epaint_default_fonts-*/fonts/{OFL,UFL,Hack-Regular}.txt; do
+  test -s "$notice"
+done
+@darwinCliCheck@
+@package@/bin/@pname@-cli --version >"$out"
+@package@/bin/@pname@-cli commands >commands.txt
+test -s commands.txt
+printf '%s\n' 'Document export test' >input.txt
+@package@/bin/wordcraft-cli convert input.txt document.docx
+@package@/bin/wordcraft-cli text document.docx >text.txt
+grep -Fq 'Document export test' text.txt
+@linuxSpeechCheck@

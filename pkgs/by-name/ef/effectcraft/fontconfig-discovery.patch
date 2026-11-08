@@ -1,0 +1,85 @@
+--- a/crates/text/src/fonts.rs
++++ b/crates/text/src/fonts.rs
+@@ -95,7 +95,82 @@
+         #[cfg(all(unix, not(target_os = "macos"), not(target_arch = "wasm32")))]
+         dirs.extend(crate::font_dirs::unix_font_dirs(&crate::font_dirs::FontEnv::from_process()));
+         dirs.extend(extra_dirs(std::env::var_os("EFFECTCRAFT_FONT_DIRS").as_deref()));
++        #[cfg(target_os = "linux")]
++        {
++            dirs.extend(fontconfig_dirs_from_command(std::process::Command::new("fc-list").arg("--format=%{file}\\n").output()));
++            dirs.sort();
++            dirs.dedup();
++        }
+         Self { dirs }
++    }
++}
++
++/// Ask fontconfig for configured font files rather than interpreting its XML ourselves.
++/// Missing fontconfig, failed commands and malformed output retain the existing folder fallback.
++#[cfg(target_os = "linux")]
++fn fontconfig_dirs_from_command(output: std::io::Result<std::process::Output>) -> Vec<PathBuf> {
++    use std::os::unix::ffi::OsStrExt;
++    let Ok(output) = output else { return Vec::new() };
++    if !output.status.success() {
++        return Vec::new();
++    }
++    let mut dirs: Vec<PathBuf> = output
++        .stdout
++        .split(|b| *b == b'\n')
++        .filter(|line| !line.is_empty() && !line.contains(&0))
++        .map(|line| std::path::Path::new(std::ffi::OsStr::from_bytes(line)))
++        .filter(|path| path.is_absolute())
++        .filter_map(|path| path.parent().map(std::path::Path::to_path_buf))
++        .collect();
++    dirs.sort();
++    dirs.dedup();
++    dirs
++}
++
++#[cfg(all(test, target_os = "linux"))]
++mod fontconfig_discovery_tests {
++    use super::*;
++    use std::os::unix::ffi::OsStrExt;
++    use std::os::unix::process::ExitStatusExt;
++
++    fn output(status: i32, stdout: &[u8]) -> std::io::Result<std::process::Output> {
++        Ok(std::process::Output { status: std::process::ExitStatus::from_raw(status), stdout: stdout.to_vec(), stderr: Vec::new() })
++    }
++
++    #[test]
++    fn configured_directories_are_sorted_and_deduplicated() {
++        assert_eq!(
++            fontconfig_dirs_from_command(output(0, b"/fonts/z/a.ttf\n/fonts/a/b.otf\n/fonts/z/c.ttc\n")),
++            vec![PathBuf::from("/fonts/a"), PathBuf::from("/fonts/z")]
++        );
++    }
++
++    #[test]
++    fn failed_command_keeps_the_folder_fallback() {
++        assert!(fontconfig_dirs_from_command(Err(std::io::Error::from(std::io::ErrorKind::NotFound))).is_empty());
++        assert!(fontconfig_dirs_from_command(output(1 << 8, b"/fonts/a.ttf\n")).is_empty());
++    }
++
++    #[test]
++    fn empty_relative_and_invalid_paths_are_ignored_without_losing_os_bytes() {
++        assert!(fontconfig_dirs_from_command(output(0, b"\nrelative/a.ttf\n/fonts/\0bad.ttf\n")).is_empty());
++        let dirs = fontconfig_dirs_from_command(output(0, b"/fonts/\xff/a.ttf\n"));
++        assert_eq!(dirs, vec![PathBuf::from(std::ffi::OsStr::from_bytes(b"/fonts/\xff"))]);
++    }
++
++    #[test]
++    fn a_font_available_only_through_fontconfig_output_is_scanned() -> Result<(), Box<dyn std::error::Error>> {
++        let directory = std::env::temp_dir().join(format!("effectcraft-fontconfig-discovery-{}", std::process::id()));
++        std::fs::create_dir_all(&directory)?;
++        let font = directory.join("configured.ttf");
++        std::fs::write(&font, NOTO_SERIF_REGULAR)?;
++        let mut stdout = font.as_os_str().as_bytes().to_vec();
++        stdout.push(b'\n');
++        let source = DirectorySource { dirs: fontconfig_dirs_from_command(output(0, &stdout)) };
++        let found = source.faces().iter().any(|face| face.family == "Noto Serif" && face.origin == "system");
++        std::fs::remove_dir_all(&directory)?;
++        assert!(found);
++        Ok(())
+     }
+ }
+ 

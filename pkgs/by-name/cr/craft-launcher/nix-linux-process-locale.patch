@@ -1,0 +1,30 @@
+--- a/crates/native/src/process.rs
++++ b/crates/native/src/process.rs
+@@ -17,6 +17,12 @@
+     }
+     #[cfg(unix)]
+     clean_appimage_env(&mut cmd);
++    // GNU pgrep sanitizes non-ASCII command lines in the C locale. Match the
++    // actual UTF-8 application paths without changing the launcher's locale.
++    #[cfg(target_os = "linux")]
++    if Path::new(cmd.get_program()).file_name() == Some(std::ffi::OsStr::new("pgrep")) {
++        cmd.env("LC_ALL", "C.UTF-8");
++    }
+     cmd
+ }
+ 
+@@ -355,3 +361,14 @@
+         assert_eq!(arg.unwrap(), r#"/select,"C:\Users\A B\AppData\Local\ArtCraft Launcher\apps\photocraft.exe""#);
+     }
+ }
++
++#[cfg(all(test, target_os = "linux"))]
++mod nix_process_locale_tests {
++    use super::*;
++    #[test]
++    fn only_pgrep_gets_a_utf8_matching_locale() {
++        let pgrep = command("pgrep");
++        assert!(pgrep.get_envs().any(|(key, value)| key == "LC_ALL" && value == Some(std::ffi::OsStr::new("C.UTF-8"))));
++        assert!(!command("other-helper").get_envs().any(|(key, _)| key == "LC_ALL"));
++    }
++}

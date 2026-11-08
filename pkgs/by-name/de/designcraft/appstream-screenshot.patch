@@ -1,0 +1,13 @@
+--- a/packaging/linux/ai.storyteller.designcraft.metainfo.xml.in
++++ b/packaging/linux/ai.storyteller.designcraft.metainfo.xml.in
+@@ -35,8 +35,8 @@
+   </keywords>
+   <screenshots>
+     <screenshot type="default">
+-      <caption>Editing The Great Wave off Kanagawa with type layers and adjustment layers</caption>
+-      <image>https://raw.githubusercontent.com/storytold/designcraft/main/docs/images/designcraft-demo.jpg</image>
++      <caption>Magazine spread with threaded text frames and layout properties</caption>
++      <image type="source" width="1600" height="1000">https://raw.githubusercontent.com/storytold/designcraft/14e677b24216396e398823ff034d9882322362d1/docs/images/ui-spread.png</image>
+     </screenshot>
+   </screenshots>
+   <branding>

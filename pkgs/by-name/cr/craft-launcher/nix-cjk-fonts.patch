@@ -1,0 +1,63 @@
+--- a/crates/ui-egui/src/cjk_font.rs
++++ b/crates/ui-egui/src/cjk_font.rs
+@@ -130,6 +130,9 @@
+ fn chinese_candidates() -> Vec<Candidate> {
+     let mut out = Vec::new();
+     let mut add = |path: PathBuf, family: &'static str| out.push(Candidate { path, family });
++    if let Some(path) = option_env!("CRAFT_LAUNCHER_CJK_FONT") {
++        add(path.into(), "Noto Sans CJK SC");
++    }
+     #[cfg(target_os = "macos")]
+     {
+         // PingFang moved from the system fonts into a downloaded asset in later macOS versions.
+@@ -184,6 +187,9 @@
+ fn japanese_candidates() -> Vec<Candidate> {
+     let mut out = Vec::new();
+     let mut add = |path: PathBuf, family: &'static str| out.push(Candidate { path, family });
++    if let Some(path) = option_env!("CRAFT_LAUNCHER_JAPANESE_FONT") {
++        add(path.into(), "Noto Sans CJK JP");
++    }
+     #[cfg(target_os = "macos")]
+     {
+         // Hiragino Sans (its file keeps the Japanese name); it may be a downloaded font asset.
+@@ -282,6 +288,31 @@
+ mod tests {
+     use super::*;
+ 
++
++    #[test]
++    fn configured_nix_font_supports_the_chinese_interface() {
++        let path = env!("CRAFT_LAUNCHER_CJK_FONT");
++        assert_eq!(chinese_candidates()[0].path, Path::new(path));
++        let bytes = read(Path::new(path)).expect("the pinned Chinese font must exist");
++        assert!(face_index(&bytes, "Noto Sans CJK SC").is_some());
++        assert!(load(Script::Chinese).is_some());
++    }
++
++    #[test]
++    fn configured_nix_font_supports_the_japanese_catalog() {
++        let path = env!("CRAFT_LAUNCHER_JAPANESE_FONT");
++        assert_eq!(japanese_candidates()[0].path, Path::new(path));
++        let font = load(Script::Japanese).expect("the pinned Japanese font must load");
++        assert_eq!(face_index(&font.font, "Noto Sans CJK JP"), Some(font.index));
++        let face = FontRef::from_index(&font.font, font.index).expect("the Japanese face must exist");
++        let characters: std::collections::BTreeSet<char> = include_str!("i18n/ja.tsv").chars()
++            .filter(|c| matches!(*c as u32, 0x3040..=0x30ff | 0x3400..=0x9fff | 0xff00..=0xffef)).collect();
++        assert!(characters.len() > 50, "the catalog must exercise Japanese glyphs");
++        for character in characters {
++            assert!(face.charmap().map(character).is_some(), "missing Japanese glyph: {character}");
++        }
++    }
++
+     #[test]
+     fn face_index_rejects_what_isnt_a_font() {
+         assert_eq!(face_index(b"", "PingFang SC"), None);
+@@ -305,7 +336,7 @@
+         use egui::{Color32, FontFamily, FontId};
+         for info in crate::i18n::LANGUAGES.iter().filter(|l| l.script.is_some()) {
+             let Some(lang) = crate::i18n::Lang::from_code(info.code) else { continue };
+-            let Some(font) = crate::theme::cjk_font(lang) else { continue };
++            let font = crate::theme::cjk_font(lang).expect("pinned fonts cover every CJK interface");
+             let y_offset_factor = font.tweak.y_offset_factor;
+             // A character the language's own catalog uses, so the sample fits its script: the face
+             // must draw it, on the Latin baseline.

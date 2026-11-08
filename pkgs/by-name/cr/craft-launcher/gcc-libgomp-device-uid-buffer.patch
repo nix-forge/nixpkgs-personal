@@ -1,0 +1,16 @@
+--- a/libgomp/target.c
++++ b/libgomp/target.c
+@@ -5948,11 +5948,12 @@
+ 
+   if (devicep->get_uid_func)
+     devicep->uid = devicep->get_uid_func (devicep->target_id);
+   if (!devicep->uid)
+     {
+-      size_t ln = strlen (STR_OMP_DEV_PREFIX) + 10 + 1;
++      /* Bound decimal digits and the sign; sizeof the prefix includes NUL.  */
++      size_t ln = sizeof (STR_OMP_DEV_PREFIX) + sizeof (int) * CHAR_BIT / 3 + 2;
+       char *uid;
+       uid = gomp_malloc (ln);
+       snprintf (uid, ln, "%s%d", STR_OMP_DEV_PREFIX, device_num);
+       devicep->uid = uid;
+     }

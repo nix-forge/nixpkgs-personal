@@ -1,0 +1,48 @@
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -281,6 +281,7 @@
+  "artcraft-launcher-core",
+  "artcraft-launcher-native",
+  "artcraft-launcher-ui-egui",
++ "craft-quit",
+  "eframe",
+  "egui",
+  "env_logger",
+@@ -933,6 +934,17 @@
+ checksum = "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"
+ dependencies = [
+  "libc",
++]
++
++[[package]]
++name = "craft-quit"
++version = "0.1.0"
++source = "git+https://github.com/storytold/craft-libs?rev=f58bc1a3df490992d633393d0898af0588ce882c#f58bc1a3df490992d633393d0898af0588ce882c"
++dependencies = [
++ "dispatch2",
++ "egui",
++ "objc2 0.6.5",
++ "objc2-app-kit 0.3.2",
+ ]
+ 
+ [[package]]
+--- a/apps/artcraft-launcher/Cargo.toml
++++ b/apps/artcraft-launcher/Cargo.toml
+@@ -30,6 +30,7 @@
+ # Cargo.lock through eframe's "persistence" feature.
+ ron = "0.12.2"
+ serde = { workspace = true }
++craft-quit = { git = "https://github.com/storytold/craft-libs", version = "0.1.0", rev = "f58bc1a3df490992d633393d0898af0588ce882c", features = ["egui"] }
+ 
+ [target.'cfg(target_os = "linux")'.dependencies]
+ zbus = "5"
+--- a/apps/artcraft-launcher/src/main.rs
++++ b/apps/artcraft-launcher/src/main.rs
+@@ -693,6 +693,7 @@
+                 OnClose::Quit => {}
+             }
+         }
++        craft_quit::on_close_request(ctx);
+     }
+ 
+     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

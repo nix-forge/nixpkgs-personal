@@ -1,0 +1,99 @@
+--- a/crates/ui-egui/src/fonts.rs
++++ b/crates/ui-egui/src/fonts.rs
+@@ -9,6 +9,7 @@
+     ("/System/Library/Fonts/HelveticaNeue.ttc", 0),
+     ("/System/Library/Fonts/Helvetica.ttc", 0),
+     ("C:\\Windows\\Fonts\\segoeui.ttf", 0),
++    ("@soundcraftDejaVu@/share/fonts/truetype/DejaVuSans.ttf", 0),
+     ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 0),
+     ("/usr/share/fonts/TTF/DejaVuSans.ttf", 0),
+     ("/usr/share/fonts/dejavu/DejaVuSans.ttf", 0),
+@@ -19,6 +20,7 @@
+     ("/System/Library/Fonts/HelveticaNeue.ttc", 1),
+     ("/System/Library/Fonts/Helvetica.ttc", 1),
+     ("C:\\Windows\\Fonts\\segoeuib.ttf", 0),
++    ("@soundcraftDejaVu@/share/fonts/truetype/DejaVuSans-Bold.ttf", 0),
+     ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 0),
+     ("/usr/share/fonts/TTF/DejaVuSans-Bold.ttf", 0),
+     ("/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf", 0),
+@@ -105,23 +107,31 @@
+ }
+ 
+ pub fn definitions() -> FontDefinitions {
++    definitions_with_system_fonts(
++        load(REGULAR, "sans-serif", None),
++        load(BOLD, "sans-serif:style=Bold", None),
++        load(HANGUL, "sans-serif:lang=ko", Some("ko")),
++    )
++}
++
++fn definitions_with_system_fonts(regular: Option<FontData>, bold: Option<FontData>, hangul: Option<FontData>) -> FontDefinitions {
+     let mut fonts = FontDefinitions::default();
+     let base: Vec<String> = fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default();
+     let mut bold_family = base.clone();
+-    if let Some(reg) = load(REGULAR, "sans-serif", None) {
++    if let Some(reg) = regular {
+         fonts.font_data.insert("system-regular".into(), Arc::new(reg));
+         if let Some(f) = fonts.families.get_mut(&FontFamily::Proportional) {
+             f.insert(0, "system-regular".into());
+         }
+     }
+-    if let Some(b) = load(BOLD, "sans-serif:style=Bold", None) {
++    if let Some(b) = bold {
+         fonts.font_data.insert("system-bold".into(), Arc::new(b));
+         bold_family.insert(0, "system-bold".into());
+     } else if fonts.font_data.contains_key("system-regular") {
+         bold_family.insert(0, "system-regular".into());
+     }
+     fonts.families.insert(FontFamily::Name("bold".into()), bold_family);
+-    if let Some(h) = load(HANGUL, "sans-serif:lang=ko", Some("ko")) {
++    if let Some(h) = hangul {
+         fonts.font_data.insert("system-hangul".into(), Arc::new(h));
+         for family in fonts.families.values_mut() {
+             family.push("system-hangul".into());
+@@ -166,3 +176,45 @@
+         }
+     }
+ }
++
++#[cfg(all(test, target_os = "linux"))]
++mod packaged_font_tests {
++    use super::*;
++
++    #[test]
++    fn packaged_regular_and_bold_faces_cover_ui_symbols() -> Result<(), Box<dyn std::error::Error>> {
++        // Read immutable package inputs directly: host fonts and the process environment
++        // must not determine whether the packaged fallback has these glyphs.
++        let read = |path| -> std::io::Result<FontData> { Ok(FontData::from_owned(std::fs::read(path)?)) };
++        let definitions = definitions_with_system_fonts(
++            Some(read("@soundcraftDejaVu@/share/fonts/truetype/DejaVuSans.ttf")?),
++            Some(read("@soundcraftDejaVu@/share/fonts/truetype/DejaVuSans-Bold.ttf")?),
++            None,
++        );
++        for (family, name) in [(FontFamily::Proportional, "system-regular"), (FontFamily::Name("bold".into()), "system-bold")] {
++            assert_eq!(definitions.families[&family].first().map(String::as_str), Some(name));
++            // Isolate the selected face so egui's bundled fonts cannot hide a missing glyph.
++            let mut isolated = FontDefinitions::default();
++            isolated.font_data.clear();
++            isolated.families.clear();
++            isolated.font_data.insert(name.into(), definitions.font_data[name].clone());
++            isolated.families.insert(family.clone(), vec![name.into()]);
++            let mut fonts = egui::epaint::text::Fonts::new(Default::default(), isolated);
++            let font_id = egui::FontId::new(16.0, family);
++            let mut view = fonts.with_pixels_per_point(1.0);
++            {
++                // epaint 0.36.2 has_glyph falsely rejects glyphs in its replacement face.
++                let mut face = view.fonts.font(&font_id.family);
++                let characters = face.characters();
++                for glyph in ['▸', '▾', '♯', '✕'] {
++                    assert!(characters.contains_key(&glyph), "{name} is missing {glyph}");
++                }
++            }
++            for glyph in ['▸', '▾', '♯', '✕'] {
++                let width = view.glyph_width(&font_id, glyph);
++                assert!(width.is_finite() && width > 0.0, "{name} cannot measure {glyph}");
++            }
++        }
++        Ok(())
++    }
++}

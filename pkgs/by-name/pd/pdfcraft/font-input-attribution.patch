@@ -1,0 +1,31 @@
+--- a/ATTRIBUTION.toml
++++ b/ATTRIBUTION.toml
+@@ -3312,13 +3312,13 @@
+ [[build_input]]
+ name = "craft-fonts"
+ option = "CRAFT_FONTS_DIR"
+-title = "Japanese fonts: BIZ UDPGothic (Regular, Bold), Shippori Mincho, BIZ UDMincho; Arabic font: Noto Sans Arabic"
+-author = "The BIZ UDGothic and BIZ UDMincho Project Authors (Morisawa Inc.), The Shippori Mincho Project Authors (FONTDASU), The Noto Project Authors (Noto Sans Arabic)"
+-source = "https://github.com/storytold/craft-fonts (pinned by commit in .github/workflows/release.yml)"
+-licence = "OFL-1.1"
+-attribution = "https://github.com/storytold/craft-fonts/blob/main/ATTRIBUTION.md"
+-kind = "font"
+-usage = "Japanese fallback in the interface (BIZ UDPGothic first) and Japanese glyphs in edited PDF text (Shippori Mincho); Arabic interface text, file names and document titles (Noto Sans Arabic); the web build embeds only BIZ UDPGothic Regular and Noto Sans Arabic. The checkout also holds Noto Sans CJK SC, which crates/fonts/build.rs never embeds (AGENTS.md §1.1)"
++title = "Japanese, Arabic and Thai OFL faces with Apache-licensed Droid Sans Fallback"
++author = "The BIZ and Shippori Mincho Project Authors, The Noto Project Authors, The Android Open Source Project"
++source = "https://github.com/storytold/craft-fonts/tree/3d9ab3a132ed0eff457e424226a435a901da30d3"
++licence = "OFL-1.1 AND Apache-2.0"
++attribution = "https://github.com/watli01/craft-fonts/tree/1e39ddaf4c468a059c69ce11b5e5849fd54a39fa/fonts/droid-sans-fallback"
++kind = "font"
++usage = "Japanese, Arabic and Thai interface fallback; permitted Droid Han outlines precede Japanese faces for Simplified and Traditional Chinese; the web build embeds only BIZ UDPGothic Regular and Noto Sans Arabic"
+ 
+ [[asset]]
+ path = "crates/sign/tests/data/x509-rsa-sha1.pdf"
+--- a/ATTRIBUTION.md
++++ b/ATTRIBUTION.md
+@@ -325,4 +325,4 @@
+ 
+ | Input | Option | Title | Author | Licence | Source | Attribution | Used for |
+ |---|---|---|---|---|---|---|---|
+-| `craft-fonts` | `CRAFT_FONTS_DIR` | Japanese fonts: BIZ UDPGothic (Regular, Bold), Shippori Mincho, BIZ UDMincho; Arabic font: Noto Sans Arabic | The BIZ UDGothic and BIZ UDMincho Project Authors (Morisawa Inc.), The Shippori Mincho Project Authors (FONTDASU), The Noto Project Authors (Noto Sans Arabic) | OFL-1.1 | https://github.com/storytold/craft-fonts (pinned by commit in .github/workflows/release.yml) | https://github.com/storytold/craft-fonts/blob/main/ATTRIBUTION.md | Japanese fallback in the interface (BIZ UDPGothic first) and Japanese glyphs in edited PDF text (Shippori Mincho); Arabic interface text, file names and document titles (Noto Sans Arabic); the web build embeds only BIZ UDPGothic Regular and Noto Sans Arabic. The checkout also holds Noto Sans CJK SC, which crates/fonts/build.rs never embeds (AGENTS.md §1.1) |
++| `craft-fonts` | `CRAFT_FONTS_DIR` | Japanese, Arabic and Thai OFL faces with Apache-licensed Droid Sans Fallback | The BIZ and Shippori Mincho Project Authors, The Noto Project Authors, The Android Open Source Project | OFL-1.1 AND Apache-2.0 | https://github.com/storytold/craft-fonts/tree/3d9ab3a132ed0eff457e424226a435a901da30d3 | https://github.com/watli01/craft-fonts/tree/1e39ddaf4c468a059c69ce11b5e5849fd54a39fa/fonts/droid-sans-fallback | Japanese, Arabic and Thai interface fallback; permitted Droid Han outlines precede Japanese faces for Simplified and Traditional Chinese; the web build embeds only BIZ UDPGothic Regular and Noto Sans Arabic |

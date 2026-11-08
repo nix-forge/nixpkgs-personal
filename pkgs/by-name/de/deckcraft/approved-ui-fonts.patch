@@ -1,0 +1,144 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -63,10 +63,10 @@
+ zip = { version = "3", default-features = false, features = ["deflate"] }
+ 
+ # ui
+-egui = "0.36"
++egui = { version = "0.36", default-features = false }
+ egui_extras = { version = "0.36", default-features = false }
+ eframe = { version = "0.36", default-features = false }
+-egui_kittest = "0.36"
++egui_kittest = { version = "0.36", default-features = false }
+ rfd = "0.17"
+ arboard = { version = "3.6", default-features = false }
+ 
+--- a/apps/deckcraft/Cargo.toml
++++ b/apps/deckcraft/Cargo.toml
+@@ -14,7 +14,7 @@
+ deckcraft-engine = { workspace = true }
+ deckcraft-ui-egui = { workspace = true }
+ deckcraft-media = { workspace = true }
+-eframe = { workspace = true, features = ["default_fonts", "wgpu", "accesskit", "links", "wayland", "x11"] }
++eframe = { workspace = true, features = ["wgpu", "accesskit", "links", "wayland", "x11"] }
+ egui = { workspace = true }
+ serde_json = { workspace = true }
+ log = { workspace = true }
+--- a/apps/deckcraft-web/Cargo.toml
++++ b/apps/deckcraft-web/Cargo.toml
+@@ -22,7 +22,7 @@
+ 
+ [target.'cfg(target_arch = "wasm32")'.dependencies]
+ # `wgpu` pulls egui-wgpu's defaults: WebGPU plus the WebGL2 fallback.
+-eframe = { workspace = true, features = ["default_fonts", "wgpu", "accesskit"] }
++eframe = { workspace = true, features = ["wgpu", "accesskit"] }
+ rfd = { workspace = true }
+ wasm-bindgen = "0.2"
+ wasm-bindgen-futures = "0.4"
+--- a/crates/fonts/src/fontdb.rs
++++ b/crates/fonts/src/fontdb.rs
+@@ -23,8 +23,18 @@
+ /// empty without `CRAFT_FONTS_DIR`), then the last-resort face.
+ pub fn bundled() -> Vec<&'static [u8]> {
+     let mut v: Vec<&'static [u8]> = crate::CRAFT_FONTS.iter().map(|f| f.bytes).collect();
+-    v.push(epaint_default_fonts::UBUNTU_LIGHT);
++    v.push(last_resort_bytes());
+     v
++}
++
++/// The approved Ubuntu Light last-resort face, without the vendor emoji bundle.
++pub fn last_resort_bytes() -> &'static [u8] {
++    epaint_default_fonts::UBUNTU_LIGHT
++}
++
++/// Hack Regular, the openly licensed monospaced UI face, without vendor emoji artwork.
++pub fn monospace_bytes() -> &'static [u8] {
++    epaint_default_fonts::HACK_REGULAR
+ }
+ 
+ /// Open substitutes for families documents often ask for but we can't ship (metric-compatible
+--- a/crates/fonts/src/lib.rs
++++ b/crates/fonts/src/lib.rs
+@@ -15,7 +15,8 @@
+ 
+ pub use fallback::{bundled_families, covers_cluster, is_emoji_cluster, ligature_carets};
+ pub use fontdb::{
+-    FALLBACK_FAMILY, FaceRef, FontDb, FontFace, LAST_RESORT_FAMILY, MISSING_FONT_FAMILY, base_style, bundled, substitutes, system_font_dirs,
++    FALLBACK_FAMILY, FaceRef, FontDb, FontFace, LAST_RESORT_FAMILY, MISSING_FONT_FAMILY, base_style, bundled, last_resort_bytes, monospace_bytes,
++    substitutes, system_font_dirs,
+ };
+ pub use harfrust::Feature;
+ use harfrust::Tag;
+--- a/crates/ui-egui/src/theme.rs
++++ b/crates/ui-egui/src/theme.rs
+@@ -153,7 +153,7 @@
+     });
+ }
+ 
+-/// UI fonts: Inter (from craft-fonts) when embedded, a Japanese UI face for CJK, then egui's.
++/// UI fonts: selected craft faces and Ubuntu Light for proportional text, Hack for monospace.
+ pub fn install_fonts(ctx: &egui::Context) {
+     install_fonts_with(ctx, &[]);
+ }
+@@ -168,6 +168,14 @@
+ /// The interface font definitions; see [`install_fonts_with`].
+ pub fn font_definitions(extra: &[std::sync::Arc<deckcraft_fonts::FontFace>]) -> FontDefinitions {
+     let mut defs = FontDefinitions::default();
++    defs.font_data.clear();
++    defs.families.clear();
++    let fallback = "deckcraft-ubuntu-light".to_owned();
++    defs.font_data.insert(fallback.clone(), std::sync::Arc::new(FontData::from_static(deckcraft_fonts::last_resort_bytes())));
++    let monospace = "deckcraft-hack-regular".to_owned();
++    defs.font_data.insert(monospace.clone(), std::sync::Arc::new(FontData::from_static(deckcraft_fonts::monospace_bytes())));
++    defs.families.insert(FontFamily::Proportional, vec![fallback.clone()]);
++    defs.families.insert(FontFamily::Monospace, vec![monospace, fallback]);
+     let mut names = vec![];
+     for (i, f) in deckcraft_fonts::CRAFT_FONTS.iter().enumerate() {
+         let wanted = (f.family == "Inter" && (f.style == "Regular" || f.style == "SemiBold" || f.style == "Bold"))
+@@ -266,3 +274,35 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod font_policy_tests {
++    use super::*;
++
++    #[test]
++    fn approved_faces_render_without_vendor_emoji() {
++        let definitions = font_definitions(&[]);
++        assert!(definitions.font_data.keys().all(|name| !name.contains("NotoEmoji") && !name.contains("emoji-icon-font")));
++        for family in [FontFamily::Proportional, FontFamily::Monospace, FontFamily::Name("bold".into())] {
++            let stack = &definitions.families[&family];
++            assert!(!stack.is_empty());
++            assert!(stack.iter().all(|name| definitions.font_data.contains_key(name)));
++        }
++        assert_eq!(definitions.families[&FontFamily::Monospace].first().map(String::as_str), Some("deckcraft-hack-regular"));
++        let mut fonts = egui::epaint::text::Fonts::new(egui::epaint::text::TextOptions::default(), definitions);
++        let mut view = fonts.with_pixels_per_point(1.0);
++        for id in [font(13.0), bold(18.0), egui::FontId::monospace(13.0)] {
++            // epaint 0.36.2 has_glyphs compares the owning face with the replacement
++            // face, rejecting valid glyphs from that same face. Inspect the charmap.
++            let mut family = view.fonts.font(&id.family);
++            let characters = family.characters();
++            assert!("Open presentation 0123456789".chars().all(|glyph| characters.contains_key(&glyph)));
++        }
++        let id = egui::FontId::monospace(13.0);
++        let advance = view.glyph_width(&id, 'i');
++        assert!(advance.is_finite() && advance > 0.0);
++        for glyph in ['W', 'm', '0', ' '] {
++            assert!((view.glyph_width(&id, glyph) - advance).abs() <= f32::EPSILON, "monospaced advance differs for {glyph}");
++        }
++    }
++}
+--- a/ATTRIBUTION.md
++++ b/ATTRIBUTION.md
+@@ -37,7 +37,7 @@
+ | Asset | Author | Source | Licence | Used for |
+ |---|---|---|---|---|
+ | Ubuntu Light (`Ubuntu-Light.ttf`, via the `epaint_default_fonts` crate 0.36) | Dalton Maag Ltd for Canonical | https://crates.io/crates/epaint_default_fonts | Ubuntu Font Licence 1.0 | Last-resort text face when no other font is available; UI fallback |
+-| Hack Regular, Noto Emoji, emoji-icon-font (via `epaint_default_fonts` / egui) | Source Foundry; Google; Jakub Steiner et al. | https://crates.io/crates/epaint_default_fonts | MIT / Bitstream-Vera, OFL-1.1, MIT | egui UI fallback glyphs |
++| Hack Regular (`Hack-Regular.ttf`, via `epaint_default_fonts` 0.36.2) | Source Foundry Authors; Bitstream Inc.; DejaVu contributors | https://docs.rs/crate/epaint_default_fonts/0.36.2/source/fonts/Hack-Regular.txt | MIT AND Bitstream-Vera; DejaVu contributions public domain | Monospaced UI text |
+ 
+ ## Embedded at build time from craft-fonts (`CRAFT_FONTS_DIR`)
+ 
