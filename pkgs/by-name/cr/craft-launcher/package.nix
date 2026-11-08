@@ -131,6 +131,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./nix-discovery-priority.patch
     ./unix-restart-test-path-helpers.patch
     ./nix-linux-process-locale.patch
+    ./disable-unused-gtk-tray-features.patch
     ./macos-quit-handshake.patch
     ./preserve-update-backups-upstream-a2e490.patch
     ./atomic-state-upstream-314.patch

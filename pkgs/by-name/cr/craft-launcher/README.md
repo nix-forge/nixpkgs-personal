@@ -7,6 +7,12 @@ features remain enabled. This package installs `craft-launcher`, including
 community distribution with a neutral icon; upstream's restricted ArtCraft
 graphical marks are removed.
 
+Tray dependencies retain Linux's `ksni` backend and the native macOS/Windows
+backends. Unused GTK defaults are disabled on every target so Cargo's combined
+lockfile excludes the affected `glib` graph described in
+[GHSA-wrw7-89jp-8q8g](https://github.com/advisories/GHSA-wrw7-89jp-8q8g).
+The lock update removes unused dependencies without upgrading retained versions.
+
 Nix-managed apps are discovered through profiles and macOS application bundles.
 The launcher opens them but refuses to update or remove them, and disables its
 own self-update in the Nix store. Update these packages through your Nix

@@ -41,6 +41,18 @@
           "removeWhen": "Remove when the packaged source includes an equivalent upstream fix and the affected regression passes without this patch."
         },
         {
+          "file": "disable-unused-gtk-tray-features.patch",
+          "sha256": "f693bb3e76e1d84f3ace653ada4cc0464981cee43c329d387f79449236fab8f0",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/craft-launcher/blob/cbae640688c5fa3daa120a7f5e050f8e24148a47/apps/artcraft-launcher/Cargo.toml",
+            "https://github.com/advisories/GHSA-wrw7-89jp-8q8g",
+            "https://doc.rust-lang.org/cargo/reference/resolver.html#features"
+          ],
+          "reason": "Disable unused Linux GTK defaults on the macOS/Windows tray dependency. Cargo resolves every target table into the lockfile, so these defaults retain vulnerable glib 0.18 even though native builds use ksni or the platform backend. The lock update removes unused dependencies without upgrading retained versions.",
+          "removeWhen": "Remove when the pinned upstream manifests disable the unused GTK defaults on every target and their lockfile excludes the affected glib graph while retaining native tray support."
+        },
+        {
           "file": "gcc-libgomp-device-uid-buffer.patch",
           "sha256": "30e911ccc298a08df91ec4cf049f1c93d0a7d852d57887a396b9960982592090",
           "kind": "toolchain-workaround",
