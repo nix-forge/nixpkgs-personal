@@ -17,17 +17,76 @@ let
   packages = import ../default.nix { pkgs = base; };
   overlaid = base.extend overlay;
   supported = lib.filterAttrs (_: lib.meta.availableOn base.stdenv.hostPlatform) packages;
+  # Independently reviewed outputs that contain upstream-built code or assets.
+  # Keep this list aligned with docs/source-provenance-review.md when adding a
+  # public package or changing its build process.
+  nonSourceNames = [
+    "anthropic-skills"
+    "apple-color-emoji"
+    "apple-fonts"
+    "aurral"
+    "bitwarden-desktop"
+    "cadcraft"
+    "chatgpt-latest"
+    "claude-desktop"
+    "codex-latest"
+    "craft-fonts"
+    "craft-launcher"
+    "deckcraft"
+    "designcraft"
+    "effectcraft"
+    "emojione-legacy"
+    "figcraft"
+    "filmcraft"
+    "firefox-emoji"
+    "google-fonts-design"
+    "gridcraft"
+    "jellyfin-plugin-moonbase"
+    "libreoffice"
+    "lightcraft"
+    "linearmouse"
+    "microsoft-teams"
+    "moonfin"
+    "mplus-outline-fonts-compatible"
+    "pdfcraft"
+    "photocraft"
+    "psscriptanalyzer"
+    "rea"
+    "remindctl"
+    "scrypted-plugin-homekit"
+    "soundcraft"
+    "spotify-spotx"
+    "steam"
+    "stirling-pdf-v3"
+    "ttf-ms-win11-auto"
+    "twemoji-color-font-optional"
+    "vectorcraft"
+    "wardrowbe-frontend"
+    "wootility"
+    "wordcraft"
+  ];
+  provenanceAudit = lib.mapAttrs (
+    name: package:
+    let
+      hasNonSource = lib.any (source: !(source.isSource or false)) (package.meta.sourceProvenance or [ ]);
+    in
+    assert lib.assertMsg (
+      hasNonSource == builtins.elem name nonSourceNames
+    ) "${name}: source provenance differs from the reviewed package inventory";
+    hasNonSource
+  ) supported;
   # Reviewed upstream licenses, independent of the values in package.meta.
   unfreeNames = [
     "apple-color-emoji"
     "apple-fonts"
+    "chatgpt-latest"
     "claude-desktop"
     "microsoft-teams"
     "mutant-standard-emoji"
-    "openai-codex-desktop"
-    "openai-skills"
     "spotify-spotx"
     "steam"
+    "stirling-pdf-engine"
+    "stirling-pdf-v3"
     "ttf-ms-win11-auto"
     "wootility"
   ];
@@ -104,13 +163,17 @@ let
           openai-skills = true;
           mattpocock-skills = true;
           pstack-skills = true;
+          rea = false;
+          stirling-pdf-v3 = false;
         }
+        # The Arlo build toolchain pulls cargo-bootstrap, which has independent
+        # non-source provenance. The inventory above checks Arlo's own output.
+        // lib.optionalAttrs (system == "x86_64-linux") { scrypted-plugin-homekit = false; }
         // lib.optionalAttrs base.stdenv.hostPlatform.isDarwin {
           bitwarden-desktop = false;
           libreoffice = false;
           linearmouse = false;
           remindctl = false;
-          t3-code = false;
         }
       );
   variants = {
@@ -126,6 +189,7 @@ let
         ];
       }
     );
+    openaiFullDenied = !(succeeds (packages.openai-skills.override { includeRestricted = true; }));
     openaiFreeAllowed = succeeds (packages.openai-skills.override { includeRestricted = false; });
     openaiFigmaDenied =
       !(succeeds (packages.openai-skills.override { selectedSkills = [ "figma-use" ]; }));
@@ -142,15 +206,18 @@ assert lib.assertMsg (lib.all (value: value) (
 assert lib.assertMsg (
   !succeeds selected.apple-fonts && !succeeds selectedOverlay.apple-fonts
 ) "A selective predicate must still reject unrelated unfree packages";
-builtins.deepSeq defaultPolicy (
-  builtins.deepSeq allowed (
-    builtins.deepSeq sourcePolicy {
-      inherit
-        defaultPolicy
-        allowed
-        sourcePolicy
-        variants
-        ;
-    }
+builtins.deepSeq provenanceAudit (
+  builtins.deepSeq defaultPolicy (
+    builtins.deepSeq allowed (
+      builtins.deepSeq sourcePolicy {
+        inherit
+          provenanceAudit
+          defaultPolicy
+          allowed
+          sourcePolicy
+          variants
+          ;
+      }
+    )
   )
 )

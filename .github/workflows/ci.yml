@@ -111,7 +111,7 @@ jobs:
       - name: Test AudioMuse AI dependency updater
         run: python3 -B -m unittest discover -s pkgs/by-name/au/audiomuse-ai -p 'test_*.py'
       - name: Check package discovery catalog
-        run: python3 scripts/package-catalog.py --check
+        run: python3 scripts/package_catalog.py --check
       - name: Check shared workflow contracts
         uses: nix-forge/ci/actions/validate-workflows@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
       - name: Run repository hooks and publication checks
@@ -187,11 +187,16 @@ jobs:
           - system: aarch64-darwin
             runner: macos-26
             name: Build (aarch64-darwin)
-            partition-count: 1
+            partition-count: 2
             partition-index: 0
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 2/2)
+            partition-count: 2
+            partition-index: 1
     runs-on: ${{ matrix.runner }}
-    # A single uncached Node.js dependency can exceed two hours on hosted runners.
-    timeout-minutes: 180
+    # Cold source-build batches include optimized Rust apps and workspace tests.
+    timeout-minutes: 360
     permissions:
       contents: read
     steps:

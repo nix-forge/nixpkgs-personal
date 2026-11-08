@@ -1,14 +1,19 @@
 """Exercise helper drift checks against copied package files through the CLI."""
 
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+from notification_process import run as run_command
+
+if TYPE_CHECKING:
+    import subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
-CHECKER = ROOT / "tests/check-package-layout.py"
+CHECKER = ROOT / "tests/check_package_layout.py"
 
 
 class HelperCopiesTest(unittest.TestCase):
@@ -26,17 +31,24 @@ class HelperCopiesTest(unittest.TestCase):
             (target / "README.md").write_text("Fixture package\n")
             for filename in (
                 "catalog.py",
+                "run_update.py",
+                "release_support.py",
+                "update_transaction.py",
+                "update_nix.py",
                 "update_support.py",
                 "skills_updater.py",
-                "unpack.py",
+                "unpack_font_distribution.py",
                 "font_support.py",
+                "notification_process.py",
+                "src/notification_process.py",
             ):
                 source = package / filename
                 if source.exists():
+                    (target / filename).parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(source, target / filename)
 
     def run_checker(self) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
+        return run_command(
             [sys.executable, "-B", str(CHECKER), str(self.root)],
             capture_output=True,
             text=True,

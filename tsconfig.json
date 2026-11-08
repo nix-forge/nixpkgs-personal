@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024", "DOM"],
+    "types": ["node"],
+    "strict": true,
+    "noEmitOnError": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": false,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "noPropertyAccessFromIndexSignature": true
+  },
+  "include": [
+    "pkgs/by-name/**/*.test.mts",
+    "tests/check_node_modules.mts",
+    "tests/javascript/**/*.d.ts",
+    "pkgs/by-name/**/scripts/*.mts",
+    "pkgs/by-name/re/reactflux/*.mts",
+    "pkgs/by-name/ho/homebridge-samsung-tizen/strict-power-state.test.mts",
+    "tests/javascript/**/*.test.mts",
+    "tests/javascript/**/*.mts",
+    "pkgs/by-name/au/aurral/test-api.mts",
+    "pkgs/by-name/bo/bookorbit/scripts/select-swc.cjs"
+  ],
+  "exclude": ["pkgs/by-name/re/reactflux/images.test.mts"]
+}

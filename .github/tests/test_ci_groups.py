@@ -30,12 +30,14 @@ class CheckGroupTests(unittest.TestCase):
                         lint = builtins.attrNames self.lintChecks.test-system;
                         manual = builtins.attrNames module.flake.manualChecks.test-system;
                         localOnly = builtins.attrNames module.flake.localOnlyChecks.test-system;
+                        application = builtins.attrNames module.flake.applicationChecks.test-system;
                         native = builtins.attrNames module.flake.ciChecks.test-system;
                     };
             in {
                 before = inspect { first = null; } {};
                 added = inspect { first = null; new-check = null; } {};
                 removed = inspect { new-check = null; } {};
+                application = inspect { photocraft-cli = null; photocraft-gui = null; photocraft-wayland = null; photocraft-licenses = null; photocraft-appstream = null; photocraft-host-tests-artifact = null; soundcraft-host-tests-artifact = null; craft-launcher-host-tests-artifact = null; craft-launcher-quit-state = null; craft-launcher-appimage-runtime = null; figcraft-server = null; artcraft-gui = null; } {};
                 newOwner = inspect { first = null; } { new-lint-check = null; };
             }
         """.replace("MODULE", json.dumps(str(MODULE)))
@@ -51,14 +53,34 @@ class CheckGroupTests(unittest.TestCase):
         self.assertEqual(result["removed"]["native"], ["new-check"])
         self.assertIn("new-lint-check", result["newOwner"]["lint"])
         self.assertNotIn("new-lint-check", result["newOwner"]["native"])
+        self.assertEqual(result["application"]["native"], [])
+        self.assertEqual(
+            result["application"]["application"],
+            [
+                "artcraft-gui",
+                "craft-launcher-appimage-runtime",
+                "craft-launcher-host-tests-artifact",
+                "craft-launcher-quit-state",
+                "figcraft-server",
+                "photocraft-appstream",
+                "photocraft-cli",
+                "photocraft-gui",
+                "photocraft-host-tests-artifact",
+                "photocraft-licenses",
+                "photocraft-wayland",
+                "soundcraft-host-tests-artifact",
+            ],
+        )
         for case in result.values():
             self.assertEqual(
                 set(case["all"]),
                 set(case["lint"])
                 | set(case["manual"])
                 | set(case["localOnly"])
-                | set(case["native"]),
+                | set(case["native"])
+                | set(case["application"]),
             )
+            self.assertFalse(set(case["application"]) & set(case["native"]))
             self.assertFalse(set(case["lint"]) & set(case["native"]))
             self.assertFalse(set(case["manual"]) & set(case["native"]))
             self.assertFalse(set(case["localOnly"]) & set(case["native"]))

@@ -13,17 +13,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/update-packages.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/update_packages.py"
 SPEC = importlib.util.spec_from_file_location("update_packages", SCRIPT)
 if SPEC is None or SPEC.loader is None:
-    raise RuntimeError("could not load update-packages.py")
+    raise RuntimeError("could not load update_packages.py")
 update_packages = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = update_packages
 SPEC.loader.exec_module(update_packages)
 
 
 class UpdateToolchainTests(unittest.TestCase):
-    def test_workflow_passes_locked_fetcher_only_to_t3(self) -> None:
+    def test_workflow_passes_package_to_dispatcher(self) -> None:
         workflow = SCRIPT.parents[1] / ".github/workflows/update-packages.yml"
         step = (
             workflow
@@ -35,7 +35,7 @@ class UpdateToolchainTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "scripts").mkdir()
-            (root / "scripts/update-packages.py").write_text(
+            (root / "scripts/update_packages.py").write_text(
                 "import json, pathlib, sys\npathlib.Path('arguments.json').write_text(json.dumps(sys.argv[1:]))\n"
             )
             binary = root / "bin"
@@ -51,7 +51,7 @@ class UpdateToolchainTests(unittest.TestCase):
                 "else:\n    raise SystemExit('unexpected Nix invocation')\n"
             )
             nix.chmod(0o755)
-            for package in ("t3-code", "apple-fonts"):
+            for package in ("bitwarden-desktop", "apple-fonts"):
                 with self.subTest(package=package):
                     result = subprocess.run(
                         ["bash", "-euo", "pipefail", "-c", shell],
@@ -69,15 +69,73 @@ class UpdateToolchainTests(unittest.TestCase):
                         result.returncode, 0, result.stdout + result.stderr
                     )
                     expected = ["--package", package]
-                    if package == "t3-code":
-                        expected += [
-                            "--",
-                            "--nixpkgs",
-                            "path:/nix/store/locked-package-nixpkgs",
-                        ]
                     self.assertEqual(
                         json.loads((root / "arguments.json").read_text()), expected
                     )
+
+
+class SnapshotTests(unittest.TestCase):
+    def test_native_command_separates_installable_from_updater_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "update.nix").write_text("{}: {}\n")
+            updater = update_packages._PackageUpdater("example", root / "update.py")
+            with patch.object(update_packages.subprocess, "run") as command:
+                command.return_value.returncode = 0
+                self.assertEqual(
+                    update_packages._run_updater(root, updater, ["--help"]), 0
+                )
+            arguments = command.call_args.args[0]
+            separator = arguments.index("--")
+            self.assertEqual(arguments[separator - 1], "updater")
+            self.assertEqual(
+                arguments[separator + 1 :], ["--package-dir", str(root), "--help"]
+            )
+            self.assertIn(
+                "updater = pkgs.callPackage", arguments[arguments.index("--expr") + 1]
+            )
+
+    def test_flake_reference_excludes_git_metadata_and_encodes_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "é ${value} #?"
+            root.mkdir()
+            self.assertEqual(
+                update_packages._flake_reference(root), str(root.resolve())
+            )
+            (root / ".git").mkdir()
+            reference = update_packages._flake_reference(root)
+            self.assertTrue(reference.startswith("git+file:///"))
+            self.assertIn("%C3%A9", reference)
+            self.assertIn("%24%7Bvalue%7D", reference)
+            self.assertIn("%23%3F", reference)
+            # Linked worktrees use a .git file rather than a directory.
+            (root / ".git").rmdir()
+            (root / ".git").write_text("gitdir: /example\n")
+            self.assertEqual(update_packages._flake_reference(root), reference)
+
+    def test_nix_path_quote_preserves_unicode_and_blocks_interpolation(self) -> None:
+        quoted = update_packages._nix_quote(Path('/example/é ${value}"'))
+        self.assertIn("é", quoted)
+        self.assertNotIn(r"\u00e9", quoted)
+        self.assertIn(r"\${value}", quoted)
+        self.assertIn(r"\"", quoted)
+
+    def test_already_dirty_files_and_untracked_contents_change_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="update-snapshot-") as temporary:
+            root = Path(temporary)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            tracked = root / "source.nix"
+            tracked.write_text("original")
+            subprocess.run(["git", "add", "source.nix"], cwd=root, check=True)
+            tracked.write_text("first dirty value")
+            first = update_packages._working_tree_snapshot(root)
+            tracked.write_text("different dirty value")
+            self.assertNotEqual(first, update_packages._working_tree_snapshot(root))
+            untracked = root / "deps.json"
+            untracked.write_text("first untracked value")
+            second = update_packages._working_tree_snapshot(root)
+            untracked.write_text("different untracked value")
+            self.assertNotEqual(second, update_packages._working_tree_snapshot(root))
 
 
 class PartialUpdateTests(unittest.TestCase):
@@ -176,7 +234,7 @@ class DiscoveryTests(unittest.TestCase):
         self.addCleanup(fixture.cleanup)
         self.root = Path(fixture.name)
         (self.root / "scripts").mkdir()
-        (self.root / "scripts/update-packages.py").write_text(SCRIPT.read_text())
+        (self.root / "scripts/update_packages.py").write_text(SCRIPT.read_text())
         for package in ("first", "second"):
             directory = self.root / f"pkgs/by-name/{package[:2]}/{package}"
             directory.mkdir(parents=True)

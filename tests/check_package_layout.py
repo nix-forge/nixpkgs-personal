@@ -8,12 +8,93 @@ import sys
 import tempfile
 from pathlib import Path
 
+from notification_process import run as run_command
+
 # These helpers deliberately remain package-local so copied packages are usable.
 # List intended copies explicitly; specialized Windows and emoji font inspectors
 # have separate behavior and do not belong to the Apple font helper group.
 HELPER_COPIES = {
+    "release_support.py": ("chatgpt-latest", "codex-latest"),
+    "run_update.py": (
+        "chatgpt-latest",
+        "codex-latest",
+        "anthropic-skills",
+        "apple-color-emoji",
+        "apple-fonts",
+        "audiomuse-ai",
+        "bitwarden-desktop",
+        "claude-desktop",
+        "jellyfin-plugin-moonbase",
+        "jellyfin-plugin-subtitle-extract",
+        "libreoffice",
+        "linearmouse",
+        "mattpocock-skills",
+        "microsoft-teams",
+        "moonfin",
+        "openai-skills",
+        "psscriptanalyzer",
+        "pstack-skills",
+        "rea",
+        "remindctl",
+        "spotify-spotx",
+        "steam",
+        "ttf-ms-win11-auto",
+        "vorssaint",
+        "wardrowbe-backend",
+        "wardrowbe-frontend",
+        "wootility",
+    ),
+    "update_transaction.py": (
+        "chatgpt-latest",
+        "codex-latest",
+        "anthropic-skills",
+        "apple-color-emoji",
+        "apple-fonts",
+        "audiomuse-ai",
+        "bitwarden-desktop",
+        "claude-desktop",
+        "jellyfin-plugin-moonbase",
+        "jellyfin-plugin-subtitle-extract",
+        "libreoffice",
+        "linearmouse",
+        "mattpocock-skills",
+        "microsoft-teams",
+        "moonfin",
+        "openai-skills",
+        "psscriptanalyzer",
+        "pstack-skills",
+        "rea",
+        "remindctl",
+        "spotify-spotx",
+        "steam",
+        "ttf-ms-win11-auto",
+        "vorssaint",
+        "wardrowbe-backend",
+        "wardrowbe-frontend",
+        "wootility",
+    ),
+    "update_nix.py": (
+        "audiomuse-ai",
+        "jellyfin-plugin-moonbase",
+        "jellyfin-plugin-subtitle-extract",
+        "psscriptanalyzer",
+    ),
+    "notification_process.py": (
+        "notification-process",
+        "chatgpt-latest",
+        "codex-latest",
+        "jellyfin-plugin-moonbase",
+        "jellyfin-plugin-subtitle-extract",
+        "moonfin",
+        "psscriptanalyzer",
+        "rea",
+        "wardrowbe-backend",
+        "wardrowbe-frontend",
+    ),
     "catalog.py": ("anthropic-skills", "openai-skills"),
     "update_support.py": (
+        "chatgpt-latest",
+        "codex-latest",
         "anthropic-skills",
         "apple-color-emoji",
         "apple-fonts",
@@ -23,13 +104,11 @@ HELPER_COPIES = {
         "linearmouse",
         "mattpocock-skills",
         "microsoft-teams",
-        "openai-codex-desktop",
         "openai-skills",
         "pstack-skills",
         "remindctl",
         "spotify-spotx",
         "steam",
-        "t3-code",
         "ttf-ms-win11-auto",
         "vorssaint",
         "wootility",
@@ -40,7 +119,7 @@ HELPER_COPIES = {
         "openai-skills",
         "pstack-skills",
     ),
-    "unpack.py": ("apple-fonts",),
+    "unpack_font_distribution.py": ("apple-fonts",),
     "font_support.py": ("apple-fonts",),
 }
 
@@ -48,6 +127,8 @@ HELPER_COPIES = {
 def check_helper_copies(root: Path) -> None:
     for filename, names in HELPER_COPIES.items():
         original = root / "pkgs/by-name" / names[0][:2] / names[0] / filename
+        if filename == "notification_process.py":
+            original = original.parent / "src" / filename
         expected = original.read_bytes()
         for name in names[1:]:
             copy = root / "pkgs/by-name" / name[:2] / name / filename
@@ -87,7 +168,7 @@ def check_packages(root: Path) -> None:
             updater = isolated / "update.py"
             if updater.exists():
                 environment = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
-                subprocess.run(
+                run_command(
                     [sys.executable, "-B", str(updater), "--help"],
                     cwd=temporary,
                     env=environment,

@@ -9,7 +9,7 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "build-affected.sh"
 RETRY = SCRIPT.with_name("build-with-fetch-retry.sh")
-PARTITION = SCRIPT.with_name("partition-packages.py")
+PARTITION = SCRIPT.with_name("partition_packages.py")
 WEIGHTS = SCRIPT.parents[1] / "ci-package-weights.json"
 
 
@@ -26,31 +26,22 @@ def commit(root):
 def package(path, name, version="1", description="before"):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        'let drv = builtins.derivation { name = "'
-        + name
-        + "-"
-        + version
-        + '"; system = "x86_64-linux"; builder = "/bin/sh"; }; '
-        + 'in drv // { meta.description = "'
-        + description
-        + '"; }\n'
+        (Path(__file__).with_name("fixtures") / "package.nix.in")
+        .read_text(encoding="utf-8")
+        .replace("@name@", name)
+        .replace("@version@", version)
+        .replace("@description@", description)
     )
 
 
-def flake(root, name, empty=False, invalid=False):
+def flake(root, name, empty=False, invalid=False, application=False):
     text = (
-        "{ outputs = { self }: { packages.x86_64-linux = { "
-        + (
-            ""
-            if empty
-            else name
-            + " = import ./pkgs/by-name/"
-            + name[:2]
-            + "/"
-            + name
-            + "/package.nix; "
-        )
-        + "other = import ./other.nix; }; }; }\n"
+        (Path(__file__).with_name("fixtures") / "flake.nix.in")
+        .read_text(encoding="utf-8")
+        .replace("@name@", name)
+        .replace("@prefix@", name[:2])
+        .replace("@empty@", "true" if empty else "false")
+        .replace("@application@", "true" if application else "false")
     )
     (root / "flake.nix").write_text("invalid nix syntax !!!" if invalid else text)
 
@@ -110,6 +101,7 @@ class BuildSelectionTests(unittest.TestCase):
             "missing-base",
             "diff-failure",
             "unchanged-contracts",
+            "application-contracts",
             "current-eval-failure",
             "evaluation-only",
             "unknown-policy-package",
@@ -172,6 +164,7 @@ class BuildSelectionTests(unittest.TestCase):
                     name,
                     empty=case == "new-package",
                     invalid=case == "base-eval-failure",
+                    application=case == "application-contracts",
                 )
                 if case == "registry-change":
                     registry = root / "flake/dev/packages.nix"
@@ -200,7 +193,12 @@ class BuildSelectionTests(unittest.TestCase):
                     else "1",
                     description="after",
                 )
-                flake(root, name, invalid=case == "current-eval-failure")
+                flake(
+                    root,
+                    name,
+                    invalid=case == "current-eval-failure",
+                    application=case == "application-contracts",
+                )
                 if case == "registry-change":
                     package(registry, "other", version="2")
                     entry.write_text(
@@ -221,23 +219,18 @@ class BuildSelectionTests(unittest.TestCase):
                 bindir = temp / "bin"
                 bindir.mkdir()
                 nix = bindir / "nix"
-                nix.write_text("""#!/usr/bin/env bash
-set -eu
-if [[ "$1" == build ]]; then
-    printf '%s\\n' "$*" >> "$BUILD_LOG"
-    exit 0
-fi
-exec "$REAL_NIX" "$@"
-""")
+                nix.write_text(
+                    (Path(__file__).with_name("fixtures") / "nix.sh").read_text(
+                        encoding="utf-8"
+                    )
+                )
                 nix.chmod(0o755)
                 git = bindir / "git"
-                git.write_text("""#!/usr/bin/env bash
-set -eu
-if [[ "$1" == diff && "$TEST_CASE" == diff-failure ]]; then
-    exit 128
-fi
-exec "$REAL_GIT" "$@"
-""")
+                git.write_text(
+                    (Path(__file__).with_name("fixtures") / "git.sh").read_text(
+                        encoding="utf-8"
+                    )
+                )
                 git.chmod(0o755)
                 log = temp / "build.log"
                 if case in {"no-base", "partitioned-maintainerr"}:
@@ -298,6 +291,27 @@ exec "$REAL_GIT" "$@"
                 elif case == "registry-change":
                     self.assertEqual(len(builds), 1, builds)
                     self.assertIn(".#other", builds[0])
+                elif case == "application-contracts":
+                    contracts = (
+                        "cli",
+                        "gui",
+                        "wayland",
+                        "licenses",
+                        "appstream",
+                        "wayland-clipboard",
+                        "server",
+                        "quit-state",
+                        "host-tests-artifact",
+                        "appimage-runtime",
+                    )
+                    self.assertEqual(len(builds), len(contracts), builds)
+                    for index, contract in enumerate(contracts):
+                        self.assertIn(
+                            f"applicationChecks.x86_64-linux.demo-{contract}",
+                            builds[index],
+                        )
+                    self.assertNotIn("other-cli", "\n".join(builds))
+                    self.assertIn("unchanged derivation", result.stdout)
                 elif case == "unchanged-contracts":
                     self.assertEqual(len(builds), 1, builds)
                     self.assertIn(

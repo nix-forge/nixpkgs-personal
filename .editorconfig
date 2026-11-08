@@ -11,8 +11,11 @@ trim_trailing_whitespace = true
 [*.py]
 indent_size = 4
 
-# clang-format owns C indentation and continuation alignment.
-[*.{c,h}]
+[*.rs]
+indent_size = 4
+
+# clang-format owns C and C++ indentation and continuation alignment.
+[*.{c,h,cpp,hpp}]
 indent_size = unset
 
 # Preserve unified-diff context markers.
@@ -21,3 +24,7 @@ trim_trailing_whitespace = false
 
 [.gitmodules]
 indent_style = tab
+
+# Cargo generates platform lockfiles with its own canonical indentation.
+[Cargo-*.lock]
+indent_size = unset

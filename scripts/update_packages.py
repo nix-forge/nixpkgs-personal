@@ -4,12 +4,16 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
+import stat
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -112,12 +116,55 @@ def _select_targets(
     return [updaters[name] for name in target_names]
 
 
+def _nix_quote(value: Path | str) -> str:
+    return json.dumps(str(value), ensure_ascii=False).replace("${", r"\${")
+
+
+def _flake_reference(repo_root: Path) -> str:
+    root = repo_root.resolve()
+    if (root / ".git").exists():
+        # A path flake can copy Git's sockets and other private metadata.
+        # Git sources include tracked working files and omit the .git directory.
+        return "git+file://" + quote(str(root), safe="/")
+    return str(root)
+
+
 def _run_updater(
     repo_root: Path,
     updater: _PackageUpdater,
     child_args: list[str],
 ) -> int:
-    cmd = [sys.executable, str(updater.script), *child_args]
+    wrapper = updater.script.with_name("update.nix")
+    forwarded = list(child_args)
+    if (
+        updater.name in {"wardrowbe-backend", "wardrowbe-frontend"}
+        and "--paired" not in forwarded
+    ):
+        forwarded.insert(0, "--paired")
+    if wrapper.is_file():
+        expression = (
+            f"let source = (builtins.getFlake {_nix_quote(_flake_reference(repo_root))}).inputs.nixpkgs; "
+            f"pkgs = import source {{}}; in "
+            f"{{ updater = pkgs.callPackage (builtins.toPath {_nix_quote(wrapper.resolve())}) {{}}; }}"
+        )
+        cmd = [
+            "nix",
+            "run",
+            "--impure",
+            "--no-update-lock-file",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "--expr",
+            expression,
+            "updater",
+            "--",
+            "--package-dir",
+            str(updater.script.parent),
+            *forwarded,
+        ]
+    else:
+        cmd = [sys.executable, str(updater.script), *forwarded]
     _stdout(f"==> Updating {updater.name}")
 
     completed = subprocess.run(cmd, cwd=repo_root, check=False)
@@ -133,13 +180,39 @@ def _print_summary(succeeded: list[str], failed: list[str]) -> None:
 
 
 def _working_tree_snapshot(repo_root: Path) -> bytes:
-    return subprocess.run(
-        ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+    # Discovery runs before the workflow installs native updater dependencies.
+    from notification_process import run as run_command  # ruff: ignore[import-outside-top-level] - Discovery uses only the standard library.
+
+    status = run_command(
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
         cwd=repo_root,
         capture_output=True,
         check=True,
         timeout=30,
     ).stdout
+    names = run_command(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        timeout=30,
+    ).stdout
+    digest = hashlib.sha256(status)
+    for name in sorted(set(names.split(b"\0")) - {b""}):
+        path = repo_root / os.fsdecode(name)
+        digest.update(name + b"\0")
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            digest.update(b"deleted\0")
+            continue
+        digest.update(str(metadata.st_mode).encode() + b"\0")
+        if stat.S_ISLNK(metadata.st_mode):
+            digest.update(os.fsencode(path.readlink()) + b"\0")
+        elif stat.S_ISREG(metadata.st_mode):
+            with path.open("rb") as stream:
+                digest.update(hashlib.file_digest(stream, "sha256").digest())
+    return digest.digest()
 
 
 def _list_updaters(

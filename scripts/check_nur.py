@@ -11,6 +11,8 @@ import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from notification_process import run as run_command
+
 ROOT = Path(__file__).resolve().parents[1]
 NUR_REVISION = "c9d28a9dc181899c9df1390804837b28cff3b0ae"
 
@@ -31,7 +33,7 @@ def registration(path: Path) -> tuple[str, dict[str, str]]:
 
 def source_info(reference: str) -> dict[str, str]:
     """Fetch a source tree before entering restricted evaluation."""
-    result = subprocess.run(
+    result = run_command(
         ["nix", "flake", "prefetch", "--json", reference],
         timeout=180,
         check=True,
@@ -57,7 +59,7 @@ def main() -> None:
     # Resolve moving branches once, then fetch that exact revision. Lazy-tree Nix
     # metadata may omit its store path and NAR hash until explicitly prefetched.
     metadata = json.loads(
-        subprocess.run(
+        run_command(
             ["nix", "flake", "metadata", "--json", "--no-write-lock-file", reference],
             timeout=180,
             check=True,
@@ -76,7 +78,8 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="nur-eval-") as directory:
-        temp = Path(directory)
+        # Restricted evaluation checks canonical paths, including macOS /tmp aliases.
+        temp = Path(directory).resolve()
         arguments = temp / "args.json"
         arguments.write_text(
             json.dumps({
@@ -125,7 +128,7 @@ def main() -> None:
         ]
         # Match NUR's policy, including no inherited allowUnfree or user config.
         with (args.output / "index.xml").open("w") as output:
-            subprocess.run(
+            run_command(
                 command,
                 check=True,
                 text=True,
@@ -142,7 +145,7 @@ def main() -> None:
         if count == 0:
             raise RuntimeError("NUR evaluation returned no package entries")
 
-    result = subprocess.run(
+    result = run_command(
         [
             "nix-instantiate",
             "--eval",

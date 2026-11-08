@@ -17,13 +17,11 @@ _: {
       };
       documentationSite =
         pkgs.runCommand "nixpkgs-personal-documentation-site" { nativeBuildInputs = [ mkdocs ]; }
-          ''
-            cp -R ${source}/. source
-            chmod -R u+w source
-            mkdocs build --config-file source/site/mkdocs.yml --site-dir "$out" --strict
-            test -s "$out/index.html"
-            test -s "$out/search/search_index.json"
-          '';
+          (
+            (import ../../lib/render-text.nix) ./scripts/nixpkgs-personal-documentation-site.sh {
+              inherit source;
+            }
+          );
     in
     {
       checks = lib.optionalAttrs (system == "x86_64-linux") { documentation-site = documentationSite; };

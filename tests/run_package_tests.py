@@ -1,9 +1,10 @@
 """Run package Python tests in separate processes to isolate local module names."""
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
+
+from notification_process import run as run_command
 
 
 def main(root: Path) -> None:
@@ -12,18 +13,19 @@ def main(root: Path) -> None:
         if not list(package.glob("test_*.py")):
             continue
         print(f"Testing {package.name}", flush=True)
-        subprocess.run(
+        run_command(
             [
                 sys.executable,
                 "-B",
                 "-m",
-                "unittest",
-                "discover",
-                "-s",
-                str(package),
+                "pytest",
+                "-q",
                 "-p",
-                "test_*.py",
+                "no:cacheprovider",
+                "--import-mode=importlib",
+                str(package),
             ],
+            cwd=package,
             check=True,
             timeout=120,
         )

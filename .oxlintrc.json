@@ -1,14 +1,52 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["unicorn", "oxc", "import"],
+  "plugins": ["unicorn", "typescript", "oxc", "import"],
   "categories": {
     "correctness": "error",
     "perf": "warn",
     "suspicious": "warn"
   },
   "rules": {
-    "eslint/no-console": "off"
+    "eslint/no-console": "off",
+    "eslint/no-underscore-dangle": [
+      "warn",
+      {
+        "allow": ["_id"]
+      }
+    ]
   },
+  "overrides": [
+    {
+      "files": [
+        "pkgs/by-name/ho/homelab-iot-scripts/scrypted-plugin-marker.cts",
+        "pkgs/by-name/ho/homelab-iot-scripts/scrypted-plugin-install.cts",
+        "pkgs/by-name/fe/feishin-managed/mpv-now-playing.cts"
+      ],
+      "rules": {
+        "eslint/no-await-in-loop": "off"
+      }
+    },
+    {
+      "files": [
+        "pkgs/by-name/**/scripts/check_node_modules.mts",
+        "tests/check_node_modules.mts",
+        "pkgs/by-name/re/rea/scripts/check-install.mts"
+      ],
+      "rules": {
+        "eslint/no-await-in-loop": "off"
+      }
+    },
+    {
+      "files": [
+        "pkgs/by-name/ho/homebridge-samsung-tizen/scripts/strict-power.mts",
+        "pkgs/by-name/ho/homebridge-samsung-tizen/scripts/actual-consumer-check.mts"
+      ],
+      "rules": {
+        "eslint/no-await-in-loop": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["pkgs/by-name/**/*.test.mts"],
   "env": {
     "node": true
   }

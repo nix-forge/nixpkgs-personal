@@ -1,0 +1,8 @@
+let
+  drv = builtins.derivation {
+    name = "@name@-@version@";
+    system = "x86_64-linux";
+    builder = "/bin/sh";
+  };
+in
+drv // { meta.description = "@description@"; }

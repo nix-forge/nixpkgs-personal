@@ -52,7 +52,7 @@ if [[ -z $targets ]]; then
   exit 0
 fi
 
-targets=$(printf '%s\n' "$targets" | python3 .github/scripts/partition-packages.py \
+targets=$(printf '%s\n' "$targets" | python3 .github/scripts/partition_packages.py \
   --count "$partition_count" --index "$partition_index" \
   --weights .github/ci-package-weights.json)
 if [[ -z $targets ]]; then
@@ -72,6 +72,8 @@ if [[ $base_available == true ]]; then
     base_derivations='{}'
   fi
 fi
+
+application_checks=$(nix eval --option allow-import-from-derivation false --json ".#applicationChecks.$SYSTEM" --apply builtins.attrNames)
 
 while IFS= read -r package; do
   [[ -n $package ]] || continue
@@ -96,5 +98,12 @@ while IFS= read -r package; do
       ".#checks.$SYSTEM.openai-codex-desktop-updater" \
       ".#checks.$SYSTEM.openai-codex-desktop-package-contract"
   fi
+  for contract in "$package-cli" "$package-gui" "$package-wayland" "$package-licenses" "$package-appstream" "$package-wayland-clipboard" "$package-server" "$package-quit-state" "$package-host-tests-artifact" "$package-appimage-runtime"; do
+    if jq -e --arg contract "$contract" 'index($contract) != null' <<<"$application_checks" >/dev/null; then
+      bash .github/scripts/build-with-fetch-retry.sh \
+        nix build --no-link ".#applicationChecks.$SYSTEM.$contract" \
+        --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
+    fi
+  done
   echo "::endgroup::"
 done <<<"$targets"

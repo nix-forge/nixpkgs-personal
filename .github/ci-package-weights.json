@@ -1,6 +1,20 @@
 {
   "default": 1,
   "weights": {
-    "maintainerr": 100
+    "cadcraft": 25,
+    "craft-launcher": 25,
+    "deckcraft": 25,
+    "designcraft": 25,
+    "effectcraft": 25,
+    "figcraft": 25,
+    "filmcraft": 25,
+    "gridcraft": 25,
+    "lightcraft": 25,
+    "maintainerr": 100,
+    "pdfcraft": 25,
+    "photocraft": 25,
+    "soundcraft": 25,
+    "vectorcraft": 25,
+    "wordcraft": 25
   }
 }

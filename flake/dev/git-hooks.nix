@@ -9,36 +9,39 @@
       ...
     }:
     let
-      checkPython = pkgs.python3.withPackages (
-        ps: with ps; [
-          fonttools
-          lxml
-          pillow
-          pyyaml
-          selenium
-          uharfbuzz
-          websocket-client
-        ]
-      );
-      evaluationCheck = pkgs.writeShellApplication {
-        name = "package-evaluation-check";
-        text = ''
-          # A fresh filtered source needs materialization before a read-only check.
-          nix store add-path flake/dev >/dev/null
-          nix eval --option allow-import-from-derivation false --json .#checks --apply 'builtins.mapAttrs (_: checks: builtins.mapAttrs (_: check: check.drvPath) checks)' >/dev/null
-          nix flake check --all-systems --no-build --option allow-import-from-derivation false
-        '';
+      checkPython = import ./quality-python.nix { pkgs = pkgs.buildPackages; };
+      javascriptTools = import ./javascript-tools.nix { pkgs = pkgs.buildPackages; };
+      javascriptLint = pkgs.buildPackages.writeShellApplication {
+        name = "package-typescript-lint";
+        runtimeInputs = [
+          pkgs.buildPackages.coreutils
+          pkgs.buildPackages.findutils
+          pkgs.buildPackages.nodejs_24
+        ];
+        text = (import ../../lib/render-text.nix) ./scripts/javascript-lint.sh.in {
+          javascript_tools = javascriptTools;
+          npm = lib.getExe' pkgs.buildPackages.nodejs_24 "npm";
+          oxlint = lib.getExe javascriptTools;
+        };
       };
-      pythonCompile = pkgs.writeShellApplication {
+      evaluationCheck = pkgs.buildPackages.writeShellApplication {
+        name = "package-evaluation-check";
+        runtimeInputs = [
+          pkgs.buildPackages.jq
+          pkgs.buildPackages.bash
+        ];
+        text = builtins.readFile ./scripts/package-evaluation-check.sh;
+      };
+      pythonCompile = pkgs.buildPackages.writeShellApplication {
         name = "package-python-compile";
-        text = ''
-          cache="$(${lib.getExe' pkgs.coreutils "mktemp"} -d)"
-          trap '${lib.getExe' pkgs.coreutils "rm"} -rf -- "$cache"' EXIT
-          PYTHONPYCACHEPREFIX="$cache" ${lib.getExe pkgs.python3} -m compileall -q .github scripts pkgs tests
-        '';
+        text = (import ../../lib/render-text.nix) ./scripts/package-python-compile.sh {
+          lib_getExe_pkgs_coreutils_mktemp = lib.getExe' pkgs.buildPackages.coreutils "mktemp";
+          lib_getExe_pkgs_coreutils_rm = lib.getExe' pkgs.buildPackages.coreutils "rm";
+          lib_getExe_pkgs_python3 = lib.getExe pkgs.buildPackages.python3;
+        };
       };
       hookSettings = {
-        package = pkgs.prek;
+        package = pkgs.buildPackages.prek;
         hooks = {
           treefmt = {
             enable = true;
@@ -51,24 +54,24 @@
           pinact = {
             enable = true;
             name = "pinact";
-            entry = "${lib.getExe pkgs.pinact} run --fix=false --no-api";
+            entry = "${lib.getExe pkgs.buildPackages.pinact} run --fix=false --no-api";
             language = "system";
             files = "^\\.github/workflows/.*\\.ya?ml$";
             after = [ "treefmt" ];
           };
           oxlint = {
             enable = true;
-            name = "Oxlint";
-            entry = "${lib.getExe pkgs.oxlint} --config .oxlintrc.json --deny-warnings .";
+            name = "TypeScript and Oxlint";
+            entry = lib.getExe javascriptLint;
             language = "system";
-            extraPackages = [ pkgs.oxlint ];
-            files = "(^\\.oxlintrc\\.json$|\\.[cm]?[jt]sx?$)";
+            extraPackages = [ javascriptTools ];
+            files = "(\\.[cm]?[jt]sx?$|(^|/)(tsconfig|application-types|projects|\\.oxlintrc|package(-lock)?)\\.json$)";
             pass_filenames = false;
             after = [ "treefmt" ];
           };
           ruff-format = {
             enable = true;
-            entry = "${lib.getExe pkgs.ruff} format --check .";
+            entry = "${lib.getExe pkgs.buildPackages.ruff} format --check .";
             language = "system";
             always_run = true;
             pass_filenames = false;
@@ -76,7 +79,7 @@
           };
           ruff = {
             enable = true;
-            entry = "${lib.getExe pkgs.ruff} check .";
+            entry = "${lib.getExe pkgs.buildPackages.ruff} check .";
             language = "system";
             always_run = true;
             pass_filenames = false;
@@ -84,7 +87,7 @@
           };
           ty = {
             enable = true;
-            entry = "${lib.getExe pkgs.ty} check --python ${lib.getExe checkPython}";
+            entry = "${lib.getExe pkgs.buildPackages.ty} check --python ${lib.getExe checkPython}";
             language = "system";
             always_run = true;
             pass_filenames = false;
@@ -116,7 +119,15 @@
           check-case-conflicts.enable = true;
           check-added-large-files.enable = true;
           check-executables-have-shebangs.enable = true;
-          check-shebang-scripts-are-executable.enable = true;
+          check-shebang-scripts-are-executable = {
+            enable = true;
+            # Rendered launcher templates are not directly executable source files.
+            # Rust crate attributes also begin with #! without a script shebang.
+            excludes = [
+              ".*\\.sh\\.in$"
+              ".*\\.rs$"
+            ];
+          };
           fix-byte-order-marker.enable = true;
           check-json.enable = true;
           check-toml.enable = true;
@@ -127,7 +138,7 @@
           typos = {
             enable = true;
             # The upstream hook's generated empty [default] table overrides configPath.
-            entry = "${lib.getExe pkgs.typos} --config .typos.toml --force-exclude";
+            entry = "${lib.getExe pkgs.buildPackages.typos} --config .typos.toml --force-exclude";
           };
           zizmor = {
             enable = true;
@@ -136,8 +147,8 @@
           gitleaks = {
             enable = true;
             name = "Gitleaks";
-            entry = "${lib.getExe pkgs.gitleaks} git --pre-commit --staged --redact --no-banner --config=.gitleaks.toml";
-            # The entry supplies the complete command; replace upstream default arguments.
+            entry = "${lib.getExe pkgs.buildPackages.gitleaks} git --pre-commit --staged --redact --no-banner --config=.gitleaks.toml";
+            # The complete entry owns its arguments; do not append hook defaults.
             args = [ ];
             language = "system";
             always_run = true;
@@ -164,8 +175,12 @@
         check.enable = false;
         settings = hookSettings;
       };
-      checks.pre-commit = inputs.git-hooks-nix.lib.${system}.run (
-        hookSettings // { src = inputs.self.outPath; }
-      );
+      checks.pre-commit =
+        (inputs.git-hooks-nix.lib.${system}.run (hookSettings // { src = inputs.self.outPath; }))
+        .overrideAttrs
+          {
+            # Sandbox checks use pipes; interactive hooks keep their default colors.
+            PREK_COLOR = "never";
+          };
     };
 }

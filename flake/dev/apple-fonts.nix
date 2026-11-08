@@ -46,25 +46,19 @@ _: {
               pkgs.fontconfig
             ];
           }
-          ''
-            export FONT_FIXTURE=${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf
-            export FONTCONFIG_FILE=${../../pkgs/by-name/ap/apple-fonts/fonts.conf}
-            export XDG_CACHE_HOME="$TMPDIR/cache"
-            cp -r ${
-              pkgs.lib.fileset.toSource {
+          (
+            (import ../../lib/render-text.nix) ./scripts/apple-font-tooling-tests.sh {
+              pkgs_dejavu_fonts = pkgs.dejavu_fonts;
+              pkgs_by_name_ap_apple_fonts_fonts_conf = ../../pkgs/by-name/ap/apple-fonts/fonts.conf;
+              pkgs_lib_fileset_toSource_root_fileset_pkgs_lib_fileset_union = pkgs.lib.fileset.toSource {
                 root = ../..;
                 fileset = pkgs.lib.fileset.unions [
                   ../../pkgs/by-name/ap/apple-fonts
                   ../../pkgs/by-name/ap/apple-color-emoji
                   ../../pkgs/by-name/tt/ttf-ms-win11-auto
                 ];
-              }
-            } source
-            chmod -R u+w source
-            python3 -B -m unittest discover -s source/pkgs/by-name/ap/apple-fonts -p test_fonts.py
-            python3 -B -m unittest discover -s source/pkgs/by-name/ap/apple-color-emoji -p test_update.py
-            python3 -B -m unittest discover -s source/pkgs/by-name/tt/ttf-ms-win11-auto -p test_manifest.py
-            touch "$out"
-          '';
+              };
+            }
+          );
     };
 }

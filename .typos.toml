@@ -1,12 +1,86 @@
 files.extend-exclude = ["flake.lock", "flake/dev/flake.lock", ".git/**"]
 
+[default]
+# Git patch index lines contain hexadecimal blob IDs, not prose.
+extend-ignore-re = ['(?m)^index [0-9a-f]+\.\.[0-9a-f]+(?: [0-7]{6})?$']
+
 [default.extend-words]
-intoto = "intoto" # SLSA provenance asset filename suffix.
+certifi = "certifi" # Python trust-store package name and its source pin fields.
+intoto = "intoto"   # SLSA provenance asset filename suffix.
 # The MPRIS signal name is fixed by its D-Bus interface.
 Seeked = "Seeked"
 Produkt = "Produkt" # Apple-distributed font family and its PostScript identifiers.
 constan = "constan" # Upstream Microsoft font filename, constan.ttf.
 wdth = "wdth"       # Registered OpenType width-axis tag in upstream font filenames.
+nd = "nd"           # Navidrome's nd-lyrics plugin package and archive name.
+tema = "tema"       # Italian text for “theme” in Wardrowbe translations.
 
 [default.extend-identifiers]
-Seeked = "Seeked" # MPRIS signal name; preserve its protocol spelling.
+Seeked = "Seeked"         # MPRIS signal name; preserve its protocol spelling.
+TPE1 = "TPE1"             # ID3 lead-performer frame name from Mutagen.
+TPE2 = "TPE2"             # ID3 band/orchestra frame name from Mutagen.
+RTA_OIF = "RTA_OIF"       # Linux netlink output-interface attribute constant.
+WRONLY = "WRONLY"         # Rustix write-only open flag; typos must not rewrite it.
+UPnP = "UPnP"             # Universal Plug and Play protocol name.
+UPnPClient = "UPnPClient" # Upstream Samsung client API identity.
+EnableUPnP = "EnableUPnP" # Jellyfin configuration element.
+PNGs = "PNGs"             # Plural of the PNG image format.
+
+[type.wardrowbe-translations]
+extend-glob = ["outfit-browsing.patch"]
+
+[type.wardrowbe-translations.extend-words]
+# Preserve reviewed German, French, and Italian interface translations.
+unter = "unter"
+Remplacement = "Remplacement"
+sur = "sur"
+Impossibile = "Impossibile"
+
+[type.photocraft-shortcut]
+extend-glob = ["headless-shortcut-test.patch"]
+# The upstream negative assertion deliberately rejects this truncated message.
+extend-ignore-re = ['"ontrol"']
+
+[type.craft-branding-translations]
+extend-glob = ["remove-restricted-marks.patch"]
+
+[type.craft-branding-translations.extend-words]
+# Preserve German, French, Portuguese, Spanish and Polish upstream translations.
+Alle = "Alle"
+Apparence = "Apparence"
+Deine = "Deine"
+Sie = "Sie"
+Visiter = "Visiter"
+als = "als"
+atual = "atual"
+complet = "complet"
+ein = "ein"
+ist = "ist"
+limite = "limite"
+manuell = "manuell"
+versiones = "versiones"
+nowe = "nowe"
+ser = "ser"
+sur = "sur"
+
+[type.hyprlock-cleanup]
+extend-glob = ["ordered-graphics-cleanup.patch"]
+
+[type.hyprlock-cleanup.extend-identifiers]
+# Keep upstream thread names and the existing lock-state member spelling.
+pollThr = "pollThr"
+timersThr = "timersThr"
+m_lockAquired = "m_lockAquired"
+
+[type.pdfcraft-native-fonts]
+extend-glob = ["native-script-fonts.patch"]
+
+[type.pdfcraft-native-fonts.extend-identifiers]
+flate2 = "flate2" # Rust compression crate name.
+
+[type.craft-atomic-state]
+extend-glob = ["atomic-state-upstream-314.patch"]
+
+[type.craft-atomic-state.extend-identifiers]
+# ron::ser is the upstream Rust serialization namespace.
+ser = "ser"
