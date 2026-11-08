@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024", "DOM"],
+    "types": ["node"],
+    "strict": true,
+    "noEmitOnError": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": false,
+    "noEmit": true,
+    "allowJs": false,
+    "checkJs": false,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "noPropertyAccessFromIndexSignature": true
+  },
+  "files": [
+    "src/utils/browser-auth.mts",
+    "src/utils/media-policy.mts",
+    "src/store/authState.mts",
+    "src/components/Article/ArticleImageGallery.tsx",
+    "images.test.mts"
+  ]
+}

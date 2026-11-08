@@ -1,0 +1,31 @@
+diff --git a/vite.config.js b/vite.config.js
+--- a/vite.config.js
++++ b/vite.config.js
+@@ -35,6 +35,14 @@
+     react(),
+     babel({
+       presets: [reactCompilerPreset()],
++      // The Babel adapter only selects its TypeScript parser for .ts and .tsx.
++      // Keep the compiler enabled for native ESM and CommonJS TypeScript too.
++      overrides: [
++        {
++          test: /\.[cm]ts(?:$|\?)/,
++          parserOpts: { plugins: ["typescript"] },
++        },
++      ],
+     }),
+     VitePWA({
+       registerType: "autoUpdate",
+diff --git a/jsconfig.json b/jsconfig.json
+--- a/jsconfig.json
++++ b/jsconfig.json
+@@ -1,8 +1,7 @@
+ {
+   "compilerOptions": {
+-    "baseUrl": "./",
+     "paths": {
+-      "@/*": ["src/*"]
++      "@/*": ["./src/*"]
+     }
+   }
+ }

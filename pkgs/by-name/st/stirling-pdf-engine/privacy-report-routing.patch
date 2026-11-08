@@ -1,0 +1,26 @@
+--- orchestrator.py
++++ orchestrator.py
+@@ -1,6 +1,7 @@
+ from __future__ import annotations
+ 
+ import logging
++import re
+ from dataclasses import dataclass
+ from typing import Literal, assert_never
+ 
+@@ -178,6 +179,15 @@
+         )
+         if request.resume_with is not None:
+             return await self._resume(request, request.resume_with)
++        # A requested written privacy report is an answer, even when the
++        # user says "review" or "redaction". The local router otherwise may
++        # choose PDF comments and return a modified file instead of the table.
++        if re.search(r"\b(?:privacy|redact(?:ion|ed|ing)?)\b", request.user_message, re.IGNORECASE) and re.search(
++            r"\b(?:return|provide|give|list)\b.{0,80}\b(?:page.by.page|table)\b",
++            request.user_message,
++            re.IGNORECASE | re.DOTALL,
++        ):
++            return await self._run_pdf_question(request)
+         if self._router is not None:
+             return await self._route_and_dispatch(request)
+         result = await self.agent.run(

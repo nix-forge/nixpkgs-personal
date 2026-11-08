@@ -1,0 +1,1161 @@
+diff --git a/app/dashboard/outfits/[id]/page.tsx b/app/dashboard/outfits/[id]/page.tsx
+--- a/app/dashboard/outfits/[id]/page.tsx
++++ b/app/dashboard/outfits/[id]/page.tsx
+@@ -3,7 +3,7 @@
+ import { useState } from 'react';
+ import Link from 'next/link';
+ import Image from 'next/image';
+-import { useParams, useRouter } from 'next/navigation';
++import { useParams, useRouter, useSearchParams } from 'next/navigation';
+ import { useLocale, useTranslations } from 'next-intl';
+ import {
+   BookmarkPlus,
+@@ -41,6 +41,10 @@
+   const locale = useLocale();
+   const router = useRouter();
+   const params = useParams<{ id: string }>();
++  const searchParams = useSearchParams();
++  const requestedReturn = searchParams.get('returnTo');
++  const returnHref = requestedReturn === '/dashboard/outfits' || requestedReturn?.startsWith('/dashboard/outfits?')
++    ? requestedReturn : '/dashboard/outfits';
+   const outfitId = params?.id;
+ 
+   const { data: outfit, isLoading } = useOutfit(outfitId);
+@@ -84,7 +88,7 @@
+     try {
+       await deleteMutation.mutateAsync(outfit.id);
+       toast.success(t('detail.deleted'));
+-      router.push('/dashboard/outfits');
++      router.push(returnHref);
+     } catch (error) {
+       toast.error(getErrorMessage(error, t('detail.deleteError')));
+     }
+@@ -96,7 +100,7 @@
+     <div className="space-y-6 max-w-4xl mx-auto">
+       <div className="flex items-center justify-between gap-4">
+         <Button variant="ghost" size="sm" asChild>
+-          <Link href="/dashboard/outfits">
++          <Link href={returnHref}>
+             <ChevronLeft className="h-4 w-4 mr-1" />
+             {t('detail.backToOutfits')}
+           </Link>
+@@ -166,10 +170,10 @@
+                 <div className="relative aspect-square rounded-lg overflow-hidden border bg-muted">
+                   {item.thumbnail_url || item.image_url ? (
+                     <Image
+-                      src={(item.thumbnail_url || item.image_url)!}
++                      src={(item.image_url || item.thumbnail_url)!}
+                       alt={item.name || typeLabel(item.type)}
+                       fill
+-                      className="object-cover transition-transform group-hover:scale-105"
++                      className="object-contain p-2"
+                       sizes="(max-width: 640px) 33vw, 20vw"
+                     />
+                   ) : (
+@@ -180,7 +184,7 @@
+                     </div>
+                   )}
+                 </div>
+-                <p className="text-xs text-muted-foreground mt-1 truncate">
++                <p className="text-xs text-muted-foreground mt-1 line-clamp-2" title={item.name || typeLabel(item.type)}>
+                   {item.name || typeLabel(item.type)}
+                 </p>
+               </Link>
+diff --git a/app/dashboard/outfits/page.tsx b/app/dashboard/outfits/page.tsx
+--- a/app/dashboard/outfits/page.tsx
++++ b/app/dashboard/outfits/page.tsx
+@@ -13,16 +13,17 @@
+ import { Input } from '@/components/ui/input';
+ import { Skeleton } from '@/components/ui/skeleton';
+ import { OutfitCard } from '@/components/outfits/outfit-card';
++import { OutfitPagination } from '@/components/outfits/outfit-pagination';
+ import { OutfitCalendar } from '@/components/outfit-calendar';
+ import { BulkActionToolbar, BulkSelection } from '@/components/bulk-action-toolbar';
+ import {
+   useBulkDeleteOutfits,
+   useCalendarOutfits,
+-  useInfiniteOutfits,
+   useOutfits,
+   type BulkOutfitOperationParams,
+   type Outfit,
+   type OutfitFilters,
++  type OutfitListResponse,
+ } from '@/lib/hooks/use-outfits';
+ import { cn, formatDateKey, formatShortDate, parseDateString } from '@/lib/utils';
+ import { useOccasionsMatching } from '@/lib/hooks/use-translated-constants';
+@@ -139,7 +140,9 @@
+   const locale = useLocale();
+   const router = useRouter();
+   const searchParams = useSearchParams();
+-  const rawFilter = (searchParams.get('filter') as FilterChip) || 'all';
++  const queryString = searchParams.toString();
++  const requestedFilter = searchParams.get('filter') as FilterChip;
++  const rawFilter = CHIP_ORDER.includes(requestedFilter) ? requestedFilter : 'all';
+   const urlView: ViewMode = searchParams.get('view') === 'calendar' ? 'calendar' : 'list';
+   const urlFilter: FilterChip =
+     urlView === 'calendar' && rawFilter === 'my-looks' ? 'all' : rawFilter;
+@@ -147,8 +150,11 @@
+   const view: ViewMode = urlView;
+   const urlMonth = parseMonthParam(searchParams.get('month'));
+ 
+-  const [search, setSearch] = useState('');
+-  const [debouncedSearch, setDebouncedSearch] = useState('');
++  const urlSearch = searchParams.get('search') ?? '';
++  const requestedPage = Number(searchParams.get('page') ?? 1);
++  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
++  const [search, setSearch] = useState(urlSearch);
++  const [lastGood, setLastGood] = useState<{ key: string; data: OutfitListResponse } | null>(null);
+   const [defaultChecked, setDefaultChecked] = useState(false);
+   const todayKey = useUserToday()();
+   // Null until the user or URL picks a month, so that the calendar follows the profile timezone
+@@ -173,25 +179,36 @@
+     }
+   }, [urlMonth, monthRef.year, monthRef.month]);
+ 
++  useEffect(() => setSearch(urlSearch), [urlSearch]);
+   useEffect(() => {
+-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
++    if (search === urlSearch) return;
++    const timer = setTimeout(() => {
++      const params = new URLSearchParams(queryString);
++      if (search) params.set('search', search); else params.delete('search');
++      params.delete('page');
++      router.replace(`/dashboard/outfits${params.size ? `?${params}` : ''}`, { scroll: false });
++    }, 300);
+     return () => clearTimeout(timer);
+-  }, [search]);
++  }, [search, urlSearch, queryString, router]);
+ 
+   const occasionsMatching = useOccasionsMatching();
+   const filters = useMemo(
+-    () => chipToFilters(chip, debouncedSearch, occasionsMatching(debouncedSearch)),
+-    [chip, debouncedSearch, occasionsMatching],
++    () => chipToFilters(chip, urlSearch, occasionsMatching(urlSearch)),
++    [chip, urlSearch, occasionsMatching],
+   );
+ 
+-  const listQuery = useInfiniteOutfits(filters, GRID_PAGE_SIZE);
++  const listQuery = useOutfits(filters, page, GRID_PAGE_SIZE, view === 'list');
++  const filterKey = JSON.stringify(filters);
++  useEffect(() => {
++    if (listQuery.data && !listQuery.isPlaceholderData) setLastGood({ key: filterKey, data: listQuery.data });
++  }, [listQuery.data, listQuery.isPlaceholderData, filterKey]);
+   const bulkDeleteOutfits = useBulkDeleteOutfits();
+ 
+   // Clear selection when filters change, but not when another page loads, so that a selection
+   // can span loaded pages.
+   useEffect(() => {
+     setSelection({ mode: 'none', selectedIds: new Set(), excludedIds: new Set() });
+-  }, [chip, debouncedSearch]);
++  }, [chip, urlSearch]);
+ 
+   useEffect(() => {
+     if (view === 'calendar') {
+@@ -203,9 +220,10 @@
+     monthRef.year,
+     monthRef.month,
+     view === 'calendar' ? filters : {},
++    view === 'calendar',
+   );
+ 
+-  const lookbookProbe = useOutfits({ is_lookbook: true }, 1, 1);
++  const lookbookProbe = useOutfits({ is_lookbook: true }, 1, 1, !defaultChecked && view === 'list');
+ 
+   useEffect(() => {
+     if (defaultChecked) return;
+@@ -232,6 +250,7 @@
+       const params = new URLSearchParams(searchParams.toString());
+ 
+       if ('filter' in next) {
++        params.delete('page');
+         if (!next.filter || next.filter === 'all') {
+           params.delete('filter');
+         } else {
+@@ -269,6 +288,7 @@
+     } else {
+       params.set('filter', next);
+     }
++    params.delete('page');
+     setSelectedDate(null);
+     router.replace(
+       `/dashboard/outfits${params.toString() ? `?${params}` : ''}`,
+@@ -305,18 +325,35 @@
+     updateQuery({ month: nextRef });
+   };
+ 
+-  const calendarOutfits: Outfit[] = calendarQuery.data?.outfits ?? [];
++  const calendarOutfits = useMemo<Outfit[]>(() => calendarQuery.data?.outfits ?? [], [calendarQuery.data?.outfits]);
+   const dateSet = useMemo(() => outfitDateSet(calendarOutfits), [calendarOutfits]);
+   const dateMap = useMemo(() => outfitsByDate(calendarOutfits), [calendarOutfits]);
+   const selectedDayOutfits: Outfit[] = selectedDate
+     ? dateMap.get(selectedDate) ?? []
+     : [];
+ 
+-  const outfits = useMemo(
+-    () => listQuery.data?.pages.flatMap((page) => page.outfits) ?? [],
+-    [listQuery.data],
+-  );
+-  const total = listQuery.data?.pages[0]?.total ?? 0;
++  const listData = listQuery.data ?? (lastGood?.key === filterKey ? lastGood.data : undefined);
++  const outfits = listData?.outfits ?? [];
++  const total = listData?.total ?? 0;
++  const visiblePage = listData?.page ?? page;
++  const totalPages = Math.max(1, Math.ceil(total / GRID_PAGE_SIZE));
++  const handlePageChange = (next: number) => {
++    if (listQuery.isFetching) return;
++    if (next === page && listQuery.isError) { void listQuery.refetch(); return; }
++    const params = new URLSearchParams(queryString);
++    if (next > 1) params.set('page', String(next)); else params.delete('page');
++    router.push(`/dashboard/outfits${params.size ? `?${params}` : ''}`, { scroll: true });
++  };
++  useEffect(() => {
++    if (view !== 'list' || !listQuery.data || listQuery.isPlaceholderData || page <= Math.max(1, Math.ceil(listQuery.data.total / GRID_PAGE_SIZE))) return;
++    const params = new URLSearchParams(queryString);
++    const last = Math.max(1, Math.ceil(listQuery.data.total / GRID_PAGE_SIZE));
++    if (last > 1) params.set('page', String(last)); else params.delete('page');
++    router.replace(`/dashboard/outfits${params.size ? `?${params}` : ''}`);
++  }, [view, listQuery.data, listQuery.isPlaceholderData, page, queryString, router]);
++  const returnParams = new URLSearchParams(queryString);
++  if (visiblePage > 1) returnParams.set('page', String(visiblePage)); else returnParams.delete('page');
++  const returnHref = `/dashboard/outfits${returnParams.size ? `?${returnParams}` : ''}`;
+   const listLoading = listQuery.isLoading;
+   const listError = listQuery.isError;
+   const calendarLoading = calendarQuery.isLoading;
+@@ -354,13 +391,15 @@
+ 
+   const handleSelectPage = () => {
+     setSelection((prev) => {
+-      const pageFullySelected =
+-        (prev.mode === 'all' && prev.excludedIds.size === 0) ||
+-        (prev.mode === 'some' && prev.selectedIds.size === outfits.length && outfits.length > 0);
+-      if (pageFullySelected) {
+-        return { mode: 'none', selectedIds: new Set(), excludedIds: new Set() };
+-      }
+-      return { mode: 'some', selectedIds: new Set(outfits.map((o) => o.id)), excludedIds: new Set() };
++      const pageFullySelected = outfits.length > 0 && outfits.every(o => prev.mode === 'all' ? !prev.excludedIds.has(o.id) : prev.selectedIds.has(o.id));
++      if (prev.mode === 'all') {
++        const excludedIds = new Set(prev.excludedIds);
++        outfits.forEach(o => pageFullySelected ? excludedIds.add(o.id) : excludedIds.delete(o.id));
++        return { ...prev, excludedIds };
++      }
++      const selectedIds = new Set(prev.selectedIds);
++      outfits.forEach(o => pageFullySelected ? selectedIds.delete(o.id) : selectedIds.add(o.id));
++      return { mode: selectedIds.size ? 'some' : 'none', selectedIds, excludedIds: new Set() };
+     });
+   };
+ 
+@@ -398,13 +437,13 @@
+   };
+ 
+   return (
+-    <div className="space-y-6">
++    <div className={cn('space-y-6', selectMode && 'pb-40')}>
+       <div className="flex items-start justify-between gap-4 flex-wrap">
+         <div>
+           <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
+           <p className="text-muted-foreground">{t('subtitle')}</p>
+         </div>
+-        <div className="flex items-center gap-3">
++        <div className="flex flex-wrap items-center gap-3">
+           <div
+             className="inline-flex rounded-full border-2 border-muted overflow-hidden"
+             role="group"
+@@ -489,7 +528,7 @@
+           </div>
+         )}
+ 
+-        {listQuery.data && (
++        {listData && (
+           <Badge variant="outline" className="ml-auto">
+             {t('totalCount', { count: total })}
+           </Badge>
+@@ -499,15 +538,19 @@
+ 
+       {view === 'list' ? (
+         <>
+-          {listError ? (
+-            <div className="text-center py-8 text-destructive">{t('loadError')}</div>
+-          ) : listLoading ? (
++          {listError && (
++            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 p-4">
++              <p className="text-sm text-destructive">{t('pagination.error', { page })}</p>
++              <Button variant="outline" disabled={listQuery.isFetching} onClick={() => void listQuery.refetch()}>{tc('retry')}</Button>
++            </div>
++          )}
++          {(listLoading || listQuery.isFetching) && outfits.length === 0 ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+               {Array.from({ length: 6 }).map((_, i) => (
+                 <Skeleton key={i} className="aspect-[5/4] rounded-lg" />
+               ))}
+             </div>
+-          ) : outfits.length === 0 ? (
++          ) : outfits.length === 0 && !listError ? (
+             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+               <p className="text-muted-foreground mb-6 max-w-sm">{t(EMPTY_KEYS[chip])}</p>
+               {chip === 'my-looks' && (
+@@ -519,9 +562,11 @@
+                 </Button>
+               )}
+             </div>
+-          ) : (
++          ) : outfits.length > 0 ? (
+             <>
+-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
++              <OutfitPagination page={Math.min(visiblePage, totalPages)} total={total} pageSize={GRID_PAGE_SIZE} busy={listQuery.isFetching} position="top" onPageChange={handlePageChange} />
++              {listQuery.isFetching && <p role="status" className="text-sm text-muted-foreground">{tc('loading')}</p>}
++              <div aria-busy={listQuery.isFetching} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                 {outfits.map((outfit) => {
+                   const isSelected = selection.mode === 'all'
+                     ? !selection.excludedIds.has(outfit.id)
+@@ -533,23 +578,14 @@
+                       selectMode={selectMode}
+                       selected={isSelected}
+                       onSelect={handleSelect}
++                      returnHref={returnHref}
+                     />
+                   );
+                 })}
+               </div>
+-              {listQuery.hasNextPage && (
+-                <div className="flex justify-center pt-4">
+-                  <Button
+-                    variant="outline"
+-                    onClick={() => listQuery.fetchNextPage()}
+-                    disabled={listQuery.isFetchingNextPage}
+-                  >
+-                    {t('loadMore')}
+-                  </Button>
+-                </div>
+-              )}
++              <OutfitPagination page={Math.min(visiblePage, totalPages)} total={total} pageSize={GRID_PAGE_SIZE} busy={listQuery.isFetching} position="bottom" onPageChange={handlePageChange} />
+             </>
+-          )}
++          ) : null}
+         </>
+       ) : (
+         <div className="grid lg:grid-cols-[360px_1fr] gap-6">
+@@ -636,6 +672,8 @@
+           onDelete={handleBulkDelete}
+           isDeleting={bulkDeleteOutfits.isPending}
+           variant="outfits"
++          showPaginationControls={false}
++          selectedPageItems={outfits.filter(o => selection.mode === 'all' ? !selection.excludedIds.has(o.id) : selection.selectedIds.has(o.id)).length}
+         />
+       )}
+     </div>
+diff --git a/components/bulk-action-toolbar.tsx b/components/bulk-action-toolbar.tsx
+--- a/components/bulk-action-toolbar.tsx
++++ b/components/bulk-action-toolbar.tsx
+@@ -40,6 +40,8 @@
+   isRemovingBackground?: boolean;
+   variant?: BulkDeleteVariant;
+   pagination?: BulkToolbarPagination;
++  showPaginationControls?: boolean;
++  selectedPageItems?: number;
+ }
+ 
+ export interface BulkToolbarPagination {
+@@ -65,6 +67,8 @@
+   isRemovingBackground = false,
+   variant = 'items',
+   pagination,
++  showPaginationControls = true,
++  selectedPageItems,
+ }: BulkActionToolbarProps) {
+   const t = useTranslations('common');
+   const tWardrobe = useTranslations('wardrobe');
+@@ -78,18 +82,19 @@
+     : selection.selectedIds.size;
+ 
+   // Determine checkbox state
+-  const isAllSelected =
++  const isAllSelected = selectedPageItems !== undefined ? selectedPageItems === pageItems && pageItems > 0 :
+     (selection.mode === 'all' && selection.excludedIds.size === 0) ||
+     (selection.mode === 'some' && selection.selectedIds.size === pageItems && pageItems > 0);
+-  const isPartiallySelected = selection.mode === 'all'
++  const isPartiallySelected = selectedPageItems !== undefined ? selectedPageItems > 0 && selectedPageItems < pageItems : selection.mode === 'all'
+     ? selection.excludedIds.size > 0
+     : selection.selectedIds.size > 0 && selection.selectedIds.size < pageItems;
+   const hasSelection = selectedCount > 0;
+   const isEverythingSelected = hasSelection && selectedCount === totalItems;
+   const canSelectAllMatching =
+-    selection.mode === 'some' && selection.selectedIds.size === pageItems && pageItems > 0 && pageItems < totalItems;
++    selection.mode === 'some' && isAllSelected && pageItems < totalItems;
+ 
+   const totalPages = pagination ? Math.ceil(totalItems / pagination.pageSize) : 0;
++  const showPagination = showPaginationControls && totalPages > 1;
+ 
+   return (
+     <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-3 bg-background border rounded-lg shadow-lg px-2 sm:px-4 py-2 sm:py-3 max-w-[calc(100vw-1rem)]">
+@@ -277,7 +282,7 @@
+       )}
+ 
+       {/* Pagination */}
+-      {pagination && totalPages > 1 && (
++      {pagination && showPagination && (
+         <>
+           <div className="h-4 w-px bg-border shrink-0" />
+           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+diff --git a/components/outfits/outfit-card.tsx b/components/outfits/outfit-card.tsx
+--- a/components/outfits/outfit-card.tsx
++++ b/components/outfits/outfit-card.tsx
+@@ -1,7 +1,6 @@
+ 'use client';
+ 
+ import Link from 'next/link';
+-import Image from 'next/image';
+ import {
+   BookmarkCheck,
+   Bot,
+@@ -21,6 +20,7 @@
+ import { useOccasionLabel, useTypeLabel } from '@/lib/hooks/use-translated-constants';
+ import { useLocale, useTranslations, type createTranslator } from 'next-intl';
+ import type outfitsMessages from '@/messages/en/outfits.json';
++import { OutfitGarmentImage } from './outfit-garment-image';
+ 
+ interface OutfitCardProps {
+   outfit: Outfit;
+@@ -28,6 +28,7 @@
+   selectMode?: boolean;
+   selected?: boolean;
+   onSelect?: (id: string, checked: boolean) => void;
++  returnHref?: string;
+ }
+ 
+ // Typed against the en catalog because the app does not register its messages with next-intl,
+@@ -96,7 +97,7 @@
+   }
+ }
+ 
+-export function OutfitCard({ outfit, onClick, selectMode, selected, onSelect }: OutfitCardProps) {
++export function OutfitCard({ outfit, onClick, selectMode, selected, onSelect, returnHref }: OutfitCardProps) {
+   const typeLabel = useTypeLabel();
+   const t: OutfitCardTranslator = useTranslations('outfits.cards');
+   const locale = useLocale();
+@@ -104,8 +105,11 @@
+   const occasionLabel = useOccasionLabel();
+   const getTitle = useOutfitTitle();
+   const badge = getSourceBadge(outfit, t);
+-  const visibleItems = outfit.items.slice(0, 4);
+-  const overflow = outfit.items.length - visibleItems.length;
++  const smallTypes = new Set(['accessories', 'socks', 'underwear', 'jewelry', 'bag']);
++  const rank: Record<string, number> = { 't-shirt': 0, shirt: 0, polo: 0, sweater: 0, jacket: 1, coat: 1, pants: 2, jeans: 2, shorts: 2, skirt: 2, shoes: 3 };
++  const primary = outfit.items.filter(item => !smallTypes.has(item.type))
++    .sort((a, b) => (rank[a.type] ?? 1) - (rank[b.type] ?? 1) || a.position - b.position);
++  const accessories = outfit.items.filter(item => smallTypes.has(item.type));
+ 
+   const handleCheckboxClick = (e: React.MouseEvent) => {
+     e.stopPropagation();
+@@ -123,57 +127,32 @@
+         selectMode && selected && 'ring-2 ring-primary shadow-md'
+       )}
+       onClick={handleCardClick}
++      role={handleCardClick ? 'button' : undefined}
++      tabIndex={handleCardClick ? 0 : undefined}
++      onKeyDown={event => {
++        if (event.target === event.currentTarget && handleCardClick && (event.key === 'Enter' || event.key === ' ')) {
++          event.preventDefault(); handleCardClick();
++        }
++      }}
+     >
+       <CardContent className="p-0">
+-        <div className="relative aspect-[5/4] bg-muted">
++        <div className="flex min-h-9 items-center justify-between gap-2 px-3 pt-2">
+           {selectMode && (
+             <div
+-              className="absolute top-2 left-2 z-10"
+               onClick={handleCheckboxClick}
+             >
+               <Checkbox
+                 checked={!!selected}
++                aria-label={getTitle(outfit)}
+                 onCheckedChange={(checked) => onSelect?.(outfit.id, checked === true)}
+                 className="bg-background/80 backdrop-blur-sm"
+               />
+             </div>
+           )}
+-          <div className="absolute inset-0 grid grid-cols-4 gap-0.5 p-2">
+-            {visibleItems.map((item, idx) => (
+-              <div
+-                key={`${item.id}-${idx}`}
+-                className="relative rounded overflow-hidden bg-background"
+-              >
+-                {item.thumbnail_url || item.image_url ? (
+-                  <Image
+-                    src={(item.thumbnail_url || item.image_url)!}
+-                    alt={item.name || typeLabel(item.type)}
+-                    fill
+-                    className="object-cover"
+-                    sizes="(max-width: 640px) 25vw, 15vw"
+-                    loading="lazy"
+-                  />
+-                ) : (
+-                  <div className="w-full h-full flex items-center justify-center">
+-                    <span className="text-[10px] text-muted-foreground">
+-                      {typeLabel(item.type)}
+-                    </span>
+-                  </div>
+-                )}
+-              </div>
+-            ))}
+-            {overflow > 0 && (
+-              <div className="relative rounded overflow-hidden bg-background flex items-center justify-center">
+-                <span className="text-sm font-medium text-muted-foreground">
+-                  +{overflow}
+-                </span>
+-              </div>
+-            )}
+-          </div>
+           {badge && (
+             <div
+               className={cn(
+-                'absolute top-2 right-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
++                'ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                 badge.className
+               )}
+             >
+@@ -182,8 +161,28 @@
+             </div>
+           )}
+         </div>
++        <div className={cn('grid gap-2 p-3', primary.length > 4 ? 'grid-cols-3' : 'grid-cols-2')}>
++          {primary.map(item => (
++            <figure key={item.id} className="min-w-0" title={item.name || item.type}>
++              <div className="relative aspect-square overflow-hidden rounded-lg border bg-muted/40">
++                <OutfitGarmentImage item={item} />
++              </div>
++              <figcaption className="mt-1 text-center text-[11px] text-muted-foreground">{typeLabel(item.type)}</figcaption>
++            </figure>
++          ))}
++        </div>
++        {accessories.length > 0 && (
++          <div className="flex flex-wrap gap-3 border-t px-3 py-2">
++            {accessories.map(item => (
++              <figure key={item.id} className="w-16 min-w-0" title={item.name || item.type}>
++                <div className="relative h-16 overflow-hidden rounded-md bg-muted/40"><OutfitGarmentImage item={item} small /></div>
++                <figcaption className="mt-1 text-center text-[10px] text-muted-foreground">{typeLabel(item.type)}</figcaption>
++              </figure>
++            ))}
++          </div>
++        )}
+         <div className="p-3 space-y-1">
+-          <h3 className="text-sm font-semibold leading-tight truncate">
++          <h3 className="text-sm font-semibold leading-snug line-clamp-2" title={getTitle(outfit)}>
+             {getTitle(outfit)}
+           </h3>
+           <div className="flex items-center justify-between text-xs text-muted-foreground">
+@@ -199,7 +198,7 @@
+ 
+   if (selectMode || onClick) return content;
+   return (
+-    <Link href={`/dashboard/outfits/${outfit.id}`} className="block">
++    <Link href={`/dashboard/outfits/${outfit.id}${returnHref ? `?returnTo=${encodeURIComponent(returnHref)}` : ''}`} className="block">
+       {content}
+     </Link>
+   );
+diff --git a/components/outfits/outfit-garment-image.tsx b/components/outfits/outfit-garment-image.tsx
+new file mode 100644
+--- /dev/null
++++ b/components/outfits/outfit-garment-image.tsx
+@@ -0,0 +1,27 @@
++'use client';
++
++import { useState } from 'react';
++import Image from 'next/image';
++import { Shirt } from 'lucide-react';
++import { useTranslations } from 'next-intl';
++import { useTypeLabel } from '@/lib/hooks/use-translated-constants';
++import type { OutfitItem } from '@/lib/hooks/use-outfits';
++
++export function OutfitGarmentImage({ item, small = false }: { item: OutfitItem; small?: boolean }) {
++  const t = useTranslations('outfits.cards');
++  const typeLabel = useTypeLabel();
++  const [failed, setFailed] = useState<string[]>([]);
++  const source = [item.image_url, item.thumbnail_url].find(url => url && !failed.includes(url));
++  const name = item.name || typeLabel(item.type);
++  return source ? (
++    <Image key={source} src={source} alt={name} fill
++      className="object-contain p-2" loading="lazy"
++      sizes={small ? '72px' : '(min-width: 1280px) 200px, (min-width: 768px) 25vw, 50vw'}
++      onError={() => setFailed(previous => [...previous, source])} />
++  ) : (
++    <div className="flex h-full flex-col items-center justify-center gap-2 p-2 text-center text-muted-foreground" role="img" aria-label={t('imageUnavailable', { name })} title={t('imageUnavailable', { name })}>
++      <Shirt className="h-6 w-6" aria-hidden="true" />
++      {!small && <span className="line-clamp-3 text-[10px]">{t('imageUnavailable', { name })}</span>}
++    </div>
++  );
++}
+diff --git a/components/outfits/outfit-pagination.tsx b/components/outfits/outfit-pagination.tsx
+new file mode 100644
+--- /dev/null
++++ b/components/outfits/outfit-pagination.tsx
+@@ -0,0 +1,44 @@
++'use client';
++
++import { ChevronLeft, ChevronRight } from 'lucide-react';
++import { useTranslations } from 'next-intl';
++import { Button } from '@/components/ui/button';
++
++interface OutfitPaginationProps {
++  page: number;
++  total: number;
++  pageSize: number;
++  busy: boolean;
++  position: 'top' | 'bottom';
++  onPageChange: (page: number) => void;
++}
++
++export function OutfitPagination({ page, total, pageSize, busy, position, onPageChange }: OutfitPaginationProps) {
++  const t = useTranslations('outfits.pagination');
++  const tc = useTranslations('common');
++  const pages = Math.max(1, Math.ceil(total / pageSize));
++  return (
++    <nav aria-label={t(position)} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-3">
++      <p className="text-sm text-muted-foreground" aria-live="polite">
++        {t('range', { start: total ? (page - 1) * pageSize + 1 : 0, end: Math.min(page * pageSize, total), total })}
++      </p>
++      <div className="flex items-center gap-2">
++        <Button type="button" variant="outline" size="icon" aria-label={tc('previousPage')}
++          disabled={busy || page <= 1} onClick={() => onPageChange(page - 1)}>
++          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
++        </Button>
++        <select aria-label={t('choosePage')} value={page} disabled={busy}
++          onChange={event => onPageChange(Number(event.target.value))}
++          className="h-10 max-w-44 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
++          {Array.from({ length: pages }, (_, index) => (
++            <option key={index + 1} value={index + 1}>{tc('pageOf', { page: index + 1, totalPages: pages })}</option>
++          ))}
++        </select>
++        <Button type="button" variant="outline" size="icon" aria-label={tc('nextPage')}
++          disabled={busy || page >= pages} onClick={() => onPageChange(page + 1)}>
++          <ChevronRight className="h-4 w-4" aria-hidden="true" />
++        </Button>
++      </div>
++    </nav>
++  );
++}
+diff --git a/lib/hooks/use-outfits.ts b/lib/hooks/use-outfits.ts
+--- a/lib/hooks/use-outfits.ts
++++ b/lib/hooks/use-outfits.ts
+@@ -99,17 +99,21 @@
+   return params;
+ }
+ 
+-export function useOutfits(filters: OutfitFilters = {}, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
++export function useOutfits(filters: OutfitFilters = {}, page = 1, pageSize = DEFAULT_PAGE_SIZE, enabled = true) {
+   const { status } = useSession();
+   useSetTokenIfAvailable();
+ 
+   return useQuery({
+     queryKey: queryKeys.outfits.list(filters, page, pageSize),
+-    queryFn: () =>
++    queryFn: ({ signal }) =>
+       api.get<OutfitListResponse>('/outfits', {
+         params: outfitListParams(filters, page, pageSize),
++        signal,
+       }),
+-    enabled: status !== 'loading',
++    enabled: enabled && status !== 'loading',
++    placeholderData: (previous, previousQuery) =>
++      JSON.stringify(previousQuery?.queryKey[1]) === JSON.stringify(filters) &&
++      previousQuery?.queryKey[3] === pageSize ? previous : undefined,
+   });
+ }
+ 
+@@ -263,7 +267,7 @@
+   });
+ }
+ 
+-export function useCalendarOutfits(year: number, month: number, filters: OutfitFilters = {}) {
++export function useCalendarOutfits(year: number, month: number, filters: OutfitFilters = {}, enabled = true) {
+   const { status } = useSession();
+   useSetTokenIfAvailable();
+ 
+@@ -282,8 +286,8 @@
+ 
+   return useQuery({
+     queryKey: queryKeys.calendarOutfits.month(year, month, filters),
+-    queryFn: () => api.get<OutfitListResponse>('/outfits', { params }),
+-    enabled: status !== 'loading',
++    queryFn: ({ signal }) => api.get<OutfitListResponse>('/outfits', { params, signal }),
++    enabled: enabled && status !== 'loading',
+   });
+ }
+ 
+diff --git a/messages/de/outfits.json b/messages/de/outfits.json
+--- a/messages/de/outfits.json
++++ b/messages/de/outfits.json
+@@ -39,7 +39,8 @@
+     "replacement": "Ersatz",
+     "studio": "Studio",
+     "woreInsteadFallback": "{occasion} (stattdessen getragen)",
+-    "worn": "Getragen"
++    "worn": "Getragen",
++    "imageUnavailable": "Bild nicht verfügbar: {name}"
+   },
+   "cloneToLookbook": {
+     "defaultName": "{occasion} · {date}",
+@@ -170,5 +171,12 @@
+   "totalCount": "{count} insgesamt",
+   "viewCalendar": "Kalender",
+   "viewList": "Liste",
+-  "viewToggle": "Ansicht wechseln"
++  "viewToggle": "Ansicht wechseln",
++  "pagination": {
++    "top": "Outfit-Seiten",
++    "bottom": "Outfit-Seiten unter den Ergebnissen",
++    "range": "Outfits {start}–{end} von {total}",
++    "choosePage": "Outfit-Seite wählen",
++    "error": "Seite {page} konnte nicht geladen werden. Bitte erneut versuchen."
++  }
+ }
+diff --git a/messages/en/outfits.json b/messages/en/outfits.json
+--- a/messages/en/outfits.json
++++ b/messages/en/outfits.json
+@@ -39,7 +39,8 @@
+     "replacement": "Replacement",
+     "studio": "Studio",
+     "woreInsteadFallback": "{occasion} (wore instead)",
+-    "worn": "Worn"
++    "worn": "Worn",
++    "imageUnavailable": "Image unavailable: {name}"
+   },
+   "cloneToLookbook": {
+     "defaultName": "{occasion} · {date}",
+@@ -170,5 +171,12 @@
+   "totalCount": "{count} total",
+   "viewCalendar": "Calendar",
+   "viewList": "List",
+-  "viewToggle": "View toggle"
++  "viewToggle": "View toggle",
++  "pagination": {
++    "top": "Outfit pages",
++    "bottom": "Outfit pages below results",
++    "range": "Outfits {start}–{end} of {total}",
++    "choosePage": "Choose an outfit page",
++    "error": "Could not load page {page}. Please try again."
++  }
+ }
+diff --git a/messages/fr/outfits.json b/messages/fr/outfits.json
+--- a/messages/fr/outfits.json
++++ b/messages/fr/outfits.json
+@@ -39,7 +39,8 @@
+     "replacement": "Remplacement",
+     "studio": "Studio",
+     "woreInsteadFallback": "{occasion} (porté à la place)",
+-    "worn": "Portées"
++    "worn": "Portées",
++    "imageUnavailable": "Image indisponible : {name}"
+   },
+   "cloneToLookbook": {
+     "defaultName": "{occasion} · {date}",
+@@ -170,5 +171,12 @@
+   "totalCount": "{count} au total",
+   "viewCalendar": "Calendrier",
+   "viewList": "Liste",
+-  "viewToggle": "Changer de vue"
++  "viewToggle": "Changer de vue",
++  "pagination": {
++    "top": "Pages des tenues",
++    "bottom": "Pages des tenues sous les résultats",
++    "range": "Tenues {start}–{end} sur {total}",
++    "choosePage": "Choisir une page de tenues",
++    "error": "Impossible de charger la page {page}. Veuillez réessayer."
++  }
+ }
+diff --git a/messages/it/outfits.json b/messages/it/outfits.json
+--- a/messages/it/outfits.json
++++ b/messages/it/outfits.json
+@@ -39,7 +39,8 @@
+     "replacement": "Sostituzione",
+     "studio": "Studio",
+     "woreInsteadFallback": "{occasion} (indossato al posto)",
+-    "worn": "Indossati"
++    "worn": "Indossati",
++    "imageUnavailable": "Immagine non disponibile: {name}"
+   },
+   "cloneToLookbook": {
+     "defaultName": "{occasion} · {date}",
+@@ -170,5 +171,12 @@
+   "totalCount": "{count} totali",
+   "viewCalendar": "Calendario",
+   "viewList": "Elenco",
+-  "viewToggle": "Cambia vista"
++  "viewToggle": "Cambia vista",
++  "pagination": {
++    "top": "Pagine degli outfit",
++    "bottom": "Pagine degli outfit sotto i risultati",
++    "range": "Outfit {start}–{end} di {total}",
++    "choosePage": "Scegli una pagina di outfit",
++    "error": "Impossibile caricare la pagina {page}. Riprova."
++  }
+ }
+diff --git a/messages/ja/outfits.json b/messages/ja/outfits.json
+--- a/messages/ja/outfits.json
++++ b/messages/ja/outfits.json
+@@ -39,7 +39,8 @@
+     "replacement": "差し替え",
+     "studio": "スタジオ",
+     "woreInsteadFallback": "{occasion}(代わりに着用)",
+-    "worn": "着用済み"
++    "worn": "着用済み",
++    "imageUnavailable": "画像を表示できません：{name}"
+   },
+   "cloneToLookbook": {
+     "defaultName": "{occasion}・{date}",
+@@ -170,5 +171,12 @@
+   "totalCount": "合計 {count}",
+   "viewCalendar": "カレンダー",
+   "viewList": "リスト",
+-  "viewToggle": "表示切替"
++  "viewToggle": "表示切替",
++  "pagination": {
++    "top": "コーディネートのページ",
++    "bottom": "結果の下のコーディネートページ",
++    "range": "全{total}件中{start}〜{end}件",
++    "choosePage": "コーディネートのページを選択",
++    "error": "ページ{page}を読み込めませんでした。もう一度お試しください。"
++  }
+ }
+diff --git a/messages/ko/outfits.json b/messages/ko/outfits.json
+--- a/messages/ko/outfits.json
++++ b/messages/ko/outfits.json
+@@ -39,7 +39,8 @@
+     "replacement": "대체",
+     "studio": "스튜디오",
+     "woreInsteadFallback": "{occasion} (대신 착용)",
+-    "worn": "착용함"
++    "worn": "착용함",
++    "imageUnavailable": "이미지를 사용할 수 없음: {name}"
+   },
+   "cloneToLookbook": {
+     "defaultName": "{occasion} · {date}",
+@@ -170,5 +171,12 @@
+   "totalCount": "총 {count}개",
+   "viewCalendar": "캘린더",
+   "viewList": "목록",
+-  "viewToggle": "보기 전환"
++  "viewToggle": "보기 전환",
++  "pagination": {
++    "top": "코디 페이지",
++    "bottom": "결과 아래 코디 페이지",
++    "range": "전체 {total}개 중 {start}–{end}개",
++    "choosePage": "코디 페이지 선택",
++    "error": "{page}페이지를 불러올 수 없습니다. 다시 시도해 주세요."
++  }
+ }
+diff --git a/messages/zh-CN/outfits.json b/messages/zh-CN/outfits.json
+--- a/messages/zh-CN/outfits.json
++++ b/messages/zh-CN/outfits.json
+@@ -39,7 +39,8 @@
+     "replacement": "替换",
+     "studio": "工作室",
+     "woreInsteadFallback": "{occasion}(改穿)",
+-    "worn": "已穿着"
++    "worn": "已穿着",
++    "imageUnavailable": "图片不可用：{name}"
+   },
+   "cloneToLookbook": {
+     "defaultName": "{occasion} · {date}",
+@@ -170,5 +171,12 @@
+   "totalCount": "共{count}组",
+   "viewCalendar": "日历",
+   "viewList": "列表",
+-  "viewToggle": "切换视图"
++  "viewToggle": "切换视图",
++  "pagination": {
++    "top": "穿搭分页",
++    "bottom": "结果下方的穿搭分页",
++    "range": "共 {total} 套，显示第 {start}–{end} 套",
++    "choosePage": "选择穿搭页码",
++    "error": "无法加载第 {page} 页。请重试。"
++  }
+ }
+diff --git a/messages/zh-TW/outfits.json b/messages/zh-TW/outfits.json
+--- a/messages/zh-TW/outfits.json
++++ b/messages/zh-TW/outfits.json
+@@ -39,7 +39,8 @@
+     "replacement": "替換",
+     "studio": "工作室",
+     "woreInsteadFallback": "{occasion}(改穿)",
+-    "worn": "已穿過"
++    "worn": "已穿過",
++    "imageUnavailable": "圖片無法使用：{name}"
+   },
+   "cloneToLookbook": {
+     "defaultName": "{occasion} · {date}",
+@@ -170,5 +171,12 @@
+   "totalCount": "共 {count} 個",
+   "viewCalendar": "日曆",
+   "viewList": "列表",
+-  "viewToggle": "切換檢視"
++  "viewToggle": "切換檢視",
++  "pagination": {
++    "top": "穿搭分頁",
++    "bottom": "結果下方的穿搭分頁",
++    "range": "共 {total} 套，顯示第 {start}–{end} 套",
++    "choosePage": "選擇穿搭頁碼",
++    "error": "無法載入第 {page} 頁。請重試。"
++  }
+ }
+diff --git a/tests/outfit-browsing.test.tsx b/tests/outfit-browsing.test.tsx
+new file mode 100644
+--- /dev/null
++++ b/tests/outfit-browsing.test.tsx
+@@ -0,0 +1,190 @@
++import React from 'react';
++import { beforeEach, describe, expect, it, vi } from 'vitest';
++import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
++import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
++import OutfitsPage from '@/app/dashboard/outfits/page';
++import { api } from '@/lib/api';
++import { queryKeys } from '@/lib/hooks/query-keys';
++
++const navigation = vi.hoisted(() => ({
++  search: '',
++  listeners: new Set<() => void>(),
++  history: [] as string[],
++}));
++vi.mock('next/navigation', async () => {
++  const React = await import('react');
++  const replace = (url: string) => {
++    navigation.history.push(url);
++    navigation.search = new URL(url, 'http://localhost').search;
++    navigation.listeners.forEach(fn => fn());
++  };
++  const router = { replace, push: replace, back: vi.fn() };
++  return {
++    useRouter: () => router,
++    useSearchParams: () => new URLSearchParams(React.useSyncExternalStore(
++      fn => { navigation.listeners.add(fn); return () => { navigation.listeners.delete(fn); }; },
++      () => navigation.search,
++    )),
++    usePathname: () => '/dashboard/outfits',
++  };
++});
++vi.mock('@/lib/api', () => ({ api: { get: vi.fn() }, setAccessToken: vi.fn() }));
++vi.mock('next/image', () => ({ default: ({ fill, priority, ...props }: any) => <img {...props} /> }));
++vi.mock('next/link', () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
++
++const outfits = Array.from({ length: 108 }, (_, index) => ({
++  id: `outfit-${index + 1}`, name: `Outfit ${index + 1}`,
++  source: 'manual', occasion: 'casual', scheduled_for: null,
++  created_at: '2026-01-01T00:00:00Z', items: [],
++}));
++let records = outfits;
++const nextButton = () => screen.getAllByRole('button', { name: 'nextPage' })[0];
++const previousButton = () => screen.getAllByRole('button', { name: 'previousPage' })[0];
++
++function mount() {
++  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
++  render(<QueryClientProvider client={client}><OutfitsPage /></QueryClientProvider>);
++  return client;
++}
++
++beforeEach(() => {
++  cleanup(); navigation.search = ''; navigation.history = []; records = outfits; vi.clearAllMocks();
++  vi.mocked(api.get).mockImplementation(async (route, options) => {
++    if (route === '/users/me') return { timezone: 'UTC' } as any;
++    if (route === '/outfits/calendar') return { outfits: [] } as any;
++    const params = options?.params ?? {};
++    const page = Number(params.page ?? 1), size = Number(params.page_size ?? 24);
++    const matching = params.source === 'scheduled,on_demand' ? [] : records.filter(outfit => !params.search || outfit.name.includes(params.search));
++    return { outfits: matching.slice((page - 1) * size, page * size), total: matching.length,
++      page, page_size: size, has_more: page * size < matching.length } as any;
++  });
++});
++
++describe('outfit browsing', () => {
++  it('keeps earlier outfits reachable after loading the next results', async () => {
++    records = outfits.slice(0, 25);
++    mount();
++    await screen.findByRole('heading', { name: 'Outfit 1' });
++    fireEvent.click(screen.queryAllByRole('button', { name: 'nextPage' })[0] ?? screen.getByRole('button', { name: 'loadMore' }));
++    await screen.findByRole('heading', { name: 'Outfit 25' });
++    const previous = screen.queryAllByRole('button', { name: 'previousPage' })[0];
++    if (previous) fireEvent.click(previous);
++    await waitFor(() => expect(screen.getByRole('heading', { name: 'Outfit 1' })).toBeInTheDocument());
++  });
++
++  it('can browse all 108 outfits once and jump back, rendering at most 24 at a time', async () => {
++    mount();
++    const seen = new Set<string>();
++    for (let page = 1; page <= 5; page++) {
++      await screen.findByRole('heading', { name: `Outfit ${(page - 1) * 24 + 1}` });
++      const cards = screen.getAllByRole('heading', { level: 3 });
++      expect(cards.length).toBeLessThanOrEqual(24);
++      cards.forEach(card => seen.add(card.textContent!));
++      if (page < 5) fireEvent.click(nextButton());
++    }
++    expect(seen.size).toBe(108);
++    expect(nextButton()).toBeDisabled();
++    fireEvent.change(screen.getAllByRole('combobox', { name: 'choosePage' })[0], { target: { value: '1' } });
++    await screen.findByRole('heading', { name: 'Outfit 1' });
++    expect(previousButton()).toBeDisabled();
++  }, 30_000);
++
++  it('keeps the loaded cards visible and locks controls while the next page is delayed', async () => {
++    const base = vi.mocked(api.get).getMockImplementation()!;
++    let resolvePage!: (value: any) => void;
++    vi.mocked(api.get).mockImplementation((route, options) => Number(options?.params?.page) === 2
++      ? new Promise(resolve => { resolvePage = resolve; }) : base(route, options));
++    mount();
++    await screen.findByRole('heading', { name: 'Outfit 1' });
++    fireEvent.click(nextButton());
++    await screen.findByRole('status');
++    expect(screen.getByRole('heading', { name: 'Outfit 1' })).toBeInTheDocument();
++    expect(nextButton()).toBeDisabled();
++    expect(previousButton()).toBeDisabled();
++    await act(async () => resolvePage(await base('/outfits', { params: { page: '2', page_size: '24' } })));
++    await screen.findByRole('heading', { name: 'Outfit 25' });
++  });
++
++  it('preserves the last successful page after an error and retries the requested page', async () => {
++    const base = vi.mocked(api.get).getMockImplementation()!;
++    let fail = true;
++    vi.mocked(api.get).mockImplementation((route, options) => Number(options?.params?.page) === 2 && fail
++      ? Promise.reject(new Error('Page unavailable')) : base(route, options));
++    mount();
++    await screen.findByRole('heading', { name: 'Outfit 1' });
++    fireEvent.click(nextButton());
++    await screen.findByRole('alert');
++    expect(screen.getByRole('heading', { name: 'Outfit 1' })).toBeInTheDocument();
++    fail = false;
++    fireEvent.click(screen.getByRole('button', { name: 'retry' }));
++    await screen.findByRole('heading', { name: 'Outfit 25' });
++    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
++  });
++
++  it('resets the page when filters change and never displays the previous filter results', async () => {
++    navigation.search = '?page=3';
++    mount();
++    await screen.findByRole('heading', { name: 'Outfit 49' });
++    fireEvent.click(screen.getByRole('button', { name: 'filters.ai' }));
++    await screen.findByText('empty.ai');
++    expect(new URLSearchParams(navigation.search).has('page')).toBe(false);
++    expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
++  });
++
++  it('debounces a lookbook search and resets it to the first page atomically', async () => {
++    navigation.search = '?filter=my-looks&page=3';
++    mount();
++    await screen.findByRole('heading', { name: 'Outfit 49' });
++    fireEvent.change(screen.getByPlaceholderText('search'), { target: { value: 'Outfit 1' } });
++    await screen.findByRole('heading', { name: 'Outfit 1' });
++    const requests = vi.mocked(api.get).mock.calls.filter(([, options]) => options?.params?.search);
++    expect(requests.length).toBeGreaterThan(0);
++    expect(requests.every(([, options]) => options?.params?.page === '1')).toBe(true);
++    expect(new URLSearchParams(navigation.search).get('search')).toBe('Outfit 1');
++  });
++
++  it('recovers a page past the last result after deletion or a stale bookmark', async () => {
++    navigation.search = '?page=9';
++    mount();
++    await screen.findByRole('heading', { name: 'Outfit 97' });
++    expect(new URLSearchParams(navigation.search).get('page')).toBe('5');
++  });
++
++  it('restores a previous URL and links details back to the visible page', async () => {
++    navigation.search = '?filter=my-looks&page=3';
++    mount();
++    await screen.findByRole('heading', { name: 'Outfit 49' });
++    expect(screen.getByRole('link', { name: /Outfit 49/ }).getAttribute('href')).toContain(encodeURIComponent('/dashboard/outfits?filter=my-looks&page=3'));
++    await act(async () => { navigation.search = '?filter=my-looks&page=2'; navigation.listeners.forEach(fn => fn()); });
++    await screen.findByRole('heading', { name: 'Outfit 25' });
++    expect(screen.queryByRole('heading', { name: 'Outfit 49' })).not.toBeInTheDocument();
++  });
++  it('preserves independent selected garments across page navigation', async () => {
++    mount();
++    await screen.findByRole('heading', { name: 'Outfit 1' });
++    fireEvent.click(screen.getByRole('button', { name: 'bulkActions.select' }));
++    fireEvent.click(screen.getByRole('checkbox', { name: 'Outfit 1' }));
++    fireEvent.click(nextButton());
++    await screen.findByRole('heading', { name: 'Outfit 25' });
++    expect(screen.getByRole('checkbox', { name: 'Outfit 25' })).not.toBeChecked();
++    fireEvent.click(screen.getByRole('checkbox', { name: 'Outfit 25' }));
++    fireEvent.click(previousButton());
++    await screen.findByRole('heading', { name: 'Outfit 1' });
++    expect(screen.getByRole('checkbox', { name: 'Outfit 1' })).toBeChecked();
++    expect(screen.getByRole('checkbox', { name: 'Outfit 2' })).not.toBeChecked();
++    await waitFor(() => expect(nextButton()).toBeEnabled());
++    fireEvent.click(nextButton());
++    await screen.findByRole('heading', { name: 'Outfit 25' });
++    expect(screen.getByRole('checkbox', { name: 'Outfit 25' })).toBeChecked();
++  });
++
++  it('refreshes the visible page through the upstream shared outfit cache key', async () => {
++    const client = mount();
++    await screen.findByRole('heading', { name: 'Outfit 1' });
++    records = [{ ...outfits[0], name: 'Updated first outfit' }, ...outfits.slice(1)];
++    await act(async () => { await client.invalidateQueries({ queryKey: queryKeys.outfits.all }); });
++    await screen.findByRole('heading', { name: 'Updated first outfit' });
++    expect(screen.queryByRole('heading', { name: 'Outfit 1' })).not.toBeInTheDocument();
++  });
++
++});
+diff --git a/tests/outfit-card.test.tsx b/tests/outfit-card.test.tsx
+new file mode 100644
+--- /dev/null
++++ b/tests/outfit-card.test.tsx
+@@ -0,0 +1,61 @@
++import React from 'react';
++import { describe, expect, it, vi } from 'vitest';
++import { cleanup, fireEvent, render, screen } from '@testing-library/react';
++import { beforeEach } from 'vitest';
++import { OutfitCard } from '@/components/outfits/outfit-card';
++import type { Outfit } from '@/lib/hooks/use-outfits';
++
++vi.mock('@/lib/hooks/use-user', () => ({ useUserToday: () => () => '2026-01-01' }));
++
++vi.mock('next/image', () => ({ default: ({ fill, priority, ...props }: any) => <img {...props} /> }));
++vi.mock('next/link', () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
++
++const types = ['t-shirt', 'pants', 'jacket', 'socks', 'accessories', 'shoes'];
++const outfit = {
++  id: 'look-1', name: 'A complete casual outfit', source: 'manual', occasion: 'casual',
++  scheduled_for: null, created_at: '2026-01-01T00:00:00Z',
++  items: types.map((type, position) => ({ id: `item-${position}`, type,
++    name: `Garment ${type}`, position, layer_type: null,
++    image_url: `/images/full-${position}.jpg`, thumbnail_url: `/images/thumb-${position}.jpg`,
++  })),
++} as Outfit;
++
++describe('outfit preview', () => {
++  beforeEach(() => cleanup());
++  it('shows every garment, including footwear, using uncropped full images', () => {
++    render(<OutfitCard outfit={outfit} />);
++    expect(screen.getAllByRole('img')).toHaveLength(6);
++    for (const item of outfit.items) {
++      const image = screen.getByRole('img', { name: item.name! });
++      expect(image).toHaveAttribute('src', item.image_url);
++      expect(image).toHaveClass('object-contain');
++    }
++  });
++  it('falls back to the thumbnail and then a named placeholder if an image fails', () => {
++    render(<OutfitCard outfit={outfit} />);
++    const item = outfit.items[0];
++    fireEvent.error(screen.getByRole('img', { name: item.name! }));
++    expect(screen.getByRole('img', { name: item.name! })).toHaveAttribute('src', item.thumbnail_url);
++    fireEvent.error(screen.getByRole('img', { name: item.name! }));
++    expect(screen.queryByRole('img', { name: item.name! })).not.toBeInTheDocument();
++    expect(screen.getByText('imageUnavailable')).toBeInTheDocument();
++    expect(screen.getAllByRole('img')).toHaveLength(6);
++    expect(screen.getByRole('img', { name: 'imageUnavailable' })).not.toHaveAttribute('src');
++  });
++  it('keeps selection and keyboard activation working without opening a detail link', () => {
++    const select = vi.fn();
++    render(<OutfitCard outfit={outfit} selectMode selected={false} onSelect={select} />);
++    fireEvent.keyDown(screen.getByRole('button'), { key: 'Enter' });
++    expect(select).toHaveBeenCalledWith('look-1', true);
++    select.mockClear();
++    fireEvent.click(screen.getByRole('checkbox'));
++    expect(select).toHaveBeenCalledTimes(1);
++    expect(screen.queryByRole('link')).not.toBeInTheDocument();
++  });
++  it('preserves the upstream replacement title resolver when no name is saved', () => {
++    render(<OutfitCard outfit={{ ...outfit, name: null, replaces_outfit_id: 'original-look', reasoning: 'Generic explanation' }} />);
++    expect(screen.getByRole('heading', { name: 'woreInsteadFallback' })).toBeInTheDocument();
++    expect(screen.queryByRole('heading', { name: 'Generic explanation' })).not.toBeInTheDocument();
++  });
++
++});
