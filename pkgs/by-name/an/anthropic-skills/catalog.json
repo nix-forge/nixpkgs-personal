@@ -143,12 +143,12 @@
       "reviewNote": "No explicit per-skill license at the pinned revision; preserve unchanged and exclude from the free selection."
     },
     "docx": {
-      "skillHash": "8017469ea95fb7d28225c62daf8e2f3492a7b516fc64c18c28977cbf8980b7fe",
+      "skillHash": "9e8202e2524a9ed87da67a5b3eaa76e8e6038f4171f8251ad6aaefd34e82a3df",
       "notices": {
-        "LICENSE.txt": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa"
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
       },
       "fonts": [],
-      "licenses": ["unfree"]
+      "licenses": ["asl20"]
     },
     "frontend-design": {
       "skillHash": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
@@ -175,20 +175,20 @@
       "licenses": ["asl20"]
     },
     "pdf": {
-      "skillHash": "9f78b8359fbd4943ad260a7a1e436e5a96503406d6c34e99f69223d647d85b9c",
+      "skillHash": "d1c7caf5f35eb7d37877dd7fc33a095037be2b34fb5d2f7f4d43bde3165bb4ee",
       "notices": {
-        "LICENSE.txt": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa"
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
       },
       "fonts": [],
-      "licenses": ["unfree"]
+      "licenses": ["asl20"]
     },
     "pptx": {
-      "skillHash": "a7ff03e2c85b636f55232a6b1555f5dd90216b7a1a359ab289d8364e6acbc6a0",
+      "skillHash": "b60bd282c6e01297f0eefe71594d1756dbf60a584f524c04a803ec6950b7fba2",
       "notices": {
-        "LICENSE.txt": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa"
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
       },
       "fonts": [],
-      "licenses": ["unfree"]
+      "licenses": ["asl20"]
     },
     "skill-creator": {
       "skillHash": "dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf",
@@ -231,12 +231,12 @@
       "licenses": ["asl20"]
     },
     "xlsx": {
-      "skillHash": "6712b39718fe815054abca9c3ee72f989613e6f771c8a5c58f30a65a6c905622",
+      "skillHash": "caa1e1c29cf974c8d874bf3d0a70838445e7342b570f856ddb3e4a21ef7c7e8b",
       "notices": {
-        "LICENSE.txt": "79f6d8f5b427252fa3b1c11ecdbdb6bf610b944f7530b4de78f770f38741cfaa"
+        "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
       },
       "fonts": [],
-      "licenses": ["unfree"]
+      "licenses": ["asl20"]
     }
   }
 }
