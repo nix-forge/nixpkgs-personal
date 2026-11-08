@@ -1,8 +1,12 @@
 {
+  replaceVars,
+  replaceVarsWith,
+  runtimeShell,
   lib,
-  callPackage,
   fetchFromGitHub,
-  jemalloc,
+  noctalia,
+  dbus,
+  python3,
 }:
 let
   source = import ./source.nix;
@@ -11,60 +15,82 @@ let
     repo = "noctalia";
     inherit (source) rev hash;
   };
-  upstream = callPackage ./upstream.nix {
-    inherit src;
-    inherit (source) version rev;
+  testDbusSession = replaceVarsWith {
+    name = "dbus-test-session.sh";
+    src = ./scripts/dbus-test-session.sh.in;
+    isExecutable = true;
+    replacements = {
+      runtime_shell = runtimeShell;
+      dbus_run_session = lib.getExe' dbus "dbus-run-session";
+      dbus_daemon = lib.getExe' dbus "dbus-daemon";
+      dbus_session_config = "${dbus.out}/share/dbus-1/session.conf";
+    };
   };
+  upstream = noctalia.overrideAttrs (_: {
+    inherit src;
+    inherit (source) version;
+  });
 in
 upstream.overrideAttrs (old: {
   strictDeps = true;
-  # Upstream lists the linked allocator among build tools. Strict dependency
-  # separation requires its headers and pkg-config file in the target inputs.
-  nativeBuildInputs = lib.remove jemalloc (old.nativeBuildInputs or [ ]);
-  buildInputs = (old.buildInputs or [ ]) ++ [ jemalloc ];
   pname = "noctalia-personal";
   patches = (old.patches or [ ]) ++ [
     ./symbolic-bar-icons.patch
-    ./tray-icon-size.patch
     ./media-player-selector.patch
+    ./audio-application-id.patch
     # Semantic secondary text already carries the palette's contrast hierarchy.
     ./readable-control-colors.patch
     # Minimal inline workspace groups share target sizes and a quiet state hierarchy.
     ./workspace-strip.patch
+    ./preferred-wired-uplink.patch
   ];
+  patchFlags = [
+    "-p1"
+    "--fuzz=0"
+  ];
+  mesonFlags = lib.unique (
+    lib.remove "-Dtests=disabled" (old.mesonFlags or [ ]) ++ [ "-Dtests=enabled" ]
+  );
   postPatch = (old.postPatch or "") + ''
-    # Reject a stale version pin after source updates, without importing the source.
-    test "$(cat VERSION)" = "${source.version}"
-    cp ${./bar_icon_policy.h} src/shell/bar/widgets/bar_icon_policy.h
+    substituteInPlace meson.build \
+      --replace-fail "dbus_run_session = find_program('dbus-run-session', required: false)" \
+      "dbus_run_session = find_program('${testDbusSession}', required: true)"
+    source ${
+      replaceVars ./scripts/post-patch.sh {
+        source_version = source.version;
+        source_revision = source.rev;
+        bar_icon_policy_h = "${./bar_icon_policy.h}";
+      }
+    }
   '';
   doCheck = true;
+  nativeCheckInputs = (old.nativeCheckInputs or [ ]) ++ [
+    dbus
+    python3
+  ];
   checkPhase = ''
-    runHook preCheck
-    $CXX -std=c++23 -Wall -Wextra -Werror -UNDEBUG -I../src \
-      ${./test_bar_icon_policy.cpp} -o bar-icon-policy-test
-    ./bar-icon-policy-test
-    runHook postCheck
+    source ${
+      replaceVars ./scripts/check-phase.sh {
+        test_inventory_python = "${./check_test_inventory.py}";
+        test_bar_icon_policy_cpp = "${./test_bar_icon_policy.cpp}";
+        test_route_preference_cpp = "${./test_route_preference.cpp}";
+      }
+    }
   '';
   postInstall = (old.postInstall or "") + ''
-    install -Dm644 "$src/LICENSE" "$out/share/doc/noctalia-personal/LICENSE"
-    # These libraries are compiled into the executable, so retain their notices
-    # even when they do not survive as separate runtime store references.
-    for notice in \
-      fzy/LICENSE luau/LICENSE.txt luau/lua_LICENSE.txt \
-      material_color_utilities/LICENSE wuffs/LICENSE-MIT wuffs/LICENSE-APACHE; do
-      install -Dm644 "$src/third_party/$notice" \
-        "$out/share/doc/noctalia-personal/third-party/$notice"
-    done
-    install -Dm644 ${./README.md} "$out/share/doc/noctalia-personal/README.md"
+    source ${replaceVars ./scripts/post-install.sh { readme = "${./README.md}"; }}
   '';
-  passthru = (old.passthru or { }) // {
+  passthru = removeAttrs (old.passthru or { }) [ "updateScript" ] // {
     upstreamRevision = source.rev;
+    inherit testDbusSession;
   };
   meta = old.meta // {
+    maintainers = [ ];
+    sourceProvenance = [ lib.sourceTypes.fromSource ];
     license = with lib.licenses; [
       mit
       asl20
     ];
-    description = "Noctalia with themed bar icons, readable control colors, and landscape media playback cards";
+    description = "Desktop shell with themed icons, readable controls and landscape media playback";
   };
 })

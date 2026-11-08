@@ -1,0 +1,79 @@
+--- /dev/null
++++ b/src/node_rss.h
+@@ -0,0 +1,29 @@
++// Node 24's RSS contract matches its bundled libuv's resident-size metric.
++// Shared libuv 1.53 uses physical footprint; keep that library API unchanged.
++#ifndef SRC_NODE_RSS_H_
++#define SRC_NODE_RSS_H_
++
++#include "uv.h"
++#ifdef __APPLE__
++#include <mach/mach.h>
++#endif
++
++namespace node {
++inline int GetResidentSetMemory(size_t* rss) {
++#ifdef __APPLE__
++  task_basic_info_data_t info;
++  mach_msg_type_number_t count = TASK_BASIC_INFO_COUNT;
++  kern_return_t error = task_info(mach_task_self(),
++                                  TASK_BASIC_INFO,
++                                  reinterpret_cast<task_info_t>(&info),
++                                  &count);
++  if (error != KERN_SUCCESS) return UV_EIO;
++  *rss = info.resident_size;
++  return 0;
++#else
++  return uv_resident_set_memory(rss);
++#endif
++}
++}  // namespace node
++
++#endif  // SRC_NODE_RSS_H_
+--- a/src/node_process_methods.cc
++++ b/src/node_process_methods.cc
+@@ -8,6 +8,7 @@
+ #include "node_errors.h"
+ #include "node_external_reference.h"
+ #include "node_internals.h"
++#include "node_rss.h"
+ #include "node_process-inl.h"
+ #include "path.h"
+ #include "util-inl.h"
+@@ -212,7 +213,7 @@
+   Environment* env = Environment::GetCurrent(args);
+ 
+   size_t rss;
+-  int err = uv_resident_set_memory(&rss);
++  int err = GetResidentSetMemory(&rss);
+   if (err)
+     return env->ThrowUVException(err, "uv_resident_set_memory");
+ 
+@@ -235,7 +236,7 @@
+   double* fields = static_cast<double*>(ab->Data());
+ 
+   size_t rss;
+-  int err = uv_resident_set_memory(&rss);
++  int err = GetResidentSetMemory(&rss);
+   if (err)
+     return env->ThrowUVException(err, "uv_resident_set_memory");
+ 
+--- a/src/node_report.cc
++++ b/src/node_report.cc
+@@ -4,6 +4,7 @@
+ #include "env-inl.h"
+ #include "json_utils.h"
+ #include "node_internals.h"
++#include "node_rss.h"
+ #include "node_metadata.h"
+ #include "node_mutex.h"
+ #include "node_worker.h"
+@@ -643,7 +644,7 @@
+   writer->json_keyvalue("total_memory", total_memory);
+ 
+   size_t rss;
+-  int err = uv_resident_set_memory(&rss);
++  int err = GetResidentSetMemory(&rss);
+   if (!err) {
+     writer->json_keyvalue("rss", rss);
+   }

@@ -1,54 +1,76 @@
 {
+  callPackage,
+  replaceVars,
   lib,
-  stdenvNoCC,
+  buildDotnetModule,
+  dotnetCorePackages,
+  fetchFromGitHub,
   fetchurl,
-  unzip,
   powershell,
+  unzip,
 }:
 let
   source = import ./source.nix;
+  helpArchive = fetchurl {
+    url = "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/${source.version}";
+    hash = source.helpHash;
+  };
 in
-stdenvNoCC.mkDerivation (finalAttrs: {
+buildDotnetModule (finalAttrs: {
   pname = "psscriptanalyzer";
   inherit (source) version;
-  src = fetchurl {
-    url = "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/${source.version}";
+  src = fetchFromGitHub {
+    owner = "PowerShell";
+    repo = "PSScriptAnalyzer";
+    rev = source.sourceRev;
     inherit (source) hash;
   };
+  projectFile = "Rules/Rules.csproj";
+  nugetDeps = ./deps.json;
+  buildType = "PSV7Release";
+  dotnet-sdk = dotnetCorePackages.sdk_8_0;
+  dotnet-runtime = dotnetCorePackages.runtime_8_0;
+  # Select the module's PowerShell 7 target only for the build. Its project
+  # references a netstandard2.0 library, which must restore for that target.
+  dotnetBuildFlags = [
+    "--framework"
+    "net8"
+  ];
+  executables = [ ];
   strictDeps = true;
   nativeBuildInputs = [ unzip ];
-  dontUnpack = true;
-  dontBuild = true;
+  postPatch = builtins.readFile ./scripts/post-patch.sh;
   installPhase = ''
-    runHook preInstall
-    mkdir -p "$out/share/powershell/Modules/PSScriptAnalyzer" "$out/share/doc/psscriptanalyzer"
-    unzip -q "$src" -d "$out/share/powershell/Modules/PSScriptAnalyzer"
-    cp "$out/share/powershell/Modules/PSScriptAnalyzer/LICENSE" "$out/share/doc/psscriptanalyzer/"
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        inherit helpArchive;
+      }
+    }
   '';
   doInstallCheck = true;
   nativeInstallCheckInputs = [ powershell ];
   installCheckPhase = ''
-    runHook preInstallCheck
-    export HOME="$TMPDIR/home" DOTNET_CLI_HOME="$TMPDIR/dotnet" POWERSHELL_TELEMETRY_OPTOUT=1
-    mkdir -p "$HOME"
-    ANALYZER_PATH="$out/share/powershell/Modules/PSScriptAnalyzer/PSScriptAnalyzer.psd1" \
-      pwsh -NoLogo -NoProfile -NonInteractive -Command '
-        $ErrorActionPreference = "Stop"
-        Import-Module $env:ANALYZER_PATH
-        $findings = @(Invoke-ScriptAnalyzer -ScriptDefinition "`$unused = 1")
-        if ($findings.RuleName -notcontains "PSUseDeclaredVarsMoreThanAssignments") {
-          throw "Analyzer failed to detect an unused variable"
-        }
-      '
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        analyzerSmoke = "${./scripts/analyzer-smoke.ps1}";
+      }
+    }
   '';
   passthru.modulePath = "${finalAttrs.finalPackage}/share/powershell/Modules/PSScriptAnalyzer";
+  passthru.updateScript = [
+    (lib.getExe (callPackage ./update.nix { }))
+    "--source-directory"
+    (builtins.unsafeDiscardStringContext (toString ./.))
+  ];
   meta = {
     description = "Static analysis rules for PowerShell scripts and modules";
     homepage = "https://github.com/PowerShell/PSScriptAnalyzer";
     license = lib.licenses.mit;
-    sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
+    # Pluralize.NET is a pinned NuGet assembly included in the module.
+    sourceProvenance = with lib.sourceTypes; [
+      fromSource
+      binaryBytecode
+    ];
     inherit (powershell.meta) platforms;
   };
 })

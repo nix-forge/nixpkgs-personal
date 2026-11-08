@@ -1,6 +1,225 @@
+--- a/src/dbus/mpris/mpris_service.cpp
++++ b/src/dbus/mpris/mpris_service.cpp
+@@ -1628,6 +1628,8 @@
+           return;
+         }
+ 
++        // A replacement owner needs fresh sender checks and subscriptions.
++        m_playerProxies.erase(name);
+         addOrRefreshPlayer(name);
+       });
+ }
+@@ -1726,12 +1728,29 @@
+       m_playerProxies.emplace(busName, sdbus::createProxy(m_bus.connection(), sdbus::ServiceName{busName}, kMprisPath));
+ 
+   if (inserted) {
++    std::string owner;
++    try {
++      m_dbusProxy->callMethod("GetNameOwner").onInterface(kDbusInterface).withArguments(busName).storeResultsTo(owner);
++    } catch (const sdbus::Error&) {
++      m_playerProxies.erase(proxyIt);
++      scheduleRecoveryDiscovery();
++      return;
++    }
++    // Several players share the standard object path. Validate the unique
++    // sender before accepting a signal, independently of bus match filtering.
++    const auto fromPlayer = [proxy = proxyIt->second.get(), owner]() {
++      const char* sender = proxy->getCurrentlyProcessedMessage().getSender();
++      return sender != nullptr && owner == sender;
++    };
+     proxyIt->second->uponSignal("PropertiesChanged")
+         .onInterface(kPropertiesInterface)
+-        .call([this, busName](
++        .call([this, busName, fromPlayer](
+                   const std::string& interface_name, const std::map<std::string, sdbus::Variant>& changed_properties,
+                   const std::vector<std::string>& invalidated_properties
+               ) {
++          if (!fromPlayer()) {
++            return;
++          }
+           if (interface_name == kMprisRootInterface || interface_name == kMprisPlayerInterface) {
+             const bool metadataChanged =
+                 changed_properties.contains("Metadata") || std::ranges::contains(invalidated_properties, "Metadata");
+@@ -1773,59 +1792,64 @@
+           }
+         });
+ 
+-    proxyIt->second->uponSignal("Seeked").onInterface(kMprisPlayerInterface).call([this, busName](int64_t posUs) {
+-      auto playerIt = m_players.find(busName);
+-      if (playerIt == m_players.end()) {
+-        return;
+-      }
+-
+-      const auto now = std::chrono::steady_clock::now();
+-      auto offsetIt = m_positionOffsetsUs.find(busName);
+-      std::int64_t offsetUs = offsetIt != m_positionOffsetsUs.end() ? offsetIt->second : 0;
+-      std::int64_t normalizedUs = std::max<std::int64_t>(0, posUs - offsetUs);
+-      const std::int64_t previousPosUs = playerIt->second.positionUs;
+-      const auto previousTrackRawIt = m_previousTrackRawPositionUs.find(busName);
+-      const bool looksLikePreviousTrackContinuation = previousTrackRawIt != m_previousTrackRawPositionUs.end()
+-          && std::llabs(posUs - previousTrackRawIt->second) <= kPreviousTrackContinuationSlackUs;
+-
+-      if (looksLikePreviousTrackContinuation) {
+-        return;
+-      }
+-
+-      if (offsetUs > 0) {
+-        offsetIt->second = 0;
+-        offsetUs = 0;
+-        normalizedUs = std::max<std::int64_t>(0, posUs);
+-      }
+-
+-      if (!isPlausibleTrackPosition(normalizedUs, playerIt->second.lengthUs)) {
+-        return;
+-      }
+-
+-      if (playerIt->second.playbackStatus == "Paused" && normalizedUs > 0) {
+-        const auto pauseIt = m_recentNoSignalPauseAt.find(busName);
+-        const bool recoveringRecentPause =
+-            pauseIt != m_recentNoSignalPauseAt.end() && now - pauseIt->second <= kNoSignalPauseRecoveryWindow;
+-        const auto seekCommandIt = m_lastSeekCommandAt.find(busName);
+-        const bool recentLocalSeek =
+-            seekCommandIt != m_lastSeekCommandAt.end() && now - seekCommandIt->second <= kSeekPauseGraceWindow;
+-        const std::int64_t pausedJumpUs = std::llabs(normalizedUs - previousPosUs);
+-        if (recoveringRecentPause && !recentLocalSeek && pausedJumpUs >= kPauseRecoveryMinJumpUs) {
+-          m_recentNoSignalPauseAt.erase(pauseIt);
+-        }
+-      }
+-
+-      playerIt->second.positionUs = normalizedUs;
+-      m_hasAuthoritativePositionSample[busName] = true;
+-      m_lastPositionSampleAt[busName] = now;
+-      m_previousTrackRawPositionUs.erase(busName);
+-      m_pendingPositionCandidateUs.erase(busName);
+-      m_pendingPositionCandidateMatches.erase(busName);
+-      m_pendingPositionCandidateAt.erase(busName);
+-      if (m_changeCallback) {
+-        m_changeCallback();
+-      }
+-    });
++    proxyIt->second->uponSignal("Seeked")
++        .onInterface(kMprisPlayerInterface)
++        .call([this, busName, fromPlayer](int64_t posUs) {
++          if (!fromPlayer()) {
++            return;
++          }
++          auto playerIt = m_players.find(busName);
++          if (playerIt == m_players.end()) {
++            return;
++          }
++
++          const auto now = std::chrono::steady_clock::now();
++          auto offsetIt = m_positionOffsetsUs.find(busName);
++          std::int64_t offsetUs = offsetIt != m_positionOffsetsUs.end() ? offsetIt->second : 0;
++          std::int64_t normalizedUs = std::max<std::int64_t>(0, posUs - offsetUs);
++          const std::int64_t previousPosUs = playerIt->second.positionUs;
++          const auto previousTrackRawIt = m_previousTrackRawPositionUs.find(busName);
++          const bool looksLikePreviousTrackContinuation = previousTrackRawIt != m_previousTrackRawPositionUs.end()
++              && std::llabs(posUs - previousTrackRawIt->second) <= kPreviousTrackContinuationSlackUs;
++
++          if (looksLikePreviousTrackContinuation) {
++            return;
++          }
++
++          if (offsetUs > 0) {
++            offsetIt->second = 0;
++            offsetUs = 0;
++            normalizedUs = std::max<std::int64_t>(0, posUs);
++          }
++
++          if (!isPlausibleTrackPosition(normalizedUs, playerIt->second.lengthUs)) {
++            return;
++          }
++
++          if (playerIt->second.playbackStatus == "Paused" && normalizedUs > 0) {
++            const auto pauseIt = m_recentNoSignalPauseAt.find(busName);
++            const bool recoveringRecentPause =
++                pauseIt != m_recentNoSignalPauseAt.end() && now - pauseIt->second <= kNoSignalPauseRecoveryWindow;
++            const auto seekCommandIt = m_lastSeekCommandAt.find(busName);
++            const bool recentLocalSeek =
++                seekCommandIt != m_lastSeekCommandAt.end() && now - seekCommandIt->second <= kSeekPauseGraceWindow;
++            const std::int64_t pausedJumpUs = std::llabs(normalizedUs - previousPosUs);
++            if (recoveringRecentPause && !recentLocalSeek && pausedJumpUs >= kPauseRecoveryMinJumpUs) {
++              m_recentNoSignalPauseAt.erase(pauseIt);
++            }
++          }
++
++          playerIt->second.positionUs = normalizedUs;
++          m_hasAuthoritativePositionSample[busName] = true;
++          m_lastPositionSampleAt[busName] = now;
++          m_previousTrackRawPositionUs.erase(busName);
++          m_pendingPositionCandidateUs.erase(busName);
++          m_pendingPositionCandidateMatches.erase(busName);
++          m_pendingPositionCandidateAt.erase(busName);
++          if (m_changeCallback) {
++            m_changeCallback();
++          }
++        });
+   }
+ 
+   const bool hadPositionSignal = m_pendingPositionSignalRefresh[busName];
+@@ -1958,38 +1982,20 @@
+   }
+   const auto previousActive = activePlayer();
+   const auto now = std::chrono::steady_clock::now();
+-  bool clearedPinnedPlayerPreference = false;
+   const auto existing = m_players.find(busName);
+   const bool becamePlaying =
+       info.playbackStatus == "Playing" && (existing == m_players.end() || existing->second.playbackStatus != "Playing");
+   const bool transitionedFromPlaying =
+       info.playbackStatus != "Playing" && existing != m_players.end() && existing->second.playbackStatus == "Playing";
+-  const auto hasOtherPlayingPlayer = [this, &busName] {
+-    return std::ranges::any_of(m_players, [&](const auto& entry) {
+-      const auto& [otherBusName, player] = entry;
+-      return otherBusName != busName && !isBlacklisted(player) && player.playbackStatus == "Playing";
+-    });
+-  };
+-
++  // A user pin survives playback changes; only unpinning or removal clears it.
+   if (info.playbackStatus == "Playing") {
+     m_stoppedPlayers.erase(busName);
+-    if (becamePlaying && m_pinnedPlayerPreference.has_value() && *m_pinnedPlayerPreference != busName) {
+-      const auto pinnedIt = m_players.find(*m_pinnedPlayerPreference);
+-      if (pinnedIt != m_players.end() && pinnedIt->second.playbackStatus != "Playing") {
+-        m_pinnedPlayerPreference.reset();
+-        clearedPinnedPlayerPreference = true;
+-      }
+-    }
+     if (becamePlaying) {
+       m_lastActivePlayer = busName;
+       m_lastPlayingUpdate[busName] = now;
+     }
+   } else if (transitionedFromPlaying) {
+     m_lastActivePlayer = busName;
+-    if (m_pinnedPlayerPreference.has_value() && *m_pinnedPlayerPreference == busName && hasOtherPlayingPlayer()) {
+-      m_pinnedPlayerPreference.reset();
+-      clearedPinnedPlayerPreference = true;
+-    }
+   }
+   if (hasStrongNowPlayingMetadata(info)) {
+     m_lastStrongMetadataUpdate[busName] = now;
+@@ -2251,7 +2257,7 @@
+     }
+ 
+     syncSignals(previousActive);
+-    if ((significantChanged || clearedPinnedPlayerPreference) && m_changeCallback) {
++    if (significantChanged && m_changeCallback) {
+       m_changeCallback();
+     }
+   }
+@@ -2316,6 +2322,9 @@
+   }
+ 
+   clearPlayerState(busName);
++  if (m_pinnedPlayerPreference == busName) {
++    m_pinnedPlayerPreference.reset();
++  }
+   m_playerProxies.erase(busName);
+   emitPlayersChanged();
+   syncSignals(previousActive);
 --- a/src/shell/control_center/tabs/media_tab.cpp
 +++ b/src/shell/control_center/tabs/media_tab.cpp
-@@ -1,1003 +1,388 @@
+@@ -1,1058 +1,388 @@
  #include "shell/control_center/tabs/media_tab.h"
  
 -#include "config/config_service.h"
@@ -14,6 +233,7 @@
  #include "render/core/renderer.h"
 -#include "render/scene/node.h"
 -#include "shell/control_center/tab.h"
+-#include "shell/panel/panel_button_style.h"
  #include "shell/panel/panel_manager.h"
  #include "ui/builders.h"
 -#include "ui/controls/context_menu.h"
@@ -57,7 +277,7 @@
 -  constexpr auto kProgressSettleHold = std::chrono::milliseconds(2500);
 -  constexpr auto kPendingSeekTimeout = std::chrono::milliseconds(5000);
 -
--  std::string playPauseGlyph(const std::string& playbackStatus) {
+-  std::string_view playPauseGlyph(const std::string& playbackStatus) {
 -    return playbackStatus == "Playing" ? "media-pause" : "media-play";
 -  }
 -
@@ -66,7 +286,9 @@
 -    return static_cast<int>(std::round(kMediaUnit * 11.0F * scale));
 -  }
 -
--  std::string repeatGlyph(const std::string& loopStatus) { return loopStatus == "Track" ? "repeat-once" : "repeat"; }
+-  std::string_view repeatGlyph(const std::string& loopStatus) {
+-    return loopStatus == "Track" ? "repeat-once" : "repeat";
+-  }
 -
 -  ButtonVariant toggleVariant(bool active) { return active ? ButtonVariant::Primary : ButtonVariant::Ghost; }
 -  constexpr int kVisualizerBandCount = 32;
@@ -146,7 +368,7 @@
 -  PanelManager::instance().beginAttachedPopup(parentCtx->surface);
 -  PanelManager::instance().setActivePopup(m_playerMenuPopup.get());
 -
--  m_playerMenuPopup->setOnDismissed([parentSurface = parentCtx->surface]() {
+-  m_playerMenuPopup->setOnDismissed([parentSurface = parentCtx->surface] {
 -    PanelManager::instance().clearActivePopup();
 -    PanelManager::instance().endAttachedPopup(parentSurface);
 -  });
@@ -182,6 +404,10 @@
  
  std::unique_ptr<Flex> MediaTab::create() {
 -  const float scale = contentScale();
+-
+-  if (m_config != nullptr) {
+-    m_showVisualizer = m_config->config().controlCenter.mediaTab.showVisualizer;
+-  }
 -
 -  auto tab = ui::row({
 -      .out = &m_rootLayout,
@@ -231,7 +457,7 @@
 -          .minWidth = Style::controlHeightSm * scale,
 -          .minHeight = Style::controlHeightSm * scale,
 -          .padding = Style::spaceXs * scale,
--          .onClick = [this]() {
+-          .onClick = [this] {
 -            if (m_playerBusNames.empty()) {
 -              return;
 -            }
@@ -300,6 +526,7 @@
 -          .trackHeight = 7.0F * scale,
 -          .thumbSize = 16.0F * scale,
 -          .controlHeight = (Style::controlHeight + Style::spaceXs) * scale,
+-          .wheelAdjustEnabled = false,
 -          .onValueChanged =
 -              [this](double value) {
 -                if (m_syncingProgress || m_mpris == nullptr) {
@@ -318,7 +545,7 @@
 -                m_progressSettleUntil = now + kProgressSettleHold;
 -              },
 -          .onDragEnd =
--              [this]() {
+-              [this] {
 -                if (m_syncingProgress || m_mpris == nullptr || m_progressSlider == nullptr) {
 -                  return;
 -                }
@@ -341,9 +568,9 @@
 -          .minHeight = kMediaControlsHeight * scale,
 -          .padding = Style::spaceSm * scale,
 -          .radius = Style::scaledRadiusLg(scale),
--          .onClick = [this]() {
+-          .onClick = [this] {
 -            const std::weak_ptr<void> aliveGuard = m_aliveGuard;
--            DeferredCall::callLater([this, aliveGuard]() {
+-            DeferredCall::callLater([this, aliveGuard] {
 -              if (aliveGuard.expired() || m_mpris == nullptr) {
 -                return;
 -              }
@@ -365,9 +592,9 @@
 -          .minHeight = kMediaControlsHeight * scale,
 -          .padding = Style::spaceSm * scale,
 -          .radius = Style::scaledRadiusLg(scale),
--          .onClick = [this]() {
+-          .onClick = [this] {
 -            const std::weak_ptr<void> aliveGuard = m_aliveGuard;
--            DeferredCall::callLater([this, aliveGuard]() {
+-            DeferredCall::callLater([this, aliveGuard] {
 -              if (aliveGuard.expired() || m_mpris == nullptr) {
 -                return;
 -              }
@@ -387,9 +614,9 @@
 -          .minHeight = kMediaPlayPauseHeight * scale,
 -          .padding = Style::spaceSm * scale,
 -          .radius = Style::scaledRadiusLg(scale),
--          .onClick = [this]() {
+-          .onClick = [this] {
 -            const std::weak_ptr<void> aliveGuard = m_aliveGuard;
--            DeferredCall::callLater([this, aliveGuard]() {
+-            DeferredCall::callLater([this, aliveGuard] {
 -              if (aliveGuard.expired() || m_mpris == nullptr) {
 -                return;
 -              }
@@ -409,9 +636,9 @@
 -          .minHeight = kMediaControlsHeight * scale,
 -          .padding = Style::spaceSm * scale,
 -          .radius = Style::scaledRadiusLg(scale),
--          .onClick = [this]() {
+-          .onClick = [this] {
 -            const std::weak_ptr<void> aliveGuard = m_aliveGuard;
--            DeferredCall::callLater([this, aliveGuard]() {
+-            DeferredCall::callLater([this, aliveGuard] {
 -              if (aliveGuard.expired() || m_mpris == nullptr) {
 -                return;
 -              }
@@ -431,9 +658,9 @@
 -          .minHeight = kMediaControlsHeight * scale,
 -          .padding = Style::spaceSm * scale,
 -          .radius = Style::scaledRadiusLg(scale),
--          .onClick = [this]() {
+-          .onClick = [this] {
 -            const std::weak_ptr<void> aliveGuard = m_aliveGuard;
--            DeferredCall::callLater([this, aliveGuard]() {
+-            DeferredCall::callLater([this, aliveGuard] {
 -              if (aliveGuard.expired() || m_mpris == nullptr) {
 -                return;
 -              }
@@ -684,6 +911,7 @@
 -  m_visualizerSpectrum = visualizerSpectrum.get();
 -  visualizerBody->addChild(std::move(visualizerSpectrum));
 -  visualizerColumn->addChild(std::move(visualizerBody));
+-  visualizerColumn->setVisible(m_showVisualizer);
 -  tab->addChild(std::move(mediaColumn));
 -  tab->addChild(std::move(visualizerColumn));
 -
@@ -691,7 +919,7 @@
 -    m_playerMenuPopup = std::make_unique<ContextMenuPopup>(*m_wayland, *m_renderContext);
 -    m_playerMenuPopup->setOnActivate([this](const ContextMenuControlEntry& entry) {
 -      const std::weak_ptr<void> aliveGuard = m_aliveGuard;
--      DeferredCall::callLater([this, aliveGuard, entry]() {
+-      DeferredCall::callLater([this, aliveGuard, entry] {
 -        if (aliveGuard.expired() || m_mpris == nullptr) {
 -          return;
 -        }
@@ -711,6 +939,27 @@
 -  return tab;
 -}
 -
+-std::unique_ptr<Flex> MediaTab::createHeaderActions() {
+-  const float scale = contentScale();
+-  if (m_config != nullptr) {
+-    m_showVisualizer = m_config->config().controlCenter.mediaTab.showVisualizer;
+-  }
+-  return ui::row(
+-      {
+-          .align = FlexAlign::Center,
+-          .gap = Style::spaceSm * scale,
+-      },
+-      ui::button({
+-          .out = &m_toggleVisualizerButton,
+-          .glyph = m_showVisualizer ? "chart-bar" : "chart-bar-off",
+-          .selected = m_showVisualizer,
+-          .tooltip = i18n::tr("control-center.media.toggle-visualizer"),
+-          .onClick = [this] { toggleVisualizer(); },
+-          .configure = [scale](Button& button) { panel_button_style::configureHeaderIconButton(button, scale); },
+-      })
+-  );
+-}
+-
 -void MediaTab::doLayout(Renderer& renderer, float contentWidth, float bodyHeight) {
 -  if (m_rootLayout == nullptr || m_nowCard == nullptr || m_mediaStack == nullptr) {
 +}
@@ -727,7 +976,8 @@
 -
 -  const float cardInnerWidth =
 -      std::max(0.0F, m_nowCard->width() - (m_nowCard->paddingLeft() + m_nowCard->paddingRight()));
--  const float mediaWidth = std::clamp(cardInnerWidth, 1.0F, kMediaUnit * 11.0F * scale);
+-  const float mediaWidth =
+-      m_showVisualizer ? std::clamp(cardInnerWidth, 1.0F, kMediaUnit * 11.0F * scale) : std::max(cardInnerWidth, 1.0F);
 -  const float mediaStackHeight = m_mediaStack->height();
 -  m_mediaStack->setSize(mediaWidth, mediaStackHeight);
 -
@@ -854,7 +1104,7 @@
 -    m_mediaStack->layout(renderer);
 -  }
 -
--  if (m_visualizerBody != nullptr && m_visualizerSpectrum != nullptr) {
+-  if (m_showVisualizer && m_visualizerBody != nullptr && m_visualizerSpectrum != nullptr) {
 -    const float bodyWidth = std::max(
 -        0.0F, m_visualizerBody->width() - (m_visualizerBody->paddingLeft() + m_visualizerBody->paddingRight())
 -    );
@@ -923,10 +1173,12 @@
 -    m_progressTimer.stop();
 -    return;
 -  }
--  if (m_visualizerSpectrum != nullptr && m_spectrum != nullptr && m_spectrumListenerId != 0) {
--    if (!m_spectrum->idle() || !m_visualizerSpectrum->converged()) {
--      m_visualizerSpectrum->setValues(m_spectrum->values(m_spectrumListenerId));
--    }
+-  if (m_showVisualizer
+-      && m_visualizerSpectrum != nullptr
+-      && m_spectrum != nullptr
+-      && m_spectrumListenerId != 0
+-      && (!m_spectrum->idle() || !m_visualizerSpectrum->converged())) {
+-    m_visualizerSpectrum->setValues(m_spectrum->values(m_spectrumListenerId));
 -  }
 -
 -  const auto active = m_mpris != nullptr ? m_mpris->activePlayer() : std::nullopt;
@@ -937,7 +1189,7 @@
 -  const bool playing = active.has_value() && active->playbackStatus == "Playing";
 -  if (playing || hasPendingSeek || withinProgressSettle) {
 -    if (!m_progressTimer.active()) {
--      m_progressTimer.startRepeating(std::chrono::milliseconds(1000), [this]() {
+-      m_progressTimer.startRepeating(std::chrono::milliseconds(1000), [this] {
 -        if (!m_active) {
 -          return;
 -        }
@@ -962,16 +1214,17 @@
 -}
 -
 -void MediaTab::onFrameTick(float deltaMs) {
--  if (!m_active) {
+-  if (!m_active || !m_showVisualizer) {
 -    return;
 -  }
 -
 -  if (m_visualizerSpectrum != nullptr) {
--    if (m_spectrum != nullptr && m_spectrumListenerId != 0) {
--      if (!m_spectrum->idle() || !m_visualizerSpectrum->converged()) {
--        m_visualizerSpectrum->setValues(m_spectrum->values(m_spectrumListenerId));
-       }
+-    if (m_spectrum != nullptr
+-        && m_spectrumListenerId != 0
+-        && (!m_spectrum->idle() || !m_visualizerSpectrum->converged())) {
+-      m_visualizerSpectrum->setValues(m_spectrum->values(m_spectrumListenerId));
 -    }
+-
 -    m_visualizerSpectrum->tick(deltaMs);
 -  }
 -}
@@ -979,19 +1232,7 @@
 -void MediaTab::setActive(bool active) {
 -  const bool becameActive = active && !m_active;
 -  m_active = active;
--  if (m_spectrum != nullptr) {
--    if (active && m_spectrumListenerId == 0) {
--      m_spectrumListenerId = m_spectrum->addChangeListener(kVisualizerBandCount, [this]() {
--        if (!m_active || m_spectrum->idle()) {
--          return;
--        }
--        PanelManager::instance().requestFrameTick();
--      });
--    } else if (!active && m_spectrumListenerId != 0) {
--      m_spectrum->removeChangeListener(m_spectrumListenerId);
--      m_spectrumListenerId = 0;
--    }
--  }
+-  updateSpectrumSubscription();
 -  if (!active) {
 -    m_progressTimer.stop();
 -    m_positionSampleAt = {};
@@ -1005,6 +1246,7 @@
 -  }
 -}
 -
++      }
 +    });
 +  } else if (!active) {
 +    m_timer.stop();
@@ -1012,11 +1254,9 @@
 +}
  void MediaTab::onClose() {
 -  m_progressTimer.stop();
--  if (m_spectrum != nullptr) {
--    if (m_spectrumListenerId != 0) {
--      m_spectrum->removeChangeListener(m_spectrumListenerId);
--      m_spectrumListenerId = 0;
--    }
+-  if (m_spectrum != nullptr && m_spectrumListenerId != 0) {
+-    m_spectrum->removeChangeListener(m_spectrumListenerId);
+-    m_spectrumListenerId = 0;
 -  }
 +  m_timer.stop();
    m_active = false;
@@ -1025,6 +1265,7 @@
 -  m_visualizerColumn = nullptr;
 -  m_visualizerBody = nullptr;
 -  m_visualizerSpectrum = nullptr;
+-  m_toggleVisualizerButton = nullptr;
 -  m_artwork = nullptr;
 -  m_artworkRow = nullptr;
 -  m_nowCard = nullptr;
@@ -1091,7 +1332,7 @@
 -  m_progressSettleUntil = now + kProgressSettleHold;
 -
 -  const std::weak_ptr<void> aliveGuard = m_aliveGuard;
--  DeferredCall::callLater([this, aliveGuard, seekBusName, targetUs]() {
+-  DeferredCall::callLater([this, aliveGuard, seekBusName, targetUs] {
 -    if (aliveGuard.expired() || m_mpris == nullptr) {
 -      return;
 -    }
@@ -1210,9 +1451,10 @@
 -    std::int64_t displayPositionUs = livePositionUs;
 -    if (seekPending) {
 -      displayPositionUs = m_pendingSeekUs;
--    } else if (withinProgressSettle && livePositionUs + kTransientPositionRegressionDeltaUs < m_positionUs) {
--      displayPositionUs = m_positionUs;
--    } else if (preserveDisplayedPosition) {
+-    } else if (
+-        (withinProgressSettle && livePositionUs + kTransientPositionRegressionDeltaUs < m_positionUs)
+-        || preserveDisplayedPosition
+-    ) {
 -      displayPositionUs = m_positionUs;
 -    }
 -
@@ -1350,6 +1592,39 @@
 -  m_lastLoopStatus.clear();
 -  m_lastShuffle = false;
 -}
+-
+-void MediaTab::toggleVisualizer() {
+-  m_showVisualizer = !m_showVisualizer;
+-  if (m_config != nullptr) {
+-    m_config->setOverride({"control_center", "media", "show_visualizer"}, m_showVisualizer);
+-  }
+-  if (m_toggleVisualizerButton != nullptr) {
+-    m_toggleVisualizerButton->setGlyph(m_showVisualizer ? "chart-bar" : "chart-bar-off");
+-    m_toggleVisualizerButton->setSelected(m_showVisualizer);
+-  }
+-  if (m_visualizerColumn != nullptr) {
+-    m_visualizerColumn->setVisible(m_showVisualizer);
+-  }
+-  updateSpectrumSubscription();
+-}
+-
+-void MediaTab::updateSpectrumSubscription() {
+-  if (m_spectrum == nullptr) {
+-    return;
+-  }
+-  const bool shouldSubscribe = m_active && m_showVisualizer;
+-  if (shouldSubscribe && m_spectrumListenerId == 0) {
+-    m_spectrumListenerId = m_spectrum->addChangeListener(kVisualizerBandCount, [this] {
+-      if (!m_active || !m_showVisualizer || m_spectrum->idle()) {
+-        return;
+-      }
+-      PanelManager::instance().requestFrameTick();
+-    });
+-  } else if (!shouldSubscribe && m_spectrumListenerId != 0) {
+-    m_spectrum->removeChangeListener(m_spectrumListenerId);
+-    m_spectrumListenerId = 0;
+-  }
+-}
 +  m_root = nullptr;
 +  m_scroll = nullptr;
 +  m_list = nullptr;
@@ -1358,7 +1633,7 @@
 +}
 --- a/src/shell/control_center/tabs/media_tab.h
 +++ b/src/shell/control_center/tabs/media_tab.h
-@@ -5,106 +5,71 @@
+@@ -5,111 +5,71 @@
  #include "shell/control_center/tab.h"
  
  #include <chrono>
@@ -1394,6 +1669,7 @@
    ~MediaTab() override;
 -
    std::unique_ptr<Flex> create() override;
+-  std::unique_ptr<Flex> createHeaderActions() override;
 -  void onFrameTick(float deltaMs) override;
    void setActive(bool active) override;
    void onClose() override;
@@ -1427,6 +1703,8 @@
    void refresh(Renderer& renderer);
 -  void clearArt(Renderer& renderer);
 -  void commitPendingSeek(double valueSeconds);
+-  void toggleVisualizer();
+-  void updateSpectrumSubscription();
 +  void rebuild(const std::vector<MprisPlayerInfo>& players);
 +  void control(const std::string& busName, int action);
 +  void seek(const std::string& busName, double seconds);
@@ -1458,6 +1736,8 @@
 -  Flex* m_visualizerColumn = nullptr;
 -  Flex* m_visualizerBody = nullptr;
 -  AudioVisualizer* m_visualizerSpectrum = nullptr;
+-  Button* m_toggleVisualizerButton = nullptr;
+-  bool m_showVisualizer = true;
 -  Image* m_artwork = nullptr;
 -  Flex* m_artworkRow = nullptr;
 -  Flex* m_nowCard = nullptr;
@@ -1500,225 +1780,3 @@
 -  std::chrono::steady_clock::time_point m_lastRealtimeMprisPollAt;
 -  Timer m_progressTimer;
  };
---- a/src/dbus/mpris/mpris_service.cpp
-+++ b/src/dbus/mpris/mpris_service.cpp
-@@ -1529,6 +1529,8 @@
-           return;
-         }
- 
-+        // A replacement owner needs fresh sender checks and subscriptions.
-+        m_playerProxies.erase(name);
-         addOrRefreshPlayer(name);
-       });
- }
-@@ -1627,12 +1629,29 @@
-       m_playerProxies.emplace(busName, sdbus::createProxy(m_bus.connection(), sdbus::ServiceName{busName}, kMprisPath));
- 
-   if (inserted) {
-+    std::string owner;
-+    try {
-+      m_dbusProxy->callMethod("GetNameOwner").onInterface(kDbusInterface).withArguments(busName).storeResultsTo(owner);
-+    } catch (const sdbus::Error&) {
-+      m_playerProxies.erase(proxyIt);
-+      scheduleRecoveryDiscovery();
-+      return;
-+    }
-+    // Several players share the standard object path. Validate the unique
-+    // sender before accepting a signal, independently of bus match filtering.
-+    const auto fromPlayer = [proxy = proxyIt->second.get(), owner]() {
-+      const char* sender = proxy->getCurrentlyProcessedMessage().getSender();
-+      return sender != nullptr && owner == sender;
-+    };
-     proxyIt->second->uponSignal("PropertiesChanged")
-         .onInterface(kPropertiesInterface)
--        .call([this, busName](
-+        .call([this, busName, fromPlayer](
-                   const std::string& interface_name, const std::map<std::string, sdbus::Variant>& changed_properties,
-                   const std::vector<std::string>& invalidated_properties
-               ) {
-+          if (!fromPlayer()) {
-+            return;
-+          }
-           if (interface_name == kMprisRootInterface || interface_name == kMprisPlayerInterface) {
-             const bool metadataChanged =
-                 changed_properties.contains("Metadata") || std::ranges::contains(invalidated_properties, "Metadata");
-@@ -1674,59 +1693,64 @@
-           }
-         });
- 
--    proxyIt->second->uponSignal("Seeked").onInterface(kMprisPlayerInterface).call([this, busName](int64_t posUs) {
--      auto playerIt = m_players.find(busName);
--      if (playerIt == m_players.end()) {
--        return;
--      }
--
--      const auto now = std::chrono::steady_clock::now();
--      auto offsetIt = m_positionOffsetsUs.find(busName);
--      std::int64_t offsetUs = offsetIt != m_positionOffsetsUs.end() ? offsetIt->second : 0;
--      std::int64_t normalizedUs = std::max<std::int64_t>(0, posUs - offsetUs);
--      const std::int64_t previousPosUs = playerIt->second.positionUs;
--      const auto previousTrackRawIt = m_previousTrackRawPositionUs.find(busName);
--      const bool looksLikePreviousTrackContinuation = previousTrackRawIt != m_previousTrackRawPositionUs.end()
--          && std::llabs(posUs - previousTrackRawIt->second) <= kPreviousTrackContinuationSlackUs;
--
--      if (looksLikePreviousTrackContinuation) {
--        return;
--      }
--
--      if (offsetUs > 0) {
--        offsetIt->second = 0;
--        offsetUs = 0;
--        normalizedUs = std::max<std::int64_t>(0, posUs);
--      }
--
--      if (!isPlausibleTrackPosition(normalizedUs, playerIt->second.lengthUs)) {
--        return;
--      }
--
--      if (playerIt->second.playbackStatus == "Paused" && normalizedUs > 0) {
--        const auto pauseIt = m_recentNoSignalPauseAt.find(busName);
--        const bool recoveringRecentPause =
--            pauseIt != m_recentNoSignalPauseAt.end() && now - pauseIt->second <= kNoSignalPauseRecoveryWindow;
--        const auto seekCommandIt = m_lastSeekCommandAt.find(busName);
--        const bool recentLocalSeek =
--            seekCommandIt != m_lastSeekCommandAt.end() && now - seekCommandIt->second <= kSeekPauseGraceWindow;
--        const std::int64_t pausedJumpUs = std::llabs(normalizedUs - previousPosUs);
--        if (recoveringRecentPause && !recentLocalSeek && pausedJumpUs >= kPauseRecoveryMinJumpUs) {
--          m_recentNoSignalPauseAt.erase(pauseIt);
--        }
--      }
--
--      playerIt->second.positionUs = normalizedUs;
--      m_hasAuthoritativePositionSample[busName] = true;
--      m_lastPositionSampleAt[busName] = now;
--      m_previousTrackRawPositionUs.erase(busName);
--      m_pendingPositionCandidateUs.erase(busName);
--      m_pendingPositionCandidateMatches.erase(busName);
--      m_pendingPositionCandidateAt.erase(busName);
--      if (m_changeCallback) {
--        m_changeCallback();
--      }
--    });
-+    proxyIt->second->uponSignal("Seeked")
-+        .onInterface(kMprisPlayerInterface)
-+        .call([this, busName, fromPlayer](int64_t posUs) {
-+          if (!fromPlayer()) {
-+            return;
-+          }
-+          auto playerIt = m_players.find(busName);
-+          if (playerIt == m_players.end()) {
-+            return;
-+          }
-+
-+          const auto now = std::chrono::steady_clock::now();
-+          auto offsetIt = m_positionOffsetsUs.find(busName);
-+          std::int64_t offsetUs = offsetIt != m_positionOffsetsUs.end() ? offsetIt->second : 0;
-+          std::int64_t normalizedUs = std::max<std::int64_t>(0, posUs - offsetUs);
-+          const std::int64_t previousPosUs = playerIt->second.positionUs;
-+          const auto previousTrackRawIt = m_previousTrackRawPositionUs.find(busName);
-+          const bool looksLikePreviousTrackContinuation = previousTrackRawIt != m_previousTrackRawPositionUs.end()
-+              && std::llabs(posUs - previousTrackRawIt->second) <= kPreviousTrackContinuationSlackUs;
-+
-+          if (looksLikePreviousTrackContinuation) {
-+            return;
-+          }
-+
-+          if (offsetUs > 0) {
-+            offsetIt->second = 0;
-+            offsetUs = 0;
-+            normalizedUs = std::max<std::int64_t>(0, posUs);
-+          }
-+
-+          if (!isPlausibleTrackPosition(normalizedUs, playerIt->second.lengthUs)) {
-+            return;
-+          }
-+
-+          if (playerIt->second.playbackStatus == "Paused" && normalizedUs > 0) {
-+            const auto pauseIt = m_recentNoSignalPauseAt.find(busName);
-+            const bool recoveringRecentPause =
-+                pauseIt != m_recentNoSignalPauseAt.end() && now - pauseIt->second <= kNoSignalPauseRecoveryWindow;
-+            const auto seekCommandIt = m_lastSeekCommandAt.find(busName);
-+            const bool recentLocalSeek =
-+                seekCommandIt != m_lastSeekCommandAt.end() && now - seekCommandIt->second <= kSeekPauseGraceWindow;
-+            const std::int64_t pausedJumpUs = std::llabs(normalizedUs - previousPosUs);
-+            if (recoveringRecentPause && !recentLocalSeek && pausedJumpUs >= kPauseRecoveryMinJumpUs) {
-+              m_recentNoSignalPauseAt.erase(pauseIt);
-+            }
-+          }
-+
-+          playerIt->second.positionUs = normalizedUs;
-+          m_hasAuthoritativePositionSample[busName] = true;
-+          m_lastPositionSampleAt[busName] = now;
-+          m_previousTrackRawPositionUs.erase(busName);
-+          m_pendingPositionCandidateUs.erase(busName);
-+          m_pendingPositionCandidateMatches.erase(busName);
-+          m_pendingPositionCandidateAt.erase(busName);
-+          if (m_changeCallback) {
-+            m_changeCallback();
-+          }
-+        });
-   }
- 
-   const bool hadPositionSignal = m_pendingPositionSignalRefresh[busName];
-@@ -1849,40 +1873,21 @@
-   }
-   const auto previousActive = activePlayer();
-   const auto now = std::chrono::steady_clock::now();
--  bool clearedPinnedPlayerPreference = false;
-   const auto existing = m_players.find(busName);
-   const bool becamePlaying =
-       info.playbackStatus == "Playing" && (existing == m_players.end() || existing->second.playbackStatus != "Playing");
-   const bool transitionedFromPlaying =
-       info.playbackStatus != "Playing" && existing != m_players.end() && existing->second.playbackStatus == "Playing";
--  const auto hasOtherPlayingPlayer = [this, &busName]() {
--    for (const auto& [otherBusName, player] : m_players) {
--      if (otherBusName != busName && !isBlacklisted(player) && player.playbackStatus == "Playing") {
--        return true;
--      }
--    }
--    return false;
--  };
--
-+
-+  // A user pin survives playback changes; only unpinning or removal clears it.
-   if (info.playbackStatus == "Playing") {
-     m_stoppedPlayers.erase(busName);
--    if (becamePlaying && m_pinnedPlayerPreference.has_value() && *m_pinnedPlayerPreference != busName) {
--      const auto pinnedIt = m_players.find(*m_pinnedPlayerPreference);
--      if (pinnedIt != m_players.end() && pinnedIt->second.playbackStatus != "Playing") {
--        m_pinnedPlayerPreference.reset();
--        clearedPinnedPlayerPreference = true;
--      }
--    }
-     if (becamePlaying) {
-       m_lastActivePlayer = busName;
-       m_lastPlayingUpdate[busName] = now;
-     }
-   } else if (transitionedFromPlaying) {
-     m_lastActivePlayer = busName;
--    if (m_pinnedPlayerPreference.has_value() && *m_pinnedPlayerPreference == busName && hasOtherPlayingPlayer()) {
--      m_pinnedPlayerPreference.reset();
--      clearedPinnedPlayerPreference = true;
--    }
-   }
-   if (hasStrongNowPlayingMetadata(info)) {
-     m_lastStrongMetadataUpdate[busName] = now;
-@@ -2122,7 +2127,7 @@
-     }
- 
-     syncSignals(previousActive);
--    if ((significantChanged || clearedPinnedPlayerPreference) && m_changeCallback) {
-+    if (significantChanged && m_changeCallback) {
-       m_changeCallback();
-     }
-   }
-@@ -2186,6 +2191,9 @@
-   }
- 
-   clearPlayerState(busName);
-+  if (m_pinnedPlayerPreference == busName) {
-+    m_pinnedPlayerPreference.reset();
-+  }
-   m_playerProxies.erase(busName);
-   emitPlayersChanged();
-   syncSignals(previousActive);

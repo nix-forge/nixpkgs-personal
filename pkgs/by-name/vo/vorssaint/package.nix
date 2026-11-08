@@ -1,4 +1,6 @@
 {
+  callPackage,
+  replaceVars,
   lib,
   stdenv,
   fetchFromGitHub,
@@ -15,243 +17,110 @@
 let
   pname = "vorssaint";
   source = import ./source.nix;
-  needsSwift510CompatibilityPatch = lib.versionOlder swift.version "6";
-  # Upstream 3.4.1 includes both fan-helper isolation fixes already.
-  needsFanHelperConcurrencyPatch = lib.versionOlder source.version "3.4.1";
-
 in
-lib.warnIf (!needsSwift510CompatibilityPatch)
-  ''
-    vorssaint: Swift ${swift.version} is available; the Swift 5.10 compatibility
-    patch was skipped. Verify the unpatched build, then remove
-    swift-5.10-concurrency.patch and this version guard.
-  ''
-  (
-    stdenv.mkDerivation (finalAttrs: {
-      inherit pname;
-      inherit (source) version;
+stdenv.mkDerivation (finalAttrs: {
+  inherit pname;
+  inherit (source) version;
 
-      src = fetchFromGitHub source.src;
+  src = fetchFromGitHub source.src;
 
-      # Nixpkgs currently ships Swift 5.10.1.  Do not carry this workaround into
-      # Swift 6 silently: skipping it both validates the upstream source and
-      # prompts removal of the now-dead patch via the warning above.
-      patches =
-        lib.optionals needsSwift510CompatibilityPatch [ ./swift-5.10-concurrency.patch ]
-        ++ lib.optionals needsFanHelperConcurrencyPatch [ ./fan-helper-concurrency.patch ];
-      postPatch = ''
-        python3 ${./rebrand.py} .
-      '';
-      patchFlags = [
-        "-p1"
-        "--fuzz=0"
-      ];
+  patches = [ ];
+  postPatch = ''
+    source ${
+      replaceVars ./scripts/post-patch.sh {
+        rebrand_py = "${./rebrand.py}";
+      }
+    }
+  '';
+  patchFlags = [
+    "-p1"
+    "--fuzz=0"
+  ];
 
-      nativeBuildInputs = [
-        coreutils
-        findutils
-        imagemagick
-        makeWrapper
-        python3
-        rcodesign
-        swift
-      ];
-      buildInputs = [ sqlite ];
-      strictDeps = true;
+  nativeBuildInputs = [
+    coreutils
+    findutils
+    imagemagick
+    makeWrapper
+    python3
+    rcodesign
+    swift
+  ];
+  buildInputs = [ sqlite ];
+  strictDeps = true;
 
-      dontConfigure = true;
+  dontConfigure = true;
 
-      buildPhase = ''
-        runHook preBuild
+  buildPhase = ''
+    source ${
+      replaceVars ./scripts/build-phase.sh {
+        icon_svg = "${./icon.svg}";
+        menu_icon_svg = "${./menu-bar-icon.svg}";
+        pythonCheck1 = "${./scripts/build_icns_icon.py}";
+        sqliteOverlay = ./write_sqlite_overlay.py;
+        sqliteHeaders = "${lib.getDev sqlite}/include";
+        sqliteLibraryPath = "${lib.getLib sqlite}/lib";
+        sqliteCheck = ./check_sqlite.swift;
+        deploymentTarget = ./scripts/read_deployment_target.py;
 
-        buildDir="$PWD/build"
-        mkdir -p "$buildDir"
-        mkdir -p "$buildDir/swift-modules/sqlite" \
-          "$buildDir/swift-modules/fan-helper" \
-          "$buildDir/swift-modules/now-playing"
-        # Preserve the SDK's SQLite3 module identity. A second module map on
-        # Swift's search path stalls framework imports or redefines the module.
-        # The read-only overlay supplies only the two omitted standard headers.
-        sqliteOverlay="$buildDir/sqlite-headers.json"
-        python3 ${./write_sqlite_overlay.py} "$SDKROOT" \
-          "${lib.getDev sqlite}/include" "$sqliteOverlay"
-        # Overlay and ordinary SDK contexts must not share host-global PCMs.
-        sqliteFlags=(
-          -module-cache-path "$buildDir/swift-modules/sqlite"
-          -Xcc -ivfsoverlay -Xcc "$sqliteOverlay"
-          -L ${lib.getLib sqlite}/lib -lsqlite3
-          -Xlinker -rpath -Xlinker ${lib.getLib sqlite}/lib
-        )
+      }
+    }
+  '';
 
-        # Check import, linking and a real query even on older upstream releases
-        # that do not yet compile the OpenCode reader introduced in 3.4.1.
-        swiftc -swift-version 5 -target arm64-apple-macosx14.0 \
-          "''${sqliteFlags[@]}" ${./check_sqlite.swift} -o "$buildDir/check-sqlite"
-        "$buildDir/check-sqlite"
+  installPhase = ''
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        inherit pname;
+        readme = "${./README.md}";
+      }
+    }
+  '';
 
-        # Upstream deliberately builds with a plain swiftc invocation. Keep the
-        # source discovery explicit and deterministic, while excluding no sources:
-        # every file under Sources/Vorssaint belongs to the app target.
-        appSources=()
-        while IFS= read -r sourceFile; do
-          appSources+=("$sourceFile")
-        done < <(find Sources/Vorssaint -type f -name '*.swift' | sort)
-        swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
-          -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem \
-          "''${sqliteFlags[@]}" "''${appSources[@]}" \
-          -o "$buildDir/PersonalMonitor"
+  # ServiceManagement requires the main app, its privileged helper and their
+  # resources to be sealed as a single bundle. rcodesign provides a reproducible
+  # ad-hoc signature; a public Nix derivation cannot embed a private Developer ID.
+  postFixup = ''
+    source ${
+      replaceVars ./scripts/post-fixup.sh {
+        rcodesign = lib.getExe rcodesign;
+      }
+    }
+  '';
 
-        # Native 5.10 and 6.3 checks found a smaller helper with WMO.
-        swiftc -O -whole-module-optimization -swift-version 5 -target arm64-apple-macosx14.0 \
-          -module-cache-path "$buildDir/swift-modules/fan-helper" \
-          Sources/Vorssaint/Services/FanControl/FanControlSupport.swift \
-          Sources/Vorssaint/Services/FanControl/FanControlXPC.swift \
-          Sources/Vorssaint/Services/SystemMonitor/SMCClient.swift \
-          Sources/Vorssaint/Services/Metrics/TemperatureSensorSelector.swift \
-          Sources/Vorssaint/Services/FanControl/FanControlHardware.swift \
-          Sources/FanControlHelper/main.swift \
-          -o "$buildDir/io.github.ianhollow.personalmonitor.fan-control"
-        "$buildDir/io.github.ianhollow.personalmonitor.fan-control" --selftest
+  nativeInstallCheckInputs = [ python3 ];
+  postInstallCheck = ''
+    python3 ${./scripts/check_app_bundle.py} "$out/Applications/PersonalMonitor.app" --expected-version ${lib.escapeShellArg source.version}
+  '';
+  doInstallCheck = true;
+  installCheckPhase = ''
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        check_bundle_py = "${./check_bundle.py}";
+        check_menu_bar_icon = ./check_menu_bar_icon.swift;
+      }
+    }
+  '';
 
-        swiftc -O -swift-version 5 -target arm64-apple-macosx14.0 \
-          -module-cache-path "$buildDir/swift-modules/now-playing" \
-          -emit-library -module-name PersonalMonitorNowPlaying \
-          Sources/NowPlayingAdapter/NowPlayingAdapter.swift \
-          Sources/NowPlayingAdapter/NowPlayingQueue.swift \
-          Sources/NowPlayingAdapter/NowPlayingSelection.swift \
-          Sources/Vorssaint/Services/Notch/NotchPlaybackSource.swift \
-          Sources/Vorssaint/Services/Notch/NotchPlaybackCommand.swift \
-          -o "$buildDir/libPersonalMonitorNowPlaying.dylib"
+  passthru = {
+    appName = "PersonalMonitor";
+    updateScript = [
+      (lib.getExe (callPackage ./update.nix { }))
+      "--source-directory"
+      (builtins.unsafeDiscardStringContext (toString ./.))
+    ];
+  };
 
-        # Generate independently drawn package artwork in the required sizes.
-        # The upstream name and artwork are reserved by TRADEMARKS.md.
-        iconset="$buildDir/AppIcon.iconset"
-        mkdir -p "$iconset"
-        for icon in \
-          icon_16x16:16 \
-          icon_16x16@2x:32 \
-          icon_32x32:32 \
-          icon_32x32@2x:64 \
-          icon_128x128:128 \
-          icon_128x128@2x:256 \
-          icon_256x256:256 \
-          icon_256x256@2x:512 \
-          icon_512x512:512 \
-          icon_512x512@2x:1024
-        do
-          name="''${icon%%:*}"
-          size="''${icon##*:}"
-          magick ${./icon.svg} -trim -resize "$size"x"$size" \
-            -gravity center -background '#f7f7f7' -extent "$size"x"$size" "$iconset/$name.png"
-        done
-
-        python - "$iconset" "$buildDir/AppIcon.icns" <<'PY'
-        from pathlib import Path
-        import struct
-        import sys
-
-        iconset = Path(sys.argv[1])
-        entries = {
-            "ic11": "icon_16x16@2x.png",
-            "ic12": "icon_32x32@2x.png",
-            "ic07": "icon_128x128.png",
-            "ic13": "icon_128x128@2x.png",
-            "ic08": "icon_256x256.png",
-            "ic14": "icon_256x256@2x.png",
-            "ic09": "icon_512x512.png",
-            "ic10": "icon_512x512@2x.png",
-        }
-        payload = b"".join(
-            kind.encode("ascii") + struct.pack(">I", len(data) + 8) + data
-            for kind, filename in entries.items()
-            for data in [(iconset / filename).read_bytes()]
-        )
-        Path(sys.argv[2]).write_bytes(b"icns" + struct.pack(">I", len(payload) + 8) + payload)
-        PY
-
-        magick ${./icon.svg} -trim -resize 26x20 -gravity center -background none -extent 26x20 \
-          "$buildDir/MenuBarIcon.png"
-        magick ${./icon.svg} -trim -resize 52x40 -gravity center -background none -extent 52x40 \
-          "$buildDir/MenuBarIcon@2x.png"
-        magick ${./icon.svg} -trim -resize 640x "$buildDir/BrandMark.png"
-
-        runHook postBuild
-      '';
-
-      installPhase = ''
-        runHook preInstall
-
-        app="$out/Applications/PersonalMonitor.app"
-        contents="$app/Contents"
-        resources="$contents/Resources"
-        helperID="io.github.ianhollow.personalmonitor.fan-control"
-
-        mkdir -p "$contents"/{MacOS,Resources,Frameworks,Library/LaunchDaemons,Library/LaunchServices}
-        install -Dm755 "$buildDir/PersonalMonitor" "$contents/MacOS/PersonalMonitor"
-        install -Dm755 "$buildDir/$helperID" "$contents/Library/LaunchServices/$helperID"
-        install -Dm644 Resources/com.vorssaint.utils.fan-control.plist \
-          "$contents/Library/LaunchDaemons/$helperID.plist"
-        install -Dm644 Resources/Info.plist "$contents/Info.plist"
-        install -Dm755 "$buildDir/libPersonalMonitorNowPlaying.dylib" "$contents/Frameworks/libPersonalMonitorNowPlaying.dylib"
-        install -Dm644 Resources/now-playing.pl "$resources/now-playing.pl"
-        install -Dm644 CHANGELOG.md "$resources/CHANGELOG.md"
-        install -Dm644 LICENSE "$out/share/doc/${pname}/LICENSE"
-        install -Dm644 TRADEMARKS.md "$out/share/doc/${pname}/TRADEMARKS.md"
-        install -Dm644 ${./README.md} "$out/share/doc/${pname}/PACKAGING.md"
-        install -Dm644 "$buildDir/AppIcon.icns" "$resources/AppIcon.icns"
-        install -Dm644 "$buildDir/MenuBarIcon.png" "$resources/MenuBarIcon.png"
-        install -Dm644 "$buildDir/MenuBarIcon@2x.png" "$resources/MenuBarIcon@2x.png"
-        install -Dm644 "$buildDir/BrandMark.png" "$resources/BrandMark.png"
-        printf 'APPL????' > "$contents/PkgInfo"
-
-        cp -R Resources/*.lproj "$resources/"
-        cp -R Resources/Gifs Resources/Images "$resources/"
-
-        makeWrapper "$contents/MacOS/PersonalMonitor" "$out/bin/${pname}"
-
-        runHook postInstall
-      '';
-
-      # ServiceManagement requires the main app, its privileged helper and their
-      # resources to be sealed as a single bundle. rcodesign provides a reproducible
-      # ad-hoc signature; a public Nix derivation cannot embed a private Developer ID.
-      postFixup = ''
-        ${lib.getExe rcodesign} sign "$out/Applications/PersonalMonitor.app"
-      '';
-
-      doInstallCheck = true;
-      installCheckPhase = ''
-        runHook preInstallCheck
-
-        python3 ${./check_bundle.py} "$out"
-
-        "$out/Applications/PersonalMonitor.app/Contents/Library/LaunchServices/io.github.ianhollow.personalmonitor.fan-control" --selftest
-        test -s "$out/Applications/PersonalMonitor.app/Contents/Frameworks/libPersonalMonitorNowPlaying.dylib"
-        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/now-playing.pl"
-        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/AppIcon.icns"
-        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/MenuBarIcon.png"
-        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/MenuBarIcon@2x.png"
-        test -s "$out/Applications/PersonalMonitor.app/Contents/Resources/BrandMark.png"
-        runHook postInstallCheck
-      '';
-
-      passthru = {
-        appName = "PersonalMonitor";
-        updateScript = [
-          "python3"
-          "pkgs/by-name/vo/vorssaint/update.py"
-        ];
-      };
-
-      meta = {
-        description = "PersonalMonitor, an unofficial build of the Vorssaint macOS toolkit";
-        homepage = "https://vorssaint.com/";
-        downloadPage = "https://github.com/vorssaint/vorssaint-utils/releases";
-        changelog = "https://github.com/vorssaint/vorssaint-utils/releases/tag/v${finalAttrs.version}";
-        license = lib.licenses.gpl3Plus;
-        mainProgram = pname;
-        platforms = [ "aarch64-darwin" ];
-        sourceProvenance = [ lib.sourceTypes.fromSource ];
-      };
-    })
-  )
+  meta = {
+    description = "Unofficial macOS system monitoring toolkit built from Vorssaint";
+    homepage = "https://vorssaint.com/";
+    downloadPage = "https://github.com/vorssaint/vorssaint-utils/releases";
+    changelog = "https://github.com/vorssaint/vorssaint-utils/releases/tag/v${finalAttrs.version}";
+    license = lib.licenses.gpl3Plus;
+    mainProgram = "vorssaint";
+    platforms = [ "aarch64-darwin" ];
+    sourceProvenance = [ lib.sourceTypes.fromSource ];
+  }
+  // lib.optionalAttrs (
+    stdenv.hostPlatform.isDarwin && lib.versionAtLeast (lib.versions.majorMinor lib.version) "26.11"
+  ) { mainDarwinApp = "PersonalMonitor.app"; };
+})

@@ -12,6 +12,7 @@ theme = configparser.ConfigParser()
 theme.read(icons / "index.theme")
 assert theme["Icon Theme"]["Inherits"].split(",") == ["Papirus-Dark", "hicolor"]
 assert theme["scalable/apps"]["Context"] == "Applications"
+assert theme["scalable/status"]["Context"] == "Status"
 for icon in ("chatgpt", "zen-browser", "vscode"):
     for size in (16, 24, 32, 42, 84):
         with Image.open(renders / f"{icon}-{size}.png") as source_image:
@@ -31,3 +32,16 @@ for icon in ("chatgpt", "zen-browser", "vscode"):
                 assert any(r > 180 and r > g * 1.5 for r, g, b in opaque)
             if icon == "vscode":
                 assert any(b > 100 and b > r * 1.5 for r, g, b in opaque)
+
+for icon in ("zoom", "sunshine"):
+    for size in (16, 24, 32):
+        with Image.open(renders / f"{icon}-symbolic-{size}.png") as source_image:
+            image = source_image.convert("RGBA")
+            assert image.size == (size, size)
+            pixels = cast(
+                "list[tuple[int, int, int, int]]", list(image.get_flattened_data())
+            )
+            visible = [(r, g, b) for r, g, b, a in pixels if a > 240]
+            assert len(visible) > size * size * 0.05, (icon, "missing symbol")
+            assert pixels[0][3] == 0, (icon, "opaque canvas")
+            assert len(set(visible)) == 1, (icon, "symbol is not monochrome")

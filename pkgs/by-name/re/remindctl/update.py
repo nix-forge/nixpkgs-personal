@@ -5,11 +5,9 @@ from __future__ import annotations
 
 import argparse
 import base64
-import contextlib
 import difflib
 import hashlib
 import json
-import os
 import re
 import struct
 import sys
@@ -23,6 +21,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from update_support import HTTPS_CONTEXT, github_api_headers
+from update_transaction import commit_files
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -317,14 +316,7 @@ def _render_source(upstream: _UpstreamState) -> str:
 
 
 def _write_atomic(path: Path, content: str) -> None:
-    fd, temp_path = tempfile.mkstemp(prefix=f"{path.name}.", dir=path.parent)
-    try:
-        os.close(fd)
-        Path(temp_path).write_text(content, encoding="utf-8", newline="\n")
-        Path(temp_path).replace(path)
-    finally:
-        with contextlib.suppress(OSError):
-            Path(temp_path).unlink(missing_ok=True)
+    commit_files({path: content})
 
 
 def _build_diff(old: str, new: str, path: Path) -> str:

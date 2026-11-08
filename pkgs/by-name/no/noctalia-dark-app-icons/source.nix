@@ -1,7 +1,7 @@
 {
-  version = "1.0.0";
+  version = "1.1.1";
   sevi = {
-    rev = "52060bedacb2768acfdad27a804a2f7e7ac88d3d";
-    hash = "sha256-Wg01iQQkFQ8LBwQifR1LetenNnDSZzQl3g6oWdNHKbY=";
+    rev = "73bcbd5991ed7b9270fbe7d3944ac24208e6b726";
+    hash = "sha256-Hq0NoSQWjqOQ4WzLoCTZUr8AcxdvHdLo86gB0t30DM0=";
   };
 }

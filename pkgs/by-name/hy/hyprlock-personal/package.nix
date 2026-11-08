@@ -1,4 +1,5 @@
 {
+  replaceVars,
   lib,
   fetchFromGitHub,
   hyprlock,
@@ -16,14 +17,21 @@ hyprlock.overrideAttrs (old: {
     inherit (source) rev hash;
   };
   strictDeps = true;
-  patches = (old.patches or [ ]) ++ [ ./authentication-controls.patch ];
+  # Failed lock acquisition must dispose of GL objects before exit callbacks
+  # tear down the vendor context, just as normal authenticated unlock does.
+  patches = (old.patches or [ ]) ++ [
+    ./authentication-controls.patch
+    ./ordered-graphics-cleanup.patch
+  ];
   # The scanner is a build tool. With strict dependency separation its .pc
   # file is absent from the target pkg-config path; pass its protocol data
   # explicitly instead of relying on leaked native build inputs.
   postPatch = (old.postPatch or "") + ''
-    substituteInPlace CMakeLists.txt --replace-fail \
-      'pkg_get_variable(WAYLAND_SCANNER_PKGDATA_DIR wayland-scanner pkgdatadir)' \
-      'set(WAYLAND_SCANNER_PKGDATA_DIR "${lib.getOutput "out" wayland-scanner}/share/wayland")'
+    source ${
+      replaceVars ./scripts/post-patch.sh {
+        waylandScanner = lib.getOutput "out" wayland-scanner;
+      }
+    }
   '';
   cmakeFlags = (old.cmakeFlags or [ ]) ++ [
     (lib.cmakeFeature "HYPRLOCK_COMMIT" (builtins.substring 0 7 source.rev))
@@ -33,6 +41,7 @@ hyprlock.overrideAttrs (old: {
   # changes and the native submit guards together, with an isolated lock test.
   passthru = removeAttrs (old.passthru or { }) [ "updateScript" ];
   meta = old.meta // {
+    maintainers = [ ];
     description = "Hyprlock with native password submission and aligned authentication controls";
     changelog = "https://github.com/hyprwm/hyprlock/commits/${source.rev}/";
     sourceProvenance = [ lib.sourceTypes.fromSource ];

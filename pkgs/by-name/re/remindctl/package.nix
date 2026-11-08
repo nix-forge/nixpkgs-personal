@@ -1,4 +1,6 @@
 {
+  callPackage,
+  replaceVars,
   lib,
   stdenvNoCC,
   fetchurl,
@@ -33,32 +35,31 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   dontFixup = true;
 
   installPhase = ''
-    runHook preInstall
-
-    install -Dm755 remindctl "$out/bin/${pname}"
-    install -Dm644 ${licenseSource} "$out/share/doc/${pname}/LICENSE"
-    install -Dm644 "$agentSkillSource" "$out/share/agent-skills/apple-reminders/SKILL.md"
-
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        inherit pname;
+        inherit licenseSource;
+      }
+    }
   '';
 
   doInstallCheck = true;
   installCheckPhase = ''
-    runHook preInstallCheck
-
-    cmp ${licenseSource} "$out/share/doc/${pname}/LICENSE"
-
-    test "$("$out/bin/${pname}" --version)" = "${finalAttrs.version}"
-    grep -q '^name: apple-reminders$' "$out/share/agent-skills/apple-reminders/SKILL.md"
-
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        inherit licenseSource;
+        inherit pname;
+        inherit (finalAttrs) version;
+      }
+    }
   '';
 
   passthru = {
     agentSkill = "${finalAttrs.finalPackage}/share/agent-skills/apple-reminders";
     updateScript = [
-      "python3"
-      "pkgs/by-name/re/remindctl/update.py"
+      (lib.getExe (callPackage ./update.nix { }))
+      "--source-directory"
+      (builtins.unsafeDiscardStringContext (toString ./.))
     ];
   };
 
@@ -67,7 +68,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     homepage = "https://remindctl.sh";
     downloadPage = "https://github.com/openclaw/remindctl/releases";
     license = lib.licenses.mit;
-    mainProgram = pname;
+    mainProgram = "remindctl";
     platforms = [ "aarch64-darwin" ];
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
   };

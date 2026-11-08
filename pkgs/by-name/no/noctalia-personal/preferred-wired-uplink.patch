@@ -1,0 +1,448 @@
+--- a/src/app/application.cpp
++++ b/src/app/application.cpp
+@@ -8,6 +8,7 @@
+ #include "core/log.h"
+ #include "dbus/accounts/accounts_service.h"
+ #include "dbus/idle/screensaver_poll_source.h"
++#include "dbus/network/iwd_route_poll_source.h"
+ #include "dbus/idle/screensaver_service.h"
+ #include "dbus/logind/logind_service.h"
+ #include "dbus/modem/modem_manager_service.h"
+--- a/src/app/application.h
++++ b/src/app/application.h
+@@ -115,6 +115,7 @@
+ class BluetoothAgent;
+ class BluetoothService;
+ class BrightnessPollSource;
++class IwdRoutePollSource;
+ class BrightnessService;
+ class KeyboardBacklightService;
+ class DebugService;
+@@ -398,6 +399,7 @@
+   // Poll sources (must outlive MainLoop)
+   std::unique_ptr<SessionBusPollSource> m_busPollSource;
+   std::unique_ptr<SystemBusPollSource> m_systemBusPollSource;
++  std::unique_ptr<IwdRoutePollSource> m_iwdRoutePollSource;
+   NotificationPollSource m_notificationPollSource{m_notificationManager};
+   DeferredCallPollSource m_deferredCallPollSource;
+   TimePollSource m_timePollSource{m_timeService};
+--- a/src/app/application_poll_sources.cpp
++++ b/src/app/application_poll_sources.cpp
+@@ -2,6 +2,7 @@
+ #include "application_internal.h"
+ #include "compositors/umbriel/umbriel_audio_provider.h"
+ #include "dbus/idle/screensaver_poll_source.h"
++#include "dbus/network/iwd_route_poll_source.h"
+ #include "dbus/idle/screensaver_service.h"
+ #include "dbus/polkit/polkit_poll_source.h"
+ #include "dbus/session_bus_poll_source.h"
+@@ -23,6 +24,9 @@
+   }
+   if (m_systemBusPollSource != nullptr) {
+     sources.push_back(m_systemBusPollSource.get());
++  }
++  if (m_iwdRoutePollSource != nullptr) {
++    sources.push_back(m_iwdRoutePollSource.get());
+   }
+   sources.push_back(&m_notificationPollSource);
+   sources.push_back(&m_secretStore);
+@@ -97,6 +101,11 @@
+   } else {
+     m_systemBusPollSource.reset();
+   }
++  if (auto* iwd = dynamic_cast<IwdService*>(m_networkService.get()); iwd != nullptr && iwd->routeMonitorFd() >= 0) {
++    m_iwdRoutePollSource = std::make_unique<IwdRoutePollSource>(*iwd);
++  } else {
++    m_iwdRoutePollSource.reset();
++  }
+   if (m_pipewireService != nullptr) {
+     if (m_pipewirePollSource == nullptr) {
+       m_pipewirePollSource = std::make_unique<PipeWirePollSource>(*m_pipewireService);
+--- /dev/null
++++ b/src/dbus/network/iwd_route_poll_source.h
+@@ -0,0 +1,25 @@
++#pragma once
++
++#include "app/poll_source.h"
++#include "dbus/network/iwd_service.h"
++
++class IwdRoutePollSource final : public PollSource {
++public:
++  explicit IwdRoutePollSource(IwdService& service) : m_service(service) {}
++
++  void dispatch(const std::vector<pollfd>& fds, std::size_t startIdx) override {
++    if (m_service.routeMonitorFd() >= 0 && (fds[startIdx].revents & (POLLIN | POLLERR | POLLHUP)) != 0) {
++      m_service.handleRouteEvents();
++    }
++  }
++
++protected:
++  void doAddPollFds(std::vector<pollfd>& fds) override {
++    if (m_service.routeMonitorFd() >= 0) {
++      fds.push_back({.fd = m_service.routeMonitorFd(), .events = POLLIN, .revents = 0});
++    }
++  }
++
++private:
++  IwdService& m_service;
++};
+--- a/src/dbus/network/iwd_service.cpp
++++ b/src/dbus/network/iwd_service.cpp
+@@ -3,19 +3,29 @@
+ #include "core/log.h"
+ #include "dbus/network/iwd_diagnostics.h"
+ #include "dbus/network/iwd_secret_agent.h"
++#include "dbus/network/route_preference.h"
+ #include "dbus/system_bus.h"
+ #include "system/rfkill_helper.h"
+ 
+ #include <algorithm>
+ #include <cstdint>
++#include <cstring>
++#include <filesystem>
++#include <fstream>
++#include <linux/netlink.h>
++#include <linux/rtnetlink.h>
+ #include <map>
++#include <net/if.h>
+ #include <optional>
++#include <sys/socket.h>
++#include <sys/time.h>
+ #include <sdbus-c++/IProxy.h>
+ #include <sdbus-c++/Types.h>
+ #include <string>
+ #include <tuple>
+ #include <utility>
+ #include <vector>
++#include <unistd.h>
+ 
+ namespace {
+ 
+@@ -73,6 +83,114 @@
+ 
+   bool isRootPath(const sdbus::ObjectPath& path) { return std::string(path) == "/"; }
+ 
++  struct OwnedFd {
++    int fd = -1;
++    ~OwnedFd() { if (fd >= 0) { ::close(fd); } }
++  };
++
++  bool readDefaultRoutes(int fd, int family, std::uint32_t sequence,
++                         std::vector<route_preference::DefaultRoute>& routes) {
++    struct {
++      nlmsghdr header;
++      rtmsg route;
++    } request{};
++    request.header.nlmsg_len = NLMSG_LENGTH(sizeof(rtmsg));
++    request.header.nlmsg_type = RTM_GETROUTE;
++    request.header.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
++    request.header.nlmsg_seq = sequence;
++    request.route.rtm_family = static_cast<unsigned char>(family);
++    sockaddr_nl kernel{.nl_family = AF_NETLINK};
++    if (::sendto(fd, &request, request.header.nlmsg_len, 0,
++                 reinterpret_cast<sockaddr*>(&kernel), sizeof(kernel)) < 0) {
++      return false;
++    }
++
++    alignas(nlmsghdr) char buffer[32768];
++    for (;;) {
++      const ssize_t received = ::recv(fd, buffer, sizeof(buffer), 0);
++      if (received <= 0) {
++        return false;
++      }
++      int remaining = static_cast<int>(received);
++      for (auto* message = reinterpret_cast<nlmsghdr*>(buffer); NLMSG_OK(message, remaining);
++           message = NLMSG_NEXT(message, remaining)) {
++        if (message->nlmsg_seq != sequence) {
++          continue;
++        }
++        if (message->nlmsg_type == NLMSG_DONE) {
++          return true;
++        }
++        if (message->nlmsg_type == NLMSG_ERROR) {
++          return false;
++        }
++        if (message->nlmsg_type != RTM_NEWROUTE || message->nlmsg_len < NLMSG_LENGTH(sizeof(rtmsg))) {
++          continue;
++        }
++        const auto* route = reinterpret_cast<const rtmsg*>(NLMSG_DATA(message));
++        if (route->rtm_dst_len != 0 || route->rtm_type != RTN_UNICAST) {
++          continue;
++        }
++        std::uint32_t table = route->rtm_table;
++        std::uint32_t metric = 0;
++        std::uint32_t output = 0;
++        bool multipath = false;
++        int attributes = static_cast<int>(RTM_PAYLOAD(message));
++        for (auto* attr = RTM_RTA(route); RTA_OK(attr, attributes); attr = RTA_NEXT(attr, attributes)) {
++          if (attr->rta_type == RTA_TABLE && RTA_PAYLOAD(attr) >= sizeof(table)) {
++            std::memcpy(&table, RTA_DATA(attr), sizeof(table));
++          } else if (attr->rta_type == RTA_PRIORITY && RTA_PAYLOAD(attr) >= sizeof(metric)) {
++            std::memcpy(&metric, RTA_DATA(attr), sizeof(metric));
++          } else if (attr->rta_type == RTA_OIF && RTA_PAYLOAD(attr) >= sizeof(output)) {
++            std::memcpy(&output, RTA_DATA(attr), sizeof(output));
++          } else if (attr->rta_type == RTA_MULTIPATH) {
++            multipath = true;
++          }
++        }
++        if (table == RT_TABLE_MAIN && multipath) {
++          return false; // an ECMP route cannot be represented by one interface
++        }
++        if (table == RT_TABLE_MAIN && output != 0) {
++          routes.push_back({family == AF_INET ? 4 : 6, output, metric});
++        }
++      }
++    }
++  }
++
++  std::string preferredWiredInterface() {
++    OwnedFd socket{::socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE)};
++    if (socket.fd < 0) {
++      return {};
++    }
++    sockaddr_nl local{.nl_family = AF_NETLINK};
++    if (::bind(socket.fd, reinterpret_cast<sockaddr*>(&local), sizeof(local)) < 0) {
++      return {};
++    }
++    timeval timeout{.tv_sec = 0, .tv_usec = 250000};
++    (void)::setsockopt(socket.fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
++    std::vector<route_preference::DefaultRoute> routes;
++    if (!readDefaultRoutes(socket.fd, AF_INET, 1, routes)
++        || !readDefaultRoutes(socket.fd, AF_INET6, 2, routes)) {
++      return {};
++    }
++    const unsigned int index = route_preference::selectInterface(routes);
++    char name[IF_NAMESIZE]{};
++    if (index == 0 || ::if_indextoname(index, name) == nullptr) {
++      return {};
++    }
++    const std::filesystem::path link = std::filesystem::path("/sys/class/net") / name;
++    // Only show a physical wired uplink. VPNs, bridges, and Wi-Fi must not be
++    // relabeled Ethernet just because they happen to own a default route.
++    if (!std::filesystem::exists(link / "device") || std::filesystem::exists(link / "wireless")) {
++      return {};
++    }
++    std::ifstream typeFile(link / "type");
++    unsigned int hardwareType = 0;
++    if (!(typeFile >> hardwareType) || hardwareType != 1) { // ARPHRD_ETHER
++      return {};
++    }
++    return name;
++  }
++
+ } // namespace
+ 
+ IwdService::IwdService(SystemBus& bus) : m_bus(bus) {
+@@ -84,6 +202,15 @@
+   }
+ 
+   m_iwd = sdbus::createProxy(m_bus.connection(), kIwdBusName, kRootPath);
++  m_routeMonitorFd = ::socket(AF_NETLINK, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, NETLINK_ROUTE);
++  if (m_routeMonitorFd >= 0) {
++    sockaddr_nl local{.nl_family = AF_NETLINK,
++                      .nl_groups = RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_ROUTE | RTMGRP_LINK};
++    if (::bind(m_routeMonitorFd, reinterpret_cast<sockaddr*>(&local), sizeof(local)) < 0) {
++      ::close(m_routeMonitorFd);
++      m_routeMonitorFd = -1;
++    }
++  }
+   m_iwd->uponSignal("InterfacesAdded")
+       .onInterface(kObjectManagerInterface)
+       .call([this](const sdbus::ObjectPath&, const ObjectInterfaces&) { refresh(); });
+@@ -94,7 +221,25 @@
+   refresh();
+ }
+ 
+-IwdService::~IwdService() = default;
++IwdService::~IwdService() {
++  if (m_routeMonitorFd >= 0) {
++    ::close(m_routeMonitorFd);
++  }
++}
++
++void IwdService::handleRouteEvents() {
++  if (m_routeMonitorFd < 0) {
++    return;
++  }
++  char buffer[32768];
++  bool changed = false;
++  while (::recv(m_routeMonitorFd, buffer, sizeof(buffer), 0) > 0) {
++    changed = true;
++  }
++  if (changed) {
++    refresh();
++  }
++}
+ 
+ void IwdService::setChangeCallback(ChangeCallback callback) { m_changeCallback = std::move(callback); }
+ 
+@@ -283,6 +428,7 @@
+     return a.strength > b.strength;
+   });
+ 
++  next.preferredWiredInterface = preferredWiredInterface();
+   m_accessPoints = std::move(aps);
+   emitChangedIfNeeded(std::move(next));
+ 
+--- a/src/dbus/network/iwd_service.h
++++ b/src/dbus/network/iwd_service.h
+@@ -26,6 +26,8 @@
+ 
+   void setChangeCallback(ChangeCallback callback) override;
+   void refresh() override;
++  [[nodiscard]] int routeMonitorFd() const noexcept { return m_routeMonitorFd; }
++  void handleRouteEvents();
+ 
+   [[nodiscard]] const NetworkState& state() const noexcept override { return m_state; }
+   [[nodiscard]] bool hasStateSnapshot() const noexcept override { return m_hasStateSnapshot; }
+@@ -53,6 +55,7 @@
+   void emitChangedIfNeeded(NetworkState next);
+ 
+   SystemBus& m_bus;
++  int m_routeMonitorFd = -1;
+   std::unique_ptr<sdbus::IProxy> m_iwd;
+   NetworkState m_state;
+   std::vector<AccessPointInfo> m_accessPoints;
+--- a/src/dbus/network/network_display.cpp
++++ b/src/dbus/network/network_display.cpp
+@@ -5,6 +5,9 @@
+ namespace network_display {
+ 
+   const char* glyphForState(const NetworkState& state) noexcept {
++    if (!state.preferredWiredInterface.empty()) {
++      return "ethernet";
++    }
+     if (state.kind == NetworkConnectivity::Wired) {
+       return state.connected ? "ethernet" : "ethernet-off";
+     }
+--- a/src/dbus/network/network_types.h
++++ b/src/dbus/network/network_types.h
+@@ -56,6 +56,10 @@
+   std::string ssid;                // Wi-Fi only
+   std::string ipv4;                // dotted-quad of first address; empty if none
+   std::string interfaceName;       // e.g. "wlan0", "eth0"
++  // IWD and wpa_supplicant report Wi-Fi association, not the host's routed
++  // uplink. Set only when an independently managed wired link owns the default
++  // route for both available address families.
++  std::string preferredWiredInterface;
+   std::uint8_t signalStrength = 0; // 0..100, Wi-Fi only
+   // Operating frequency of the associated BSS. Wi-Fi only; 0 when the backend
+   // does not report one.
+--- /dev/null
++++ b/src/dbus/network/route_preference.h
+@@ -0,0 +1,52 @@
++#pragma once
++
++#include <cstdint>
++#include <limits>
++#include <span>
++
++namespace route_preference {
++
++  // The kernel's main-table default routes, after filtering out non-unicast routes.
++  struct DefaultRoute {
++    int family; // 4 or 6
++    unsigned int ifindex;
++    std::uint32_t metric;
++  };
++
++  // A single network glyph is only truthful when the two address families agree.
++  // An absent family does not prevent the available one from selecting the icon.
++  inline unsigned int selectInterface(std::span<const DefaultRoute> routes) {
++    unsigned int ipv4 = 0;
++    unsigned int ipv6 = 0;
++    bool ipv4Ambiguous = false;
++    bool ipv6Ambiguous = false;
++    std::uint32_t ipv4Metric = std::numeric_limits<std::uint32_t>::max();
++    std::uint32_t ipv6Metric = std::numeric_limits<std::uint32_t>::max();
++    for (const auto& route : routes) {
++      if (route.ifindex == 0) {
++        continue;
++      }
++      if (route.family == 4 && route.metric < ipv4Metric) {
++        ipv4 = route.ifindex;
++        ipv4Metric = route.metric;
++        ipv4Ambiguous = false;
++      } else if (route.family == 6 && route.metric < ipv6Metric) {
++        ipv6 = route.ifindex;
++        ipv6Metric = route.metric;
++        ipv6Ambiguous = false;
++      } else if (route.family == 4 && route.metric == ipv4Metric && route.ifindex != ipv4) {
++        ipv4Ambiguous = true; // equal-cost routes have no single preferred interface
++      } else if (route.family == 6 && route.metric == ipv6Metric && route.ifindex != ipv6) {
++        ipv6Ambiguous = true;
++      }
++    }
++    if (ipv4Ambiguous || ipv6Ambiguous) {
++      return 0;
++    }
++    if (ipv4 != 0 && ipv6 != 0 && ipv4 != ipv6) {
++      return 0;
++    }
++    return ipv4 != 0 ? ipv4 : ipv6;
++  }
++
++} // namespace route_preference
+--- a/src/shell/bar/widgets/network_widget.cpp
++++ b/src/shell/bar/widgets/network_widget.cpp
+@@ -22,6 +22,9 @@
+   constexpr auto kTooltipRefreshInterval = std::chrono::seconds(1);
+ 
+   std::string labelForState(const NetworkState& s, const CellularModemInfo* modem) {
++    if (!s.preferredWiredInterface.empty()) {
++      return s.preferredWiredInterface;
++    }
+     if (s.kind == NetworkConnectivity::Wireless && s.connected && !s.ssid.empty()) {
+       return s.ssid;
+     }
+@@ -384,8 +387,14 @@
+   };
+ 
+   const NetworkState& s = m_network->state();
+-  if (s.connected) {
+-    if (s.kind == NetworkConnectivity::Wireless && !s.ssid.empty()) {
++  if (s.connected || !s.preferredWiredInterface.empty()) {
++    if (!s.preferredWiredInterface.empty()) {
++      rows.push_back({i18n::tr("bar.widgets.network.network"), i18n::tr("bar.widgets.network.wired")});
++      rows.push_back({i18n::tr("bar.widgets.network.interface"), s.preferredWiredInterface});
++      if (s.connected && !s.ssid.empty()) {
++        rows.push_back({i18n::tr("control-center.network.wifi"), s.ssid});
++      }
++    } else if (s.kind == NetworkConnectivity::Wireless && !s.ssid.empty()) {
+       rows.push_back({i18n::tr("bar.widgets.network.network"), s.ssid});
+       rows.push_back({i18n::tr("bar.widgets.network.signal"), std::to_string(s.signalStrength) + "%"});
+       if (const char* band = network_display::wifiFrequencyBandLabel(s.frequencyMhz); band != nullptr) {
+--- a/src/shell/control_center/tabs/network_tab.cpp
++++ b/src/shell/control_center/tabs/network_tab.cpp
+@@ -104,6 +104,9 @@
+   }
+ 
+   std::string currentTitle(const NetworkState& s, const CellularModemInfo* modem) {
++    if (!s.preferredWiredInterface.empty()) {
++      return i18n::tr("control-center.network.wired-connection");
++    }
+     if (s.kind == NetworkConnectivity::Wireless && s.connected && !s.ssid.empty()) {
+       return s.ssid;
+     }
+@@ -120,6 +123,9 @@
+   }
+ 
+   std::string currentDetail(const NetworkState& s, const std::string& externalIp, const CellularModemInfo* modem) {
++    if (!s.preferredWiredInterface.empty()) {
++      return s.preferredWiredInterface;
++    }
+     if (!s.connected) {
+       if (s.kind == NetworkConnectivity::Cellular && modem != nullptr) {
+         return cellularStateText(modem->state);
+@@ -1181,7 +1187,10 @@
+   m_currentDetail->setText(currentDetail(s, externalIp, modem));
+   if (m_disconnectButton != nullptr) {
+     const bool canReconnectWired = !s.connected && m_network->canActivateWiredConnection();
+-    m_disconnectButton->setVisible(s.connected || canReconnectWired || m_actionPending);
++    // This backend owns Wi-Fi only. Hiding its disconnect action prevents the
++    // wired current-connection card from claiming to control the wired link.
++    m_disconnectButton->setVisible(s.preferredWiredInterface.empty()
++                                    && (s.connected || canReconnectWired || m_actionPending));
+     m_disconnectButton->setGlyph(s.connected ? "plug-off" : "plug");
+     m_disconnectButton->setVariant(s.connected ? ButtonVariant::Destructive : ButtonVariant::Default);
+     m_disconnectButton->setEnabled(!m_actionPending);

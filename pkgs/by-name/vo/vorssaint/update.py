@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import contextlib
 import difflib
 import json
 import os
@@ -12,7 +11,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass
 from http import HTTPStatus
 from pathlib import Path
@@ -22,6 +20,7 @@ from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
 from update_support import HTTPS_CONTEXT
+from update_transaction import commit_files
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -197,16 +196,7 @@ def _render_source(release: _Release) -> str:
 
 
 def _write_atomic(path: Path, content: str) -> None:
-    file_descriptor, temporary_path = tempfile.mkstemp(
-        prefix=f"{path.name}.", dir=path.parent
-    )
-    try:
-        os.close(file_descriptor)
-        Path(temporary_path).write_text(content, encoding="utf-8", newline="\n")
-        Path(temporary_path).replace(path)
-    finally:
-        with contextlib.suppress(OSError):
-            Path(temporary_path).unlink(missing_ok=True)
+    commit_files({path: content})
 
 
 def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
