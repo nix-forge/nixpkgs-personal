@@ -14,7 +14,7 @@ with its existing artwork and shaping preserved. Upstream's Fontconfig replaceme
 installed; applications can request the Apple Color Emoji family explicitly.
 
 The release advertises three standalone symbols with no artwork: female sign,
-male sign and medical symbol. `repair.py` discovers missing artwork by shaping
+male sign and medical symbol. `repair_missing_artwork.py` discovers missing artwork by shaping
 Unicode 17's RGI sequences, then fills only empty bitmap slots from the pinned
 nixpkgs Noto Color Emoji font. It has no list of special-cased codepoints. All
 eight bitmap sizes are generated with Lanczos resampling. Existing Apple ONGs,

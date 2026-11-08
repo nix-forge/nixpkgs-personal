@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 from font_support import faces
 from update_support import HTTPS_CONTEXT, github_api_headers
+from update_transaction import commit_files
 
 API = "https://api.github.com/repos/samuelngs/apple-emoji-ttf"
 
@@ -118,9 +119,7 @@ def main():
             raise ValueError(
                 "Release bytes or font identity differ from the published asset"
             )
-    temporary = args.manifest.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(entry, indent=2) + "\n")
-    temporary.replace(args.manifest)
+    commit_files({args.manifest: json.dumps(entry, indent=2) + "\n"})
     print(
         "Updated pinned source; run the package and browser checks before accepting it"
     )

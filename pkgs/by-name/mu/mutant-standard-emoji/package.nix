@@ -1,4 +1,5 @@
 {
+  replaceVars,
   lib,
   stdenvNoCC,
   fetchurl,
@@ -12,20 +13,13 @@ let
     ps.uharfbuzz
   ]);
   checkFont = artwork: ''
-    runHook preInstallCheck
-    export FONTCONFIG_FILE=${./fonts.conf}
-    export XDG_CACHE_HOME="$TMPDIR/font-cache"
-    mkdir -p "$XDG_CACHE_HOME"
-    font="$out/share/fonts/truetype/MutantStandardEmoji.ttf"
-    family=$(fc-scan --format '%{family}' "$font" 2> "$TMPDIR/fc-scan.log")
-    # fc-scan can exit successfully after configuration errors.
-    if [ -s "$TMPDIR/fc-scan.log" ]; then
-      cat "$TMPDIR/fc-scan.log" >&2
-      exit 1
-    fi
-    test "$family" = 'Mutant Standard Emoji'
-    python ${./check.py} "$font" ${artwork}
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/check-emoji-font.sh {
+        fonts_conf = "${./fonts.conf}";
+        check_py = "${./check_emoji_shaping.py}";
+        inherit artwork;
+      }
+    }
   '';
   # Keep vector compilation separate from the inexpensive encoding pass.
   compiledFont = stdenvNoCC.mkDerivation (_finalAttrs: {
@@ -39,37 +33,25 @@ let
 
     strictDeps = true;
     nativeBuildInputs = [ python ];
-    unpackPhase = ''
-      runHook preUnpack
-      python -m zipfile -e "$src" source
-      cd source
-      runHook postUnpack
-    '';
+    unpackPhase = builtins.readFile ./scripts/unpack-phase.sh;
     dontConfigure = true;
 
     buildPhase = ''
-      runHook preBuild
-      python ${./prepare.py} emoji
-      nanoemoji --color_format glyf_colr_1 \
-        --family 'Mutant Standard Emoji' \
-        --output_file MutantStandardEmoji.ttf \
-        --width 1024 --ascender 950 --descender -250 \
-        --version_major 2024 --version_minor 6 \
-        --noexec_ninja emoji/*.svg
-      ninja -C build -j "$NIX_BUILD_CORES"
-      python ${./finish.py} build/MutantStandardEmoji.ttf ${source.version}
-      runHook postBuild
+      source ${
+        replaceVars ./scripts/build-colr-font.sh {
+          prepare_py = "${./normalize_svg_units.py}";
+          finish_py = "${./stamp_font_metadata.py}";
+          source_version = source.version;
+        }
+      }
     '';
 
     installPhase = ''
-      runHook preInstall
-      install -Dm444 build/MutantStandardEmoji.ttf \
-        "$out/share/fonts/truetype/MutantStandardEmoji.ttf"
-      doc="$out/share/doc/mutant-standard-emoji"
-      mkdir -p "$doc"
-      cp license.txt credits.txt 'design credits.txt' "$doc/"
-      cp ${./README.md} "$doc/README.md"
-      runHook postInstall
+      source ${
+        replaceVars ./scripts/install-colr-font.sh {
+          readme = "${./README.md}";
+        }
+      }
     '';
 
     doInstallCheck = true;
@@ -93,21 +75,22 @@ stdenvNoCC.mkDerivation {
   dontConfigure = true;
 
   buildPhase = ''
-    runHook preBuild
-    python -m zipfile -e ${compiledFont.src} artwork
-    cp ${compiledFont}/share/fonts/truetype/MutantStandardEmoji.ttf font.ttf
-    chmod u+w font.ttf
-    python ${./normalize-shaping.py} font.ttf artwork/emoji
-    runHook postBuild
+    source ${
+      replaceVars ./scripts/build-phase.sh {
+        compiledFont_src = compiledFont.src;
+        inherit compiledFont;
+        normalize_shaping_py = "${./normalize_shaping.py}";
+      }
+    }
   '';
 
   installPhase = ''
-    runHook preInstall
-    cp -R ${compiledFont} "$out"
-    chmod -R u+w "$out"
-    install -m444 font.ttf "$out/share/fonts/truetype/MutantStandardEmoji.ttf"
-    install -m444 ${./encoding.md} "$out/share/doc/mutant-standard-emoji/encoding.md"
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        inherit compiledFont;
+        encoding_md = "${./encoding.md}";
+      }
+    }
   '';
 
   doInstallCheck = true;

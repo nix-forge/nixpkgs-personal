@@ -1,9 +1,9 @@
 {
-  version = "1.0.0";
+  version = "1.1.0";
   src = {
     owner = "rtgiskard";
     repo = "bibata_cursor";
-    rev = "f4ccfe8abb63fddc7b3ce51a866fd8378395cb3d";
-    hash = "sha256-p36pHyoVOcDPm/tbk8YKsL+ItTaVKrGTfQ8zp022mGA=";
+    rev = "f4a7eda996cd83e5f000bca62e5271b34d22e02e";
+    hash = "sha256-Ro/upo5PVzw/fDdEbbKINWyyI+tf/7vdLj/RuS2Q060=";
   };
 }
