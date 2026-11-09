@@ -13,13 +13,17 @@
 let
   source = import ./source.nix;
   # The native Sharp build uses this library, rather than bundled @img binaries.
-  # The exact 2.62.3 backport is unnecessary in the fixed upstream releases.
+  # The backport applies without fuzz to the reviewed 2.62.3 and 2.63.0 sources.
   svgFixed =
     (lib.versionAtLeast librsvg.version "2.62.4" && lib.versionOlder librsvg.version "2.62.90")
     || lib.versionAtLeast librsvg.version "2.63.2";
   svgLibrary =
     assert lib.assertMsg (
-      librsvg.version == "2.62.3" || svgFixed
+      builtins.elem librsvg.version [
+        "2.62.3"
+        "2.63.0"
+      ]
+      || svgFixed
     ) "Review Scrypted's librsvg entity backport against the selected version";
     if svgFixed then
       librsvg

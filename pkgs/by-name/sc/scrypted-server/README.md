@@ -33,9 +33,11 @@ The portable Python helper resolves the same patched ZIP implementation.
 Sharp 0.35 is built explicitly against Nix libraries. Remove its platform binary
 packages while retaining its JavaScript colour dependency. The package-local
 libvips variant selects librsvg with the upstream duplicate-entity fix. When
-Nixpkgs supplies 2.62.3, backport commit
+Nixpkgs supplies the reviewed 2.62.3 or 2.63.0, backport commit
 [e56cc8a33a7184eef6e8a720414aee6205a400ad](https://gitlab.gnome.org/GNOME/librsvg/-/commit/e56cc8a33a7184eef6e8a720414aee6205a400ad)
-without changing Cargo inputs; retire the patch for fixed 2.62.4 or later stable
+without changing Cargo inputs. Its code changes match the 2.63 branch fix
+[8a1b0cd319e9af2d1e9cf878081dd77f227a0504](https://gitlab.gnome.org/GNOME/librsvg/-/commit/8a1b0cd319e9af2d1e9cf878081dd77f227a0504)
+and apply to both reviewed sources without fuzz. Retire the patch for fixed 2.62.4 or later stable
 releases, or 2.63.2 and later. An unexpected intervening version requires review.
 Installed SVG rendering verifies the loaded native library path. The small
 repeated-entity rendering fixture is a compatibility check, not proof that the
