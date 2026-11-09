@@ -195,6 +195,17 @@
           "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
         },
         {
+          "file": "symbol-font-unicode.patch",
+          "sha256": "727a402b454e763f49208a5165426dc3e2094b6a405c77b4afbe69d258a013ef",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://www.unicode.org/Public/MAPPINGS/VENDORS/ADOBE/symbol.txt",
+            "https://learn.microsoft.com/en-us/typography/opentype/spec/recom#non-standard-symbol-fonts"
+          ],
+          "reason": "Translate Windows private-use Symbol text for Unicode-encoded installed Symbol fonts. Coverage, fallback and shaping use the same mapping while retaining original character indices, native PUA glyphs and other symbol fonts. Include the mapping data notice and assert the actual double-arrow glyph in the native regression.",
+          "removeWhen": "Remove when the selected source provides equivalent Symbol encoding support and the glyph and character-index regression passes on native macOS and the portable controls pass without this patch."
+        },
+        {
           "file": "archive-security.patch",
           "sha256": "257463c6f8c93e675fc6c0b87e84a32efd8f0f9b870a7ac3b791268ee8dcbf79",
           "kind": "upstream-candidate",

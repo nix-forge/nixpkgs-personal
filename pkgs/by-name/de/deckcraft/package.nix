@@ -66,6 +66,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   patches = [
     ./approved-ui-fonts.patch
     ./archive-security.patch
+    ./symbol-font-unicode.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];
   # Match the vendor lock to the font policy and archive-security patches.
@@ -284,6 +285,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
         bsd3
         cc0
         mpl20
+        (lib.licenses.mkLicense {
+          shortName = "Unicode-Symbol-2011";
+          fullName = "Unicode Symbol mapping data license (2011)";
+          url = "https://www.unicode.org/Public/MAPPINGS/VENDORS/ADOBE/symbol.txt";
+          free = true;
+          redistributable = true;
+        })
       ];
     sourceProvenance = with lib.sourceTypes; [
       fromSource

@@ -89,3 +89,8 @@ ser = "ser"
 extend-glob = ["archive-security.patch"]
 # Preserve the exact CP437 filename bytes used by the Unicode-path regression.
 extend-ignore-re = ['b"caf\\x82\.txt"']
+
+[type.deckcraft-symbol]
+extend-glob = ["symbol-font-unicode.patch"]
+# U+03BA is Greek small letter kappa in the published Symbol encoding table.
+extend-ignore-re = ['\\u\{03BA\}']
