@@ -2260,14 +2260,20 @@ version = "0.8.0"
 dependencies = [
  "candle-core",
  "candle-nn",
+ "ed25519-dalek",
  "filmcraft-project",
  "filmcraft-time",
+ "p256",
+ "p384",
+ "rand_core 0.6.4",
  "rayon",
+ "rsa",
  "rustls",
  "rustls-rustcrypto",
  "serde",
  "serde_json",
  "sha2",
+ "signature",
  "thiserror 2.0.21",
  "ureq",
 ]
@@ -5195,7 +5201,7 @@ dependencies = [
  "log",
  "once_cell",
  "rustls-pki-types",
- "rustls-webpki 0.103.15",
+ "rustls-webpki",
  "subtle",
  "zeroize",
 ]
@@ -5235,7 +5241,7 @@ dependencies = [
  "rustls",
  "rustls-native-certs",
  "rustls-platform-verifier-android",
- "rustls-webpki 0.103.15",
+ "rustls-webpki",
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
@@ -5251,8 +5257,6 @@ checksum = "eec689c0bc40ff2458a5977b6619cb718087084a18e02a131c599b62d05e1a5f"
 [[package]]
 name = "rustls-rustcrypto"
 version = "0.0.2-alpha"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f12052947763ab8515f753315357599e9b0b4dab3b8ba15f30f725fe6d025557"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -5271,22 +5275,10 @@ dependencies = [
  "rsa",
  "rustls",
  "rustls-pki-types",
- "rustls-webpki 0.102.8",
  "sec1",
  "sha2",
  "signature",
  "x25519-dalek",
-]
-
-[[package]]
-name = "rustls-webpki"
-version = "0.102.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ca1bc8749bd4cf37b5ce386cc146580777b4e8572c7b97baf22c83f444bee9"
-dependencies = [
- "ring",
- "rustls-pki-types",
- "untrusted",
 ]
 
 [[package]]

@@ -480,6 +480,34 @@
       "sourceRevision": "f03e21556d8e3a7155b91892d958debd5255d7af",
       "patches": [
         {
+          "file": "rustcrypto-pki-types.patch",
+          "sha256": "69fd22723366fa5f65fe2e26fa4a62b2a39ecc3b93056d63420804057136c738",
+          "kind": "upstream-backport",
+          "upstream": [
+            "https://github.com/RustCrypto/rustls-rustcrypto/commit/b840ddb98fc1604e72cec8ed4ef6d83729e207f3",
+            "https://github.com/advisories/GHSA-82j2-j2ch-gfr8",
+            "https://github.com/advisories/GHSA-pwjx-qhcg-rvj4",
+            "https://github.com/advisories/GHSA-965h-392x-2mh5",
+            "https://github.com/advisories/GHSA-xgp8-3hg3-c2mh"
+          ],
+          "reason": "Backport upstream algorithm-identifier imports and removal of the obsolete WebPKI dependency while retaining provider 0.0.2-alpha, its cipher suites and cryptographic dependency versions. Declare pki-types 1.11 as the actual API minimum and preserve the existing std/alloc/tls12/zeroize wiring. Original WebPKI 0.102.8 is used only for constants; actual certificate verification already uses patched WebPKI. Application-provider regressions preserve all twelve DER identifiers and exercise all eleven signature algorithms with valid, altered, truncated and malformed inputs.",
+          "removeWhen": "Remove when the selected compatible provider includes this dependency removal and passes identifier, signature and download-library checks without the local source override."
+        },
+        {
+          "file": "rustcrypto-provider.patch",
+          "sha256": "ffd3ae162d19db9bd0863bed8405c1cc30e3007ac0ed60fee79a2cfea3b4375f",
+          "kind": "packaging-policy",
+          "upstream": [
+            "https://github.com/RustCrypto/rustls-rustcrypto/commit/b840ddb98fc1604e72cec8ed4ef6d83729e207f3",
+            "https://github.com/advisories/GHSA-82j2-j2ch-gfr8",
+            "https://github.com/advisories/GHSA-pwjx-qhcg-rvj4",
+            "https://github.com/advisories/GHSA-965h-392x-2mh5",
+            "https://github.com/advisories/GHSA-xgp8-3hg3-c2mh"
+          ],
+          "reason": "Select the explicitly pinned, patched RustCrypto source through a local Cargo path, eliminating rustls-webpki 0.102.8 from the complete lock while preserving actual certificate verification and all unrelated dependency records. The native TLS-provider check covers the application download library and provider regressions; locked Linux/Darwin/WASM metadata guards selection and features.",
+          "removeWhen": "Remove the Cargo path override and synchronized lock changes together when the selected upstream application resolves a provider without the obsolete WebPKI dependency and the same compatibility checks pass."
+        },
+        {
           "file": "zip-header-identity.patch",
           "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
           "kind": "upstream-candidate",
@@ -606,6 +634,34 @@
     "lightcraft": {
       "sourceRevision": "16dbb90499d3c63a6582fcbba1b2550a6e2da032",
       "patches": [
+        {
+          "file": "rustcrypto-pki-types.patch",
+          "sha256": "69fd22723366fa5f65fe2e26fa4a62b2a39ecc3b93056d63420804057136c738",
+          "kind": "upstream-backport",
+          "upstream": [
+            "https://github.com/RustCrypto/rustls-rustcrypto/commit/b840ddb98fc1604e72cec8ed4ef6d83729e207f3",
+            "https://github.com/advisories/GHSA-82j2-j2ch-gfr8",
+            "https://github.com/advisories/GHSA-pwjx-qhcg-rvj4",
+            "https://github.com/advisories/GHSA-965h-392x-2mh5",
+            "https://github.com/advisories/GHSA-xgp8-3hg3-c2mh"
+          ],
+          "reason": "Backport upstream algorithm-identifier imports and removal of the obsolete WebPKI dependency while retaining provider 0.0.2-alpha, its cipher suites and cryptographic dependency versions. Declare pki-types 1.11 as the actual API minimum and preserve the existing std/alloc/tls12/zeroize wiring. Original WebPKI 0.102.8 is used only for constants; actual certificate verification already uses patched WebPKI. Application-provider regressions preserve all twelve DER identifiers and exercise all eleven signature algorithms with valid, altered, truncated and malformed inputs.",
+          "removeWhen": "Remove when the selected compatible provider includes this dependency removal and passes identifier, signature and download-library checks without the local source override."
+        },
+        {
+          "file": "rustcrypto-provider.patch",
+          "sha256": "ad773a8205cabc0ab634ec5cdd41cf65df7d1e5accbcf27a7271d372be344c41",
+          "kind": "packaging-policy",
+          "upstream": [
+            "https://github.com/RustCrypto/rustls-rustcrypto/commit/b840ddb98fc1604e72cec8ed4ef6d83729e207f3",
+            "https://github.com/advisories/GHSA-82j2-j2ch-gfr8",
+            "https://github.com/advisories/GHSA-pwjx-qhcg-rvj4",
+            "https://github.com/advisories/GHSA-965h-392x-2mh5",
+            "https://github.com/advisories/GHSA-xgp8-3hg3-c2mh"
+          ],
+          "reason": "Select the explicitly pinned, patched RustCrypto source through a local Cargo path, eliminating rustls-webpki 0.102.8 from the complete lock while preserving actual certificate verification and all unrelated dependency records. The native TLS-provider check covers the application download library and provider regressions; locked Linux/Darwin/WASM metadata guards selection and features.",
+          "removeWhen": "Remove the Cargo path override and synchronized lock changes together when the selected upstream application resolves a provider without the obsolete WebPKI dependency and the same compatibility checks pass."
+        },
         {
           "file": "zip-header-identity.patch",
           "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",

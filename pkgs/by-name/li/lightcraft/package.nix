@@ -28,6 +28,7 @@
 }:
 let
   source = import ./source.nix;
+  rustcryptoSource = callPackage ./rustcrypto-source.nix { };
   zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
   candleSource = callPackage ./candle-source.nix {
     patches = [ ./candle-zip-compatibility.patch ];
@@ -72,6 +73,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   };
   patches = [
     ./archive-security.patch
+    ./rustcrypto-provider.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [
     ./appstream-screenshot.patch
@@ -86,6 +88,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     cmp Cargo.lock ${./Cargo.lock}
     mkdir -p vendor
     cp -R ${zipSource} vendor/zip
+    cp -R ${rustcryptoSource} vendor/rustls-rustcrypto
     cp -R ${candleSource} vendor/candle-core
     chmod -R u+w vendor
   '';
@@ -255,6 +258,43 @@ rustPlatform.buildRustPackage (finalAttrs: {
           runHook preInstall
           mkdir -p "$out"
           touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
+
+      tlsProvider = finalAttrs.finalPackage.overrideAttrs (_: {
+        pname = "lightcraft-tls-provider";
+        cargoBuildType = "debug";
+        cargoCheckType = "debug";
+        buildFeatures = [ ];
+        cargoBuildFeatures = [ ];
+        cargoCheckFeatures = [ ];
+        cargoBuildFlags = [
+          "-p"
+          "lightcraft-fetch"
+          "--lib"
+          "--locked"
+        ];
+        cargoTestFlags = [
+          "-p"
+          "lightcraft-fetch"
+          "--lib"
+          "--locked"
+        ];
+        postCheck = ''
+          for target in x86_64-unknown-linux-gnu aarch64-apple-darwin wasm32-unknown-unknown; do
+            cargo metadata --offline --locked --format-version 1 --filter-platform "$target" --features "lightcraft/heif,lightcraft-cli/heif" > "metadata-$target.json"
+            python3 ${./check_tls_provider.py} "metadata-$target.json" "$target"
+          done
+        '';
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          cp metadata-*.json "$out/"
           runHook postInstall
         '';
         postInstall = "";

@@ -113,8 +113,10 @@
         designcraft-archive-compatibility = packages.designcraft.tests.archiveCompatibility;
         figcraft-archive-compatibility = packages.figcraft.tests.archiveCompatibility;
         figcraft-server = packages.figcraft.tests.server;
+        filmcraft-tls-provider = packages.filmcraft.tests.tlsProvider;
         filmcraft-archive-compatibility = packages.filmcraft.tests.archiveCompatibility;
         gridcraft-archive-compatibility = packages.gridcraft.tests.archiveCompatibility;
+        lightcraft-tls-provider = packages.lightcraft.tests.tlsProvider;
         lightcraft-segment-compatibility = packages.lightcraft.tests.segmentCompatibility;
         wordcraft-archive-compatibility = packages.wordcraft.tests.archiveCompatibility;
         soundcraft-archive-compatibility = packages.soundcraft.tests.archiveCompatibility;

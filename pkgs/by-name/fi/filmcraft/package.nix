@@ -30,6 +30,7 @@
 }:
 let
   source = import ./source.nix;
+  rustcryptoSource = callPackage ./rustcrypto-source.nix { };
   zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
   candleSource = callPackage ./candle-source.nix { patches = [ ./candle-zip-compatibility.patch ]; };
   gitSources = lib.mapAttrs (
@@ -93,6 +94,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
   patches = [
     ./archive-security.patch
+    ./rustcrypto-provider.patch
     ./remove-restricted-marks.patch
 
   ]
@@ -103,6 +105,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     cmp Cargo.lock ${./Cargo.lock}
     mkdir -p vendor
     cp -R ${zipSource} vendor/zip
+    cp -R ${rustcryptoSource} vendor/rustls-rustcrypto
     cp -R ${candleSource} vendor/candle-core
     chmod -R u+w vendor
   '';
@@ -242,6 +245,54 @@ rustPlatform.buildRustPackage (finalAttrs: {
           runHook preInstall
           mkdir -p "$out"
           touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
+
+      tlsProvider = finalAttrs.finalPackage.overrideAttrs (_: {
+        pname = "filmcraft-tls-provider";
+        cargoBuildType = "debug";
+        cargoCheckType = "debug";
+        buildFeatures = [
+          "filmcraft-speech/whisper"
+          "filmcraft-speech/download"
+        ];
+        cargoBuildFeatures = [
+          "filmcraft-speech/whisper"
+          "filmcraft-speech/download"
+        ];
+        cargoCheckFeatures = [
+          "filmcraft-speech/whisper"
+          "filmcraft-speech/download"
+        ];
+        cargoBuildFlags = [
+          "-p"
+          "filmcraft-speech"
+          "--lib"
+          "--locked"
+        ];
+        cargoTestFlags = [
+          "-p"
+          "filmcraft-speech"
+          "--lib"
+          "--locked"
+        ];
+        postCheck = ''
+          for target in x86_64-unknown-linux-gnu aarch64-apple-darwin wasm32-unknown-unknown; do
+            cargo metadata --offline --locked --format-version 1 --filter-platform "$target" --features "filmcraft/whisper,filmcraft-cli/whisper,filmcraft-speech/download" > "metadata-$target.json"
+            python3 ${./check_tls_provider.py} "metadata-$target.json" "$target"
+          done
+          cargo tree --offline --locked --package filmcraft-speech --no-default-features --target wasm32-unknown-unknown --edges normal,build,dev --prefix none --format '{p}' > speech-web-tree.txt
+          python3 ${./check_tls_provider.py} --speech-web-tree speech-web-tree.txt
+        '';
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          cp metadata-*.json speech-web-tree.txt "$out/"
           runHook postInstall
         '';
         postInstall = "";

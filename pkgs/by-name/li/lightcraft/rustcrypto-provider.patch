@@ -1,0 +1,317 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -166,3 +166,4 @@
+ [patch.crates-io]
+ zip = { path = "vendor/zip" }
+ candle-core = { path = "vendor/candle-core" }
++rustls-rustcrypto = { path = "vendor/rustls-rustcrypto" }
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -3277,10 +3277,16 @@
+ name = "lightcraft-fetch"
+ version = "0.8.0"
+ dependencies = [
++ "ed25519-dalek",
+  "log",
++ "p256",
++ "p384",
++ "rand_core 0.6.4",
++ "rsa",
+  "rustls",
+  "rustls-rustcrypto",
+  "sha2",
++ "signature",
+  "webpki-roots",
+ ]
+ 
+@@ -5253,7 +5259,7 @@
+ dependencies = [
+  "once_cell",
+  "rustls-pki-types",
+- "rustls-webpki 0.103.15",
++ "rustls-webpki",
+  "subtle",
+  "zeroize",
+ ]
+@@ -5270,8 +5276,6 @@
+ [[package]]
+ name = "rustls-rustcrypto"
+ version = "0.0.2-alpha"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f12052947763ab8515f753315357599e9b0b4dab3b8ba15f30f725fe6d025557"
+ dependencies = [
+  "aead",
+  "aes-gcm",
+@@ -5290,22 +5294,10 @@
+  "rsa",
+  "rustls",
+  "rustls-pki-types",
+- "rustls-webpki 0.102.8",
+  "sec1",
+  "sha2",
+  "signature",
+  "x25519-dalek",
+-]
+-
+-[[package]]
+-name = "rustls-webpki"
+-version = "0.102.8"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "64ca1bc8749bd4cf37b5ce386cc146580777b4e8572c7b97baf22c83f444bee9"
+-dependencies = [
+- "ring",
+- "rustls-pki-types",
+- "untrusted",
+ ]
+ 
+ [[package]]
+--- a/crates/fetch/Cargo.toml
++++ b/crates/fetch/Cargo.toml
+@@ -15,3 +15,12 @@
+ rustls-rustcrypto = "0.0.2-alpha"
+ webpki-roots = "1"
+ sha2 = { version = "0.10", default-features = false, features = ["std"] }
++
++[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
++ed25519-dalek = { version = "2", default-features = false, features = ["pkcs8", "alloc"] }
++p256 = { version = "0.13", default-features = false, features = ["ecdsa"] }
++p384 = { version = "0.13", default-features = false, features = ["ecdsa"] }
++rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
++rsa = { version = "0.9", default-features = false, features = ["sha2"] }
++sha2 = { version = "0.10", default-features = false }
++signature = { version = "2", default-features = false }
+--- a/crates/fetch/src/lib.rs
++++ b/crates/fetch/src/lib.rs
+@@ -465,3 +465,6 @@
+ 
+ #[cfg(test)]
+ mod tests;
++
++#[cfg(test)]
++mod tls_provider_tests;
+--- /dev/null
++++ b/crates/fetch/src/tls_provider_tests.rs
+@@ -0,0 +1,223 @@
++use rustls::pki_types::{alg_id, AlgorithmIdentifier, SignatureVerificationAlgorithm};
++use sha2::Digest;
++use signature::{hazmat::PrehashSigner, RandomizedSigner, SignatureEncoding, Signer};
++
++const MESSAGE: &[u8] = b"provider compatibility control";
++
++fn algorithm(
++    key: AlgorithmIdentifier,
++    signature: AlgorithmIdentifier,
++) -> &'static dyn SignatureVerificationAlgorithm {
++    rustls_rustcrypto::provider()
++        .signature_verification_algorithms
++        .all
++        .iter()
++        .copied()
++        .find(|algorithm| {
++            algorithm.public_key_alg_id() == key && algorithm.signature_alg_id() == signature
++        })
++        .expect("the original provider algorithm must remain available")
++}
++
++fn accepts_valid_rejects_invalid(
++    algorithm: &dyn SignatureVerificationAlgorithm,
++    key: &[u8],
++    signature: &[u8],
++) {
++    assert!(algorithm.verify_signature(key, MESSAGE, signature).is_ok());
++    assert!(algorithm
++        .verify_signature(key, b"different message", signature)
++        .is_err());
++    assert!(algorithm
++        .verify_signature(b"invalid key encoding", MESSAGE, signature)
++        .is_err());
++    assert!(algorithm
++        .verify_signature(key, MESSAGE, &signature[..signature.len() - 1])
++        .is_err());
++    let mut corrupt = signature.to_vec();
++    corrupt[0] ^= 1;
++    assert!(algorithm.verify_signature(key, MESSAGE, &corrupt).is_err());
++}
++
++#[test]
++fn algorithm_identifiers_preserve_legacy_der() {
++    // Original WebPKI 0.102.8 identifiers, retained as functional ASN.1 test data.
++    let expected: &[(AlgorithmIdentifier, &[u8])] = &[
++        (
++            alg_id::ECDSA_P256,
++            &[
++                0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48,
++                0xce, 0x3d, 0x03, 0x01, 0x07,
++            ],
++        ),
++        (
++            alg_id::ECDSA_P384,
++            &[
++                0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x05, 0x2b, 0x81, 0x04,
++                0x00, 0x22,
++            ],
++        ),
++        (
++            alg_id::ECDSA_SHA256,
++            &[0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02],
++        ),
++        (
++            alg_id::ECDSA_SHA384,
++            &[0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x03],
++        ),
++        (alg_id::ED25519, &[0x06, 0x03, 0x2b, 0x65, 0x70]),
++        (
++            alg_id::RSA_ENCRYPTION,
++            &[
++                0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00,
++            ],
++        ),
++        (
++            alg_id::RSA_PKCS1_SHA256,
++            &[
++                0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b, 0x05, 0x00,
++            ],
++        ),
++        (
++            alg_id::RSA_PKCS1_SHA384,
++            &[
++                0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0c, 0x05, 0x00,
++            ],
++        ),
++        (
++            alg_id::RSA_PKCS1_SHA512,
++            &[
++                0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0d, 0x05, 0x00,
++            ],
++        ),
++        (
++            alg_id::RSA_PSS_SHA256,
++            &[
++                0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a, 0x30, 0x34, 0xa0,
++                0x0f, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
++                0x05, 0x00, 0xa1, 0x1c, 0x30, 0x1a, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
++                0x01, 0x01, 0x08, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
++                0x02, 0x01, 0x05, 0x00, 0xa2, 0x03, 0x02, 0x01, 0x20,
++            ],
++        ),
++        (
++            alg_id::RSA_PSS_SHA384,
++            &[
++                0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a, 0x30, 0x34, 0xa0,
++                0x0f, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02,
++                0x05, 0x00, 0xa1, 0x1c, 0x30, 0x1a, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
++                0x01, 0x01, 0x08, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
++                0x02, 0x02, 0x05, 0x00, 0xa2, 0x03, 0x02, 0x01, 0x30,
++            ],
++        ),
++        (
++            alg_id::RSA_PSS_SHA512,
++            &[
++                0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a, 0x30, 0x34, 0xa0,
++                0x0f, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03,
++                0x05, 0x00, 0xa1, 0x1c, 0x30, 0x1a, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
++                0x01, 0x01, 0x08, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
++                0x02, 0x03, 0x05, 0x00, 0xa2, 0x03, 0x02, 0x01, 0x40,
++            ],
++        ),
++    ];
++    for (identifier, bytes) in expected {
++        assert_eq!(identifier.as_ref(), *bytes);
++    }
++}
++
++#[test]
++fn ed25519_signatures_still_verify_and_invalid_inputs_fail() {
++    let key = ed25519_dalek::SigningKey::from_bytes(&[7; 32]);
++    let signature = key.sign(MESSAGE);
++    accepts_valid_rejects_invalid(
++        algorithm(alg_id::ED25519, alg_id::ED25519),
++        key.verifying_key().as_bytes(),
++        &signature.to_bytes(),
++    );
++}
++
++#[test]
++fn ecdsa_signatures_still_verify_and_invalid_inputs_fail() {
++    macro_rules! check {
++        ($curve:ident, $length:expr, $hash:ty, $algorithm:expr) => {
++            let key = $curve::ecdsa::SigningKey::from_slice(&[1; $length]).unwrap();
++            let signature: $curve::ecdsa::Signature =
++                key.sign_prehash(&<$hash>::digest(MESSAGE)).unwrap();
++            accepts_valid_rejects_invalid(
++                $algorithm,
++                key.verifying_key().to_encoded_point(false).as_bytes(),
++                signature.to_der().as_bytes(),
++            );
++        };
++    }
++    check!(
++        p256,
++        32,
++        sha2::Sha256,
++        algorithm(alg_id::ECDSA_P256, alg_id::ECDSA_SHA256)
++    );
++    check!(
++        p256,
++        32,
++        sha2::Sha384,
++        algorithm(alg_id::ECDSA_P256, alg_id::ECDSA_SHA384)
++    );
++    check!(
++        p384,
++        48,
++        sha2::Sha256,
++        algorithm(alg_id::ECDSA_P384, alg_id::ECDSA_SHA256)
++    );
++    check!(
++        p384,
++        48,
++        sha2::Sha384,
++        algorithm(alg_id::ECDSA_P384, alg_id::ECDSA_SHA384)
++    );
++}
++
++#[test]
++fn rsa_signatures_still_verify_and_invalid_inputs_fail() {
++    use ::rsa::pkcs1::EncodeRsaPublicKey;
++    let mut rng = rand_core::OsRng;
++    let key = ::rsa::RsaPrivateKey::new(&mut rng, 2048).unwrap();
++    let public = key.to_public_key().to_pkcs1_der().unwrap();
++    macro_rules! check {
++        ($padding:ident, $hash:ty, $algorithm:expr) => {
++            let signer = ::rsa::$padding::SigningKey::<$hash>::new(key.clone());
++            let signature = signer.sign_with_rng(&mut rng, MESSAGE);
++            accepts_valid_rejects_invalid($algorithm, public.as_bytes(), &signature.to_vec());
++        };
++    }
++    check!(
++        pkcs1v15,
++        sha2::Sha256,
++        algorithm(alg_id::RSA_ENCRYPTION, alg_id::RSA_PKCS1_SHA256)
++    );
++    check!(
++        pkcs1v15,
++        sha2::Sha384,
++        algorithm(alg_id::RSA_ENCRYPTION, alg_id::RSA_PKCS1_SHA384)
++    );
++    check!(
++        pkcs1v15,
++        sha2::Sha512,
++        algorithm(alg_id::RSA_ENCRYPTION, alg_id::RSA_PKCS1_SHA512)
++    );
++    check!(
++        pss,
++        sha2::Sha256,
++        algorithm(alg_id::RSA_ENCRYPTION, alg_id::RSA_PSS_SHA256)
++    );
++    check!(
++        pss,
++        sha2::Sha384,
++        algorithm(alg_id::RSA_ENCRYPTION, alg_id::RSA_PSS_SHA384)
++    );
++    check!(
++        pss,
++        sha2::Sha512,
++        algorithm(alg_id::RSA_ENCRYPTION, alg_id::RSA_PSS_SHA512)
++    );
++}
