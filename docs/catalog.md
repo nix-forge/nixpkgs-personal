@@ -152,9 +152,9 @@ Selected macOS Font8 catalog assets and Apple developer fonts with pinned source
 
 [Recipe](../pkgs/by-name/ap/apple-fonts/package.nix) · [Package guide](../pkgs/by-name/ap/apple-fonts/README.md) · [Upstream](https://support.apple.com/en-ie/122869)
 
-- `aarch64-darwin`: 2026-11-07; unfree; includes unfree terms.
-- `aarch64-linux`: 2026-11-07; unfree; includes unfree terms.
-- `x86_64-linux`: 2026-11-07; unfree; includes unfree terms.
+- `aarch64-darwin`: 2026-11-09; unfree; includes unfree terms.
+- `aarch64-linux`: 2026-11-09; unfree; includes unfree terms.
+- `x86_64-linux`: 2026-11-09; unfree; includes unfree terms.
 
 Hosted CI: Evaluation only: the Font8 collection has no reviewed grant covering hosted extraction of every included asset.
 
@@ -248,9 +248,9 @@ Desktop application for ChatGPT.
 
 [Recipe](../pkgs/by-name/ch/chatgpt-latest/package.nix) · [Package guide](../pkgs/by-name/ch/chatgpt-latest/README.md) · [Upstream](https://developers.openai.com/codex/app)
 
-- `aarch64-darwin`: 26.1103.41825; unfree; includes unfree terms.
-- `aarch64-linux`: 26.1103.32239; unfree; includes unfree terms.
-- `x86_64-linux`: 26.1103.32239; unfree; includes unfree terms.
+- `aarch64-darwin`: 26.1103.60933; unfree; includes unfree terms.
+- `aarch64-linux`: 26.1103.60933; unfree; includes unfree terms.
+- `x86_64-linux`: 26.1103.60933; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#chatgpt-latest
