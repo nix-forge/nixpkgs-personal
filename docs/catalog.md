@@ -91,9 +91,9 @@ Selected macOS Font8 catalog assets and Apple developer fonts with pinned source
 
 [Recipe](../pkgs/by-name/ap/apple-fonts/package.nix) · [Package guide](../pkgs/by-name/ap/apple-fonts/README.md) · [Upstream](https://support.apple.com/en-ie/122869)
 
-- `aarch64-darwin`: 2026-09-14; unfree; includes unfree terms.
-- `aarch64-linux`: 2026-09-14; unfree; includes unfree terms.
-- `x86_64-linux`: 2026-09-14; unfree; includes unfree terms.
+- `aarch64-darwin`: 2026-11-09; unfree; includes unfree terms.
+- `aarch64-linux`: 2026-11-09; unfree; includes unfree terms.
+- `x86_64-linux`: 2026-11-09; unfree; includes unfree terms.
 
 Hosted CI: Evaluation only: the Font8 collection has no reviewed grant covering hosted extraction of every included asset.
 
