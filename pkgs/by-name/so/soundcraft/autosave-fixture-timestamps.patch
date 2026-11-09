@@ -1,0 +1,15 @@
+--- a/crates/engine/src/autosave.rs
++++ b/crates/engine/src/autosave.rs
+@@ -595,6 +595,12 @@
+         record(&mut e, 0.5);
+         let mut a = Autosave::create(&root, "Song").unwrap();
+         a.write(e.session(), e.path.as_deref(), None).unwrap();
++        // Recovery compares mtimes; consecutive writes may share a filesystem clock tick.
++        // Model an older saved session and its newer autosave without relying on wall time.
++        std::fs::File::options().write(true).open(&path).unwrap()
++            .set_times(std::fs::FileTimes::new().set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(1))).unwrap();
++        std::fs::File::options().write(true).open(a.dir.join(SESSION)).unwrap()
++            .set_times(std::fs::FileTimes::new().set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(2))).unwrap();
+         assert!(leftovers(&root).is_empty());
+         drop(a);
+         let left = leftovers(&root);

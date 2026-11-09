@@ -969,6 +969,16 @@
           ],
           "reason": "Provide the selected redistributable symbol face in this distribution without relying on host fonts. Upstream review on PR141 requests system-font discovery rather than bundled fonts, so do not submit this curated font selection as a general upstream repair.",
           "removeWhen": "Retain while this distribution needs the documented branding, font selection or immutable-path policy. Remove only when upstream configuration supports the same policy without source edits."
+        },
+        {
+          "file": "autosave-fixture-timestamps.patch",
+          "sha256": "7a1a65fc4988807b7f0b03fde0d8c6b3345a5011a4e7e62377a2c0fa4de87de8",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/soundcraft/blob/3a28a657692c1b98b28c276d8f61df9471074f0f/crates/engine/src/autosave.rs"
+          ],
+          "reason": "Give the existing recovery fixture an explicitly older saved session and newer autosave. Equal filesystem modification times reproduce its empty recovery list; explicitly ordered times pass the unchanged assertions. Production recovery code, test count and assertions remain unchanged.",
+          "removeWhen": "Remove when the pinned upstream recovery test establishes deterministic modification-time ordering and passes without this fixture patch."
         }
       ]
     },

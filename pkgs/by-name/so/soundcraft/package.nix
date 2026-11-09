@@ -88,6 +88,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   patches = [
     ./archive-security.patch
+    ./autosave-fixture-timestamps.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [
     ./appstream-screenshot.patch

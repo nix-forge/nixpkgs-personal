@@ -18,3 +18,7 @@ Linux regular and bold symbol fallbacks refer directly to the packaged DejaVu fo
 On native macOS, `hostTests.native` provides the Apple Audio Units insertion regression. The source build compiles the original test and excludes only its execution inside the sandbox. Build the separate artifact with `nix build .#soundcraft.hostTests.native --option sandbox true --out-link result-native-tests`, then run `./result-native-tests/bin/soundcraft-host-tests` on the host. This retains the hardware/service assertions while keeping ordinary source builds sandboxed.
 
 See the [patch-retirement record](../../../../docs/research/artcraft-patch-retirement-research.md) for this source update. Earlier completed build receipts apply only to their recorded revisions.
+
+The autosave recovery test sets explicit modification times for its older saved
+session and newer autosave, avoiding equal filesystem clock ticks. All original
+recovery, cleanup and audio assertions and production recovery code are retained.
