@@ -47,8 +47,8 @@ let
   );
 in
 stdenvNoCC.mkDerivation {
-  # The NixOS Navidrome module finds share/${pname}.ndp. Keep the public
-  # package attribute descriptive while matching the actual plugin archive.
+  # Preserve Nixpkgs' share/plugins layout for Navidrome's plugin discovery.
+  # Keep the public attribute descriptive and the archive's upstream name.
   pname = "audiomuseai";
   inherit (source) version;
   strictDeps = true;

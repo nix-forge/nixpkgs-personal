@@ -2,7 +2,7 @@
 # Nix supplies builder variables and template rendering outputs.
 # shellcheck disable=SC2154
 packed_required_hosts="$(
-  unzip -p "$out/share/audiomuseai.ndp" manifest.json |
+  unzip -p "$out/share/plugins/audiomuseai.ndp" manifest.json |
     jq -c '.permissions.http.requiredHosts'
 )"
 if [ "$packed_required_hosts" != '["127.0.0.1"]' ]; then
