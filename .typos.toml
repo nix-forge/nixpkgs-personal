@@ -101,3 +101,8 @@ caf = "caf" # Core Audio Format identifier in the upstream audio feature list.
 extend-glob = ["symbol-font-unicode.patch"]
 # U+03BA is Greek small letter kappa in the published Symbol encoding table.
 extend-ignore-re = ['\\u\{03BA\}']
+
+[type.scrypted-librsvg-backport]
+extend-glob = ["librsvg-duplicate-entities.patch"]
+# Preserve the upstream author attribution exactly.
+extend-ignore-re = ['(?m)^From: Federico Mena Quintero <federico@gnome\.org>$']

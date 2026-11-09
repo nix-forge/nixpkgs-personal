@@ -8,9 +8,26 @@
   pkg-config,
   esbuild,
   vips,
+  librsvg,
 }:
 let
   source = import ./source.nix;
+  # The native Sharp build uses this library, rather than bundled @img binaries.
+  # The exact 2.62.3 backport is unnecessary in the fixed upstream releases.
+  svgFixed =
+    (lib.versionAtLeast librsvg.version "2.62.4" && lib.versionOlder librsvg.version "2.62.90")
+    || lib.versionAtLeast librsvg.version "2.63.2";
+  svgLibrary =
+    assert lib.assertMsg (
+      librsvg.version == "2.62.3" || svgFixed
+    ) "Review Scrypted's librsvg entity backport against the selected version";
+    if svgFixed then
+      librsvg
+    else
+      librsvg.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ./librsvg-duplicate-entities.patch ];
+      });
+  nativeVips = vips.override { librsvg = svgLibrary; };
 in
 buildNpmPackage (finalAttrs: {
   pname = "scrypted-server";
@@ -30,6 +47,7 @@ buildNpmPackage (finalAttrs: {
         inherit nodejs_24;
         package_lock_json = "${./package-lock.json}";
         manifestProgram = "${./scripts/patch-manifest.mts}";
+        dependencyPolicy = "${./dependency-policy.json}";
 
       }
     }
@@ -44,7 +62,7 @@ buildNpmPackage (finalAttrs: {
     pkg-config
     esbuild
   ];
-  buildInputs = [ vips ];
+  buildInputs = [ nativeVips ];
   env = {
     npm_config_build_from_source = "true";
     SHARP_FORCE_GLOBAL_LIBVIPS = "1";
@@ -53,6 +71,8 @@ buildNpmPackage (finalAttrs: {
     source ${
       replaceVars ./scripts/build-phase.sh {
         tarPatch = "${./pax-entry-metadata.patch}";
+        cacheCheck = "${./scripts/check-cache-compatibility.mts}";
+        inherit nodejs_24;
       }
     }
   '';
@@ -78,6 +98,11 @@ buildNpmPackage (finalAttrs: {
         inherit nodejs_24;
         nodeModulesCheck = "${./scripts/check_node_modules.mts}";
         tarCheck = "${./scripts/check-tar.mts}";
+        proxyAddrCheck = "${./scripts/check-proxy-addr.mts}";
+        cacheCheck = "${./scripts/check-cache-compatibility.mts}";
+        runtimeCheck = "${./scripts/check-runtime-compatibility.mts}";
+        transportCheck = "${./scripts/check-transports.mts}";
+        nativeSvgLibrary = lib.getLib svgLibrary;
 
       }
     }

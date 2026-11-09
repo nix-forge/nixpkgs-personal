@@ -15,9 +15,12 @@ rm node_modules/tar/dist/commonjs/read-entry.js.map node_modules/tar/dist/esm/re
 test -f src/scrypted-main.ts
 test ! -e dist/scrypted-main.js
 npm run build
-npm rebuild @scrypted/node-pty classic-level sharp \
+npm rebuild @scrypted/node-pty classic-level \
   --build-from-source --offline --ignore-scripts=false
+# Sharp 0.35 builds its native addon through an explicit script.
+npm explore sharp -- npm run build
 test -n "$(find node_modules/classic-level/build/Release -maxdepth 1 -name '*.node' -print -quit)"
 test -n "$(find node_modules/sharp/src/build/Release -maxdepth 1 -name '*.node' -print -quit)"
+timeout --kill-after=5s 90s @nodejs_24@/bin/node @cacheCheck@ "$PWD" "$PWD"
 npm prune --omit=dev --ignore-scripts --offline
 runHook postBuild

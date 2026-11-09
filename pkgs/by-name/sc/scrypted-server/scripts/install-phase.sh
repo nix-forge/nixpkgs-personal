@@ -7,7 +7,7 @@ mkdir -p "$app" "$out/bin"
 cp -R dist bin python volume node_modules package.json \
   "$app/"
 rm -rf \
-  "$app/node_modules/@img" \
+  "$app/node_modules/@img"/sharp-* \
   "$app/node_modules/classic-level/prebuilds" \
   "$app/node_modules/sharp/src/build/Release/obj.target" \
   "$app/node_modules/sharp/src/build/Release/.deps" \
