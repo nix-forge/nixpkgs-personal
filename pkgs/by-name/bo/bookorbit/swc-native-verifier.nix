@@ -2,7 +2,7 @@
   lib,
   stdenv,
   darwin,
-  bubblewrap,
+  proot,
   rustPlatform,
   fetchgit,
   coreutils,
@@ -78,14 +78,12 @@ rustPlatform.buildRustPackage {
   postCheck =
     if stdenv.hostPlatform.isLinux then
       ''
-        ${bubblewrap}/bin/bwrap \
-          --unshare-user --uid "$(id -u)" --gid "$(id -g)" \
-          --unshare-pid --die-with-parent --new-session \
-          --ro-bind /nix/store /nix/store \
-          --bind "$NIX_BUILD_TOP" "$NIX_BUILD_TOP" \
-          --proc /proc --dev /dev --tmpfs /tmp \
-          --chdir "$PWD" \
-          ${nativeCheckTests}/bin/swc-native-verifier-tests
+        source ${
+          replaceVars ./scripts/native-check-owned-root.sh {
+            inherit proot coreutils;
+            nativeCheckCommand = "${nativeCheckTests}/bin/swc-native-verifier-tests";
+          }
+        }
       ''
     else
       ''

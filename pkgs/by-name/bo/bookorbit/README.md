@@ -25,8 +25,11 @@ upstream verifier. It validates the retained sections, frame bounds, architectur
 SHA-512, and BLAKE3 before atomically installing the verified raw addon in the
 build tree. This avoids the carrier cache loader's incompatible ancestor-owner
 check in Nix user namespaces. On Darwin, fixtures use the declared Nix codesign tool inside the sandbox.
-The verifier runs its upstream carrier, format,
-and integrity tests; these do not establish runtime cache behavior.
+The verifier runs its upstream carrier, format, and integrity tests. On Linux,
+PRoot supplies a private owned filesystem view for the latter suites inside the
+existing Nix sandbox, preserving the invoking UID/GID and the upstream ancestor
+ownership checks without requiring a nested user namespace. The harness does
+not establish runtime cache behavior.
 
 Review this adapter when SWC changes its carrier format or publishes raw addons.
 Remove it once the unmodified selected native binding loads and the full compiler
