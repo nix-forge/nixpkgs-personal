@@ -19,8 +19,4 @@
     version = "26.13.0";
     hash = "sha256-Jj9jns+noXtJQ412zb+a/3MXnjx8t4naabkAcYQn+i4=";
   };
-  brotli = {
-    version = "1.2.1";
-    hash = "sha256-llY72cYffDv0ugsH0p89xIPEbElV4L8u7U/Fe8hT3gI=";
-  };
 }

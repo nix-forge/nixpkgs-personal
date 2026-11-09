@@ -15,7 +15,6 @@
   autoPatchelfHook,
   stdenv,
   clangStdenv,
-  brotli,
   vips,
   sqlite,
   makeWrapper,
@@ -30,7 +29,7 @@ let
   # Match Node 26's official Linux Clang toolchain. Eight GCC workers exceed
   # the reviewed daemon working set; keep compiler parallelism and optimization.
   withAurralNodeSource =
-    compiler: scopedCallPackage: scopedBrotli: node:
+    compiler: scopedCallPackage: node:
     (node.override {
       stdenv = compiler;
       # The version wrapper calls its generic builder through this scope; merely
@@ -41,16 +40,8 @@ let
           args
           // {
             stdenv = compiler;
-            # Node 26.13 exposes the security-fixed decoder's BLOCK_SWITCH error.
-            brotli = scopedBrotli.overrideAttrs (_: {
-              inherit (source.brotli) version;
-              src = fetchFromGitHub {
-                owner = "google";
-                repo = "brotli";
-                tag = "v${source.brotli.version}";
-                inherit (source.brotli) hash;
-              };
-            });
+            # The pinned Node builder supplies its security-patched Brotli.
+            # Replacing its source with 1.2.1 reapplies that decoder patch.
           }
         );
     }).overrideAttrs
@@ -61,9 +52,9 @@ let
           inherit (source.nodejs) hash;
         };
       });
-  targetNodejsSlim = withAurralNodeSource clangStdenv callPackage brotli nodejs-slim_26;
+  targetNodejsSlim = withAurralNodeSource clangStdenv callPackage nodejs-slim_26;
   buildNodejsSlim =
-    withAurralNodeSource buildPackages.clangStdenv buildPackages.callPackage buildPackages.brotli
+    withAurralNodeSource buildPackages.clangStdenv buildPackages.callPackage
       buildPackages.nodejs-slim_26;
   targetNodejs = nodejs_26.override { nodejs-slim = targetNodejsSlim; };
   buildNodejs = buildPackages.nodejs_26.override { nodejs-slim = buildNodejsSlim; };
