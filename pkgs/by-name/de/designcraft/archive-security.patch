@@ -1,0 +1,431 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -65,7 +65,7 @@
+ krilla = { version = "0.8", features = ["pdf"] }
+ hayro = "0.7"
+ quick-xml = "0.38"
+-zip = { version = "3", default-features = false, features = ["deflate"] }
++zip = { version = "=9.5.0", default-features = false, features = ["deflate"] }
+ 
+ # ui
+ # Shared frontend components; keep this dependency above the engine boundary.
+@@ -100,6 +100,7 @@
+ 
+ # Opt-in cancelable macOS termination on the pinned winit 0.30 line.
+ [patch.crates-io]
++zip = { path = "vendor/zip" }
+ winit = { git = "https://github.com/skylartaylor/winit.git", rev = "3d51077fd1a966f84df9ef287839dc84fd5b4ca7" }
+ # The hayro crates from pdfcraft's vendor/ directory, with the patches its README lists.
+ hayro = { git = "https://github.com/storytold/pdfcraft", rev = "b5467d93a0ffaa5e5e6658bccdf8655a3ba689c9" }
+--- a/crates/format/src/lib.rs
++++ b/crates/format/src/lib.rs
+@@ -89,6 +89,7 @@
+ 
+ fn load_zip(bytes: &[u8]) -> Result<Document, FormatError> {
+     let mut z = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|e| FormatError::NotOurs(e.to_string()))?;
++    z.validate_header_consistency().map_err(|e| FormatError::NotOurs(e.to_string()))?;
+     let read = |z: &mut zip::ZipArchive<Cursor<&[u8]>>, name: &str| -> Option<Vec<u8>> {
+         let mut f = z.by_name(name).ok()?;
+         let mut v = Vec::new();
+@@ -106,7 +107,11 @@
+     let mut v: Value = serde_json::from_slice(&json).map_err(|e| FormatError::NotOurs(e.to_string()))?;
+     upgrade_json(&mut v);
+     let mut doc: Document = serde_json::from_value(v).map_err(|e| FormatError::NotOurs(e.to_string()))?;
+-    let names: Vec<String> = z.file_names().map(str::to_string).collect();
++    let names: Vec<String> = z
++        .file_names()
++        .map(|name| name.map(std::borrow::Cow::into_owned))
++        .collect::<zip::result::ZipResult<_>>()
++        .map_err(|e| FormatError::NotOurs(e.to_string()))?;
+     // Files saved with one copy per placement: identical copies share one buffer as they are
+     // read, so memory holds each distinct file once.
+     let fingerprint = std::collections::hash_map::RandomState::new();
+@@ -276,6 +281,17 @@
+     use designcraft_doc::geom::Rect;
+     use designcraft_doc::{Asset, ParaFormat, SpreadRef};
+ 
++    #[test]
++    fn zip_archive_boundary() {
++        let doc = Document::new(&NewDocument::default());
++        let bytes = save(&doc).expect("fixture document");
++        crate::zip_fixtures::verify(&bytes, "document.json", |data| match load(data) {
++            Ok(_) => true,
++            Err(FormatError::NotOurs(_)) => false,
++            Err(error) => panic!("unexpected archive error: {error}"),
++        });
++    }
++
+     fn png_asset(d: &mut Document, data: &[u8]) -> AssetId {
+         let aid = AssetId(d.alloc());
+         let a = Asset {
+@@ -310,7 +326,7 @@
+ 
+     fn asset_entries(bytes: &[u8]) -> usize {
+         let z = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+-        z.file_names().filter(|n| n.starts_with("assets/")).count()
++        z.file_names().map(|name| name.expect("entry name")).filter(|n| n.starts_with("assets/")).count()
+     }
+ 
+     /// Zip `d` the way files were saved with one asset per placement (nothing merged or pruned).
+@@ -614,3 +630,7 @@
+         assert!(matches!(load(&buf.into_inner()), Err(FormatError::TooNew(99))));
+     }
+ }
++
++#[cfg(test)]
++#[path = "../../../tests/zip_fixtures.rs"]
++mod zip_fixtures;
+--- a/crates/idml/src/lib.rs
++++ b/crates/idml/src/lib.rs
+@@ -156,3 +156,7 @@
+     }
+     (None, None)
+ }
++
++#[cfg(test)]
++#[path = "../../../tests/zip_fixtures.rs"]
++mod zip_fixtures;
+--- a/crates/idml/src/import.rs
++++ b/crates/idml/src/import.rs
+@@ -63,6 +63,7 @@
+ /// Import with a custom reader for linked files, reporting the problems that did not stop it.
+ pub fn import_idml_report(bytes: &[u8], read_link: &dyn Fn(&str) -> Option<Vec<u8>>) -> Result<Imported> {
+     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| IdmlError::NotIdml(e.to_string()))?;
++    zip.validate_header_consistency().map_err(|e| IdmlError::NotIdml(e.to_string()))?;
+     let mut files: HashMap<String, Vec<u8>> = HashMap::new();
+     // Normalised part name → entry name, first entry wins (zip order, so the choice is stable).
+     let mut lenient: HashMap<String, String> = HashMap::new();
+@@ -71,7 +72,7 @@
+         if f.is_dir() {
+             continue;
+         }
+-        let name = f.name().to_string();
++        let name = f.name().map_err(|e| IdmlError::NotIdml(e.to_string()))?.into_owned();
+         // The size is what the archive claims: don't reserve more than a sane part up front.
+         let mut buf = Vec::with_capacity((f.size() as usize).min(1 << 24));
+         f.read_to_end(&mut buf).map_err(|e| IdmlError::Part { part: name.clone(), msg: e.to_string() })?;
+--- a/crates/idml/src/tests.rs
++++ b/crates/idml/src/tests.rs
+@@ -39,7 +39,7 @@
+     let mut out = String::new();
+     for i in 0..z.len() {
+         let mut f = z.by_index(i).unwrap();
+-        if f.name().starts_with(prefix) {
++        if f.name().expect("entry name").starts_with(prefix) {
+             f.read_to_string(&mut out).unwrap();
+         }
+     }
+@@ -2169,3 +2169,37 @@
+     assert_eq!(colors, vec!["Near", "Near", "Far", designcraft_color::swatch::NONE]);
+     assert_eq!(d.styles.object_style("Child").unwrap().text_frame.as_ref().unwrap().column_rule_color, "Near");
+ }
++
++#[test]
++fn zip_archive_boundary() {
++    let doc = Document::new(&NewDocument::default());
++    let bytes = export_idml(&doc);
++    crate::zip_fixtures::verify(&bytes, "designmap.xml", |data| match import_idml(data) {
++        Ok(_) => true,
++        Err(IdmlError::NotIdml(_)) => false,
++        Err(error) => panic!("unexpected archive error: {error}"),
++    });
++}
++
++#[test]
++fn zip_encoding_idml_cp437_reference() {
++    let designmap = r#"<Document xmlns:idPkg="http://ns.adobe.com/AdobeInDesign/idml/1.0/packaging" Self="d">
++      <idPkg:Spread src="Spreads/├⌐.xml"/>
++    </Document>"#;
++    let mut bytes = zip_files(&[("designmap.xml", designmap), ("Spreads/xx.xml", &one_frame_spread("legacy"))]);
++    let (local, central) = {
++        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&bytes)).expect("fixture archive");
++        let file = archive.by_name("Spreads/xx.xml").expect("fixture spread");
++        (file.header_start() as usize, file.central_header_start() as usize)
++    };
++    // Replace the same-length ASCII placeholder in both headers; the original XML and CRC stay intact.
++    let name = b"Spreads/\xc3\xa9.xml";
++    bytes[local + 30..local + 30 + name.len()].copy_from_slice(name);
++    bytes[central + 46..central + 46 + name.len()].copy_from_slice(name);
++    assert_eq!(bytes[local + 7] & 8, 0, "CP437 flag");
++    assert_eq!(bytes[central + 9] & 8, 0, "CP437 flag");
++    let imported = import_idml_report(&bytes, &|_| None).expect("valid CP437 spread reference");
++    assert_eq!(imported.document.spreads.len(), 1);
++    assert_eq!(imported.document.spreads[0].items.len(), 1);
++    assert!(imported.warnings.is_empty(), "{:?}", imported.warnings);
++}
+--- a/crates/textimport/src/lib.rs
++++ b/crates/textimport/src/lib.rs
+@@ -136,3 +136,7 @@
+         assert!(matches!(import("x.doc", b"\xD0\xCF"), Err(ImportError::Unsupported(_))));
+     }
+ }
++
++#[cfg(test)]
++#[path = "../../../tests/zip_fixtures.rs"]
++mod zip_fixtures;
+--- a/crates/textimport/src/docx.rs
++++ b/crates/textimport/src/docx.rs
+@@ -330,6 +330,7 @@
+ 
+ pub fn import(bytes: &[u8]) -> Result<Imported, ImportError> {
+     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| ImportError::Corrupt(e.to_string()))?;
++    zip.validate_header_consistency().map_err(|e| ImportError::Corrupt(e.to_string()))?;
+     let doc = part(&mut zip, "word/document.xml")?.ok_or_else(|| ImportError::Corrupt("no word/document.xml (not a Word document)".into()))?;
+     let doc = parse(&doc)?;
+     // Styles.
+@@ -510,4 +511,16 @@
+         i.story.check().unwrap();
+         assert_eq!(i.story.text, "Kept text. MOVED HERE. Plain INSERTED\nEnd.");
+     }
+-}
++
++    #[test]
++    fn zip_archive_boundary() {
++        let document = format!(r#"<w:document {W}><w:body><w:p><w:r><w:t>Original fixture</w:t></w:r></w:p></w:body></w:document>"#);
++        let bytes = docx(&document, "", "");
++        assert_eq!(import(&bytes).expect("fixture import").story.text.trim(), "Original fixture");
++        crate::zip_fixtures::verify(&bytes, "word/document.xml", |data| match import(data) {
++            Ok(_) => true,
++            Err(ImportError::Corrupt(_)) => false,
++            Err(error) => panic!("unexpected archive error: {error}"),
++        });
++    }
++}
+--- a/crates/textimport/src/xlsx.rs
++++ b/crates/textimport/src/xlsx.rs
+@@ -65,6 +65,7 @@
+ /// data rows is an error and the grid is not built.
+ pub fn records(bytes: &[u8], sheet: Option<&str>) -> Result<Vec<Vec<String>>, ImportError> {
+     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| ImportError::Corrupt(e.to_string()))?;
++    zip.validate_header_consistency().map_err(|e| ImportError::Corrupt(e.to_string()))?;
+     let sheet_part = sheet_target(&mut zip, sheet)?;
+     let sheet_xml = parse(&part(&mut zip, &sheet_part)?.ok_or_else(|| ImportError::Corrupt(format!("no {sheet_part} (not an Excel workbook)")))?)?;
+     let shared: Vec<String> = part(&mut zip, "xl/sharedStrings.xml")?
+@@ -173,6 +174,7 @@
+ 
+ pub fn import(bytes: &[u8]) -> Result<Imported, ImportError> {
+     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| ImportError::Corrupt(e.to_string()))?;
++    zip.validate_header_consistency().map_err(|e| ImportError::Corrupt(e.to_string()))?;
+     let sheet_part = first_sheet(&mut zip)?.unwrap_or_else(|| "xl/worksheets/sheet1.xml".into());
+     let sheet = parse(&part(&mut zip, &sheet_part)?.ok_or_else(|| ImportError::Corrupt(format!("no {sheet_part} (not an Excel workbook)")))?)?;
+     let shared: Vec<String> = part(&mut zip, "xl/sharedStrings.xml")?
+@@ -334,4 +336,28 @@
+         assert_eq!(rows[3][1], "1");
+         assert!(records(&book, Some("Missing")).is_err());
+     }
+-}
++
++    #[test]
++    fn zip_archive_boundary_placement() {
++        let bytes = workbook();
++        let imported = import(&bytes).expect("fixture import");
++        assert_eq!(imported.story.tables.values().next().expect("fixture table").ncols(), 2);
++        crate::zip_fixtures::verify(&bytes, "xl/worksheets/sheet1.xml", |data| match import(data) {
++            Ok(_) => true,
++            Err(ImportError::Corrupt(_)) => false,
++            Err(error) => panic!("unexpected archive error: {error}"),
++        });
++    }
++
++    #[test]
++    fn zip_archive_boundary_records() {
++        let bytes = workbook();
++        let rows = records(&bytes, None).expect("fixture rows");
++        assert!(rows.iter().any(|row| row.iter().any(|cell| cell == "Tea")));
++        crate::zip_fixtures::verify(&bytes, "xl/worksheets/sheet1.xml", |data| match records(data, None) {
++            Ok(_) => true,
++            Err(ImportError::Corrupt(_)) => false,
++            Err(error) => panic!("unexpected archive error: {error}"),
++        });
++    }
++}
+--- a/crates/epub/src/lib.rs
++++ b/crates/epub/src/lib.rs
+@@ -775,7 +775,7 @@
+         d.add_text_frame(SpreadRef::Doc(0), Rect::new(36.0, 36.0, 300.0, 100.0), lid, "First\nline two", ParaFormat::default()).unwrap();
+         let bytes = export_epub(&d, &EpubOptions::default()).unwrap();
+         let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+-        assert_eq!(z.by_index(0).unwrap().name(), "mimetype");
++        assert_eq!(z.by_index(0).unwrap().name().expect("entry name"), "mimetype");
+         let mut html = String::new();
+         z.by_name("OEBPS/content.xhtml").unwrap().read_to_string(&mut html).unwrap();
+         let a = html.find("First").unwrap();
+--- a/crates/engine/src/cmd/text.rs
++++ b/crates/engine/src/cmd/text.rs
+@@ -2194,7 +2194,7 @@
+             .map(|i| {
+                 let mut f = z.by_index(i).unwrap();
+                 let mut x = String::new();
+-                if f.name().starts_with("Stories/") {
++                if f.name().expect("entry name").starts_with("Stories/") {
+                     f.read_to_string(&mut x).unwrap();
+                 }
+                 x
+--- /dev/null
++++ b/tests/zip_fixtures.rs
+@@ -0,0 +1,165 @@
++//! Original synthetic ZIP mutations shared by archive-consumer regressions.
++use std::io::{Cursor, Read, Write};
++
++fn header(bytes: &[u8], name: &str) -> usize {
++    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
++    archive.by_name(name).expect("fixture part").header_start() as usize
++}
++
++fn upath(name: &str, crc: u32) -> Vec<u8> {
++    let mut data = 0x7075_u16.to_le_bytes().to_vec();
++    data.extend_from_slice(&((5 + name.len()) as u16).to_le_bytes());
++    data.push(1);
++    data.extend_from_slice(&crc.to_le_bytes());
++    data.extend_from_slice(name.as_bytes());
++    data
++}
++
++fn extra_entry(mut bytes: Vec<u8>, local: &[u8], central: &[u8], local_extra: &[u8], central_extra: &[u8], descriptor: bool) -> Vec<u8> {
++    let end = bytes.len() - 22;
++    assert_eq!(&bytes[end..end + 4], b"PK\x05\x06");
++    let count = u16::from_le_bytes(bytes[end + 10..end + 12].try_into().expect("count"));
++    let size = u32::from_le_bytes(bytes[end + 12..end + 16].try_into().expect("size"));
++    let start = u32::from_le_bytes(bytes[end + 16..end + 20].try_into().expect("offset"));
++    let flags = if descriptor { 8_u16 } else { 0 };
++    let mut local_header = b"PK\x03\x04".to_vec();
++    for word in [20_u16, flags, 0, 0, 0] {
++        local_header.extend_from_slice(&word.to_le_bytes());
++    }
++    local_header.extend_from_slice(&[0; 12]);
++    local_header.extend_from_slice(&(local.len() as u16).to_le_bytes());
++    local_header.extend_from_slice(&(local_extra.len() as u16).to_le_bytes());
++    local_header.extend_from_slice(local);
++    local_header.extend_from_slice(local_extra);
++    if descriptor {
++        local_header.extend_from_slice(b"PK\x07\x08");
++        local_header.extend_from_slice(&[0; 12]);
++    }
++    let mut directory = b"PK\x01\x02".to_vec();
++    for word in [20_u16, 20, flags, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&[0; 12]);
++    for word in [central.len() as u16, central_extra.len() as u16, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&0_u32.to_le_bytes());
++    directory.extend_from_slice(&start.to_le_bytes());
++    directory.extend_from_slice(central);
++    directory.extend_from_slice(central_extra);
++    let mut eocd = bytes.split_off(end);
++    let old_directory = bytes.split_off(start as usize);
++    bytes.extend_from_slice(&local_header);
++    bytes.extend_from_slice(&old_directory);
++    bytes.extend_from_slice(&directory);
++    for offset in [8, 10] {
++        eocd[offset..offset + 2].copy_from_slice(&(count + 1).to_le_bytes());
++    }
++    eocd[12..16].copy_from_slice(&(size + directory.len() as u32).to_le_bytes());
++    eocd[16..20].copy_from_slice(&(start + local_header.len() as u32).to_le_bytes());
++    bytes.extend_from_slice(&eocd);
++    bytes
++}
++
++fn zip64(bytes: &[u8]) -> Vec<u8> {
++    let mut input = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
++    let mut output = zip::ZipWriter::new(Cursor::new(Vec::new()));
++    for i in 0..input.len() {
++        let mut file = input.by_index(i).expect("fixture part");
++        // Exported fixtures have ASCII names; this API works on both dependency versions.
++        let name = std::str::from_utf8(file.name_raw()).expect("fixture name").to_owned();
++        let options = zip::write::SimpleFileOptions::default().compression_method(file.compression()).large_file(true);
++        output.start_file(name, options).expect("fixture writer");
++        let mut data = Vec::new();
++        file.read_to_end(&mut data).expect("fixture bytes");
++        output.write_all(&data).expect("fixture output");
++    }
++    output.finish().expect("fixture finish").into_inner()
++}
++
++/// Exercise the actual consumer, including unused members and valid legacy representations.
++pub fn verify(bytes: &[u8], part: &str, accepts: impl Fn(&[u8]) -> bool) {
++    assert!(accepts(bytes), "ordinary control");
++    let start = header(bytes, part);
++    for (label, offset) in [("local filename", 30), ("local compression", 8), ("local CRC", 14)] {
++        let mut malformed = bytes.to_vec();
++        malformed[start + offset] ^= 1;
++        assert!(!accepts(&malformed), "{label}");
++    }
++
++    // CRC-valid UnicodePath overrides must not hide conflicting original names.
++    for name in ["unused", "文"] {
++        let replacement = upath(name, 0x4ddb0c25);
++        let collision = extra_entry(bytes.to_vec(), b"plumless", b"buckeroo", &replacement, &replacement, false);
++        assert!(!accepts(&collision), "unused UnicodePath CRC collision: {name}");
++    }
++    let cp437 = extra_entry(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", &[], &[], false);
++    let duplicate = utf8_last(extra_entry(cp437, "café.txt".as_bytes(), "café.txt".as_bytes(), &[], &[], false));
++    assert!(!accepts(&duplicate), "duplicate decoded unused member");
++
++    let unicode = upath("café.txt", 0xa0976e8f);
++    for (local, central) in [(&unicode[..], &[][..]), (&[][..], &unicode[..])] {
++        let mismatch = extra_entry(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", local, central, false);
++        assert!(!accepts(&mismatch), "one-sided UnicodePath field");
++    }
++    let first = extra_entry(bytes.to_vec(), b"spare", b"spare", &[], &[], false);
++    let duplicate = extra_entry(first, b"spare", b"spare", &[], &[], false);
++    assert!(!accepts(&duplicate), "duplicate unused member");
++
++    let legacy = extra_entry(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", &unicode, &unicode, false);
++    assert!(accepts(&legacy), "valid CP437 UnicodePath");
++    let streamed = extra_entry(bytes.to_vec(), b"notes.txt", b"notes.txt", &[], &[], true);
++    assert!(accepts(&streamed), "valid streaming descriptor");
++    let directory = extra_entry(bytes.to_vec(), b"extras/", b"extras/", &[], &[], false);
++    assert!(accepts(&directory), "valid directory");
++    assert!(accepts(&zip64(bytes)), "valid ZIP64 parts");
++}
++
++fn empty_zip() -> Vec<u8> {
++    zip::ZipWriter::new(Cursor::new(Vec::new())).finish().expect("empty archive").into_inner()
++}
++
++fn utf8_last(mut bytes: Vec<u8>) -> Vec<u8> {
++    let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).expect("fixture archive");
++    let file = archive.by_index(archive.len() - 1).expect("last fixture entry");
++    let local = file.header_start() as usize;
++    let central = file.central_header_start() as usize;
++    drop(file);
++    drop(archive);
++    for offset in [local + 6, central + 8] {
++        let flags = u16::from_le_bytes(bytes[offset..offset + 2].try_into().expect("flags")) | 0x800;
++        bytes[offset..offset + 2].copy_from_slice(&flags.to_le_bytes());
++    }
++    bytes
++}
++
++#[test]
++fn zip_encoding_unicode_crc_collision() {
++    let unicode = upath("文", 0x4ddb0c25);
++    let bytes = extra_entry(empty_zip(), b"plumless", b"buckeroo", &unicode, &unicode, false);
++    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
++    assert!(archive.validate_header_consistency().is_err(), "original header names conflict despite matching UnicodePath");
++}
++
++#[test]
++fn zip_encoding_duplicate_decoded_names() {
++    let cp437 = extra_entry(empty_zip(), b"caf\x82.txt", b"caf\x82.txt", &[], &[], false);
++    let bytes = utf8_last(extra_entry(cp437, "café.txt".as_bytes(), "café.txt".as_bytes(), &[], &[], false));
++    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
++    assert!(archive.validate_header_consistency().is_err(), "two encodings name the same member");
++}
++
++#[test]
++fn zip_encoding_preserves_unflagged_cp437() {
++    // C3 A9 happens to be UTF-8 too; bit 11, not byte validity, selects the encoding.
++    let bytes = extra_entry(empty_zip(), b"\xc3\xa9", b"\xc3\xa9", &[], &[], false);
++    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
++    archive.validate_header_consistency().expect("valid legacy archive");
++    assert_eq!(archive.by_index(0).expect("entry").name().expect("name"), "├⌐");
++    assert!(archive.by_name("├⌐").is_ok());
++    assert!(archive.by_name("é").is_err(), "raw UTF-8 lookup must not alias a CP437 name");
++    let bytes = utf8_last(extra_entry(empty_zip(), "é".as_bytes(), "é".as_bytes(), &[], &[], false));
++    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
++    archive.validate_header_consistency().expect("valid UTF-8 archive");
++    assert_eq!(archive.by_index(0).expect("entry").name().expect("name"), "é");
++}

@@ -1,5 +1,6 @@
 {
   replaceVars,
+  callPackage,
   lib,
   stdenv,
   rustPlatform,
@@ -28,6 +29,7 @@
 }:
 let
   source = import ./source.nix;
+  zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
   gitSources = lib.mapAttrs (
     _: dependency: fetchgit { inherit (dependency) url rev hash; }
   ) source.gitDependencies;
@@ -69,6 +71,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # Match the vendor lock to the font policy and archive-security patches.
   postPatch = ''
     cp ${./Cargo.lock} Cargo.lock
+    mkdir -p vendor
+    cp -R ${zipSource} vendor/zip
+    chmod -R u+w vendor/zip
   '';
   strictDeps = true;
   checkType = "debug";

@@ -1,0 +1,95 @@
+--- a/src/read/mod.rs
++++ b/src/read/mod.rs
+@@ -482,6 +482,24 @@
+             ));
+         }
+ 
++        // UnicodePath is an alias, not permission for local and central originals to differ.
++        // Compare the bytes before that alias was applied, even when their CRC32 collides.
++        let local_original = self
++            .overridden_header_name
++            .as_ref()
++            .map(AsRef::as_ref)
++            .unwrap_or_else(|| self.name.as_ref());
++        let central_original = central
++            .overridden_header_name
++            .as_ref()
++            .map(AsRef::as_ref)
++            .unwrap_or_else(|| central.name.as_ref());
++        if local_original != central_original {
++            return Err(invalid!(
++                "header inconsistency detected: original filename mismatch"
++            ));
++        }
++
+         if self.name.as_ref() != central.name.as_ref() {
+             return Err(invalid!(
+                 "header inconsistency detected: Local file header filename mismatch (does not match central directory)"
+--- a/src/read/zip_archive.rs
++++ b/src/read/zip_archive.rs
+@@ -714,12 +714,17 @@
+     /// have the fallback.
+     #[inline]
+     pub fn index_for_name(&self, name: &str) -> Option<usize> {
+-        self.shared.files.get_index_of(name.as_bytes()).or_else(|| {
+-            self.shared
+-                .files
+-                .iter()
+-                .position(|(raw, data)| data.name(raw).is_ok_and(|decoded| decoded == name))
+-        })
++        self.shared
++            .files
++            .get_full(name.as_bytes())
++            .filter(|(_, raw, data)| data.name(raw).is_ok_and(|decoded| decoded == name))
++            .map(|(index, _, _)| index)
++            .or_else(|| {
++                self.shared
++                    .files
++                    .iter()
++                    .position(|(raw, data)| data.name(raw).is_ok_and(|decoded| decoded == name))
++            })
+     }
+ 
+     /// Get the index of a file entry by the raw name, if it's present. The running time of this
+@@ -940,7 +945,15 @@
+                 "header inconsistency detected: duplicate file names in central directory"
+             ));
+         }
++        // Consumers key parts by decoded name. Raw CP437 and UTF-8 encodings can
++        // collide there even though the archive's raw-name index keeps both entries.
++        let mut names = std::collections::HashSet::with_capacity(self.shared.files.len());
+         for (file_name_raw, data) in &self.shared.files {
++            if !names.insert(data.name(file_name_raw)?.into_owned()) {
++                return Err(invalid!(
++                    "header inconsistency detected: duplicate decoded file names"
++                ));
++            }
+             data.validate_header_consistency(&mut self.reader, file_name_raw)?;
+         }
+         let ranges = self.entry_byte_ranges(true)?;
+--- a/src/types.rs
++++ b/src/types.rs
+@@ -131,13 +131,16 @@
+     #[inline]
+     pub(crate) fn name<'a>(&self, file_name_raw: &'a [u8]) -> ZipResult<Cow<'a, str>> {
+         use crate::cp437::FromCp437;
+-        Ok(
+-            if let Ok(file_name_utf8) = std::str::from_utf8(file_name_raw) {
+-                file_name_utf8.into()
+-            } else {
+-                file_name_raw.from_cp437().map_err(std::io::Error::other)?
+-            },
+-        )
++        // The language flag selects UTF-8; otherwise ZIP names use CP437. A validated
++        // UnicodePath extra field also explicitly supplies UTF-8, irrespective of that flag.
++        if self.header_language_encoding || self.overridden_header_name.is_some() {
++            std::str::from_utf8(file_name_raw)
++                .map(Cow::Borrowed)
++                .map_err(std::io::Error::other)
++                .map_err(ZipError::Io)
++        } else {
++            file_name_raw.from_cp437().map_err(ZipError::Io)
++        }
+     }
+ 
+     pub fn aes_settings(&self) -> Option<(AesMode, AesVendorVersion)> {

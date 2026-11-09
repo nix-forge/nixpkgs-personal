@@ -183,8 +183,20 @@
       "sourceRevision": "d78e657e4cb1e490ceb5445785c052d9cf5ad963",
       "patches": [
         {
+          "file": "zip-header-identity.patch",
+          "sha256": "5b10275fd52f1685435dd6fd2c3b2446aa08373df61110dde872e7ec23be9fc1",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/zip-rs/zip2/pull/1256",
+            "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
+          ],
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names during whole-archive validation, and retain flag-selected CP437/UTF-8 decoding and matching name lookup. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+        },
+        {
           "file": "archive-security.patch",
-          "sha256": "5118962c875ba94dfef684b9b327661caf9c32d3aa8acc28b733978906f5a054",
+          "sha256": "257463c6f8c93e675fc6c0b87e84a32efd8f0f9b870a7ac3b791268ee8dcbf79",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/advisories/GHSA-m665-v7pm-7grj",
@@ -220,6 +232,31 @@
     "designcraft": {
       "sourceRevision": "11a51d5b665aec8d6e675bd107a8a01514f10d00",
       "patches": [
+        {
+          "file": "zip-header-identity.patch",
+          "sha256": "5b10275fd52f1685435dd6fd2c3b2446aa08373df61110dde872e7ec23be9fc1",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/zip-rs/zip2/pull/1256",
+            "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
+          ],
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names during whole-archive validation, and retain flag-selected CP437/UTF-8 decoding and matching name lookup. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+        },
+        {
+          "file": "archive-security.patch",
+          "sha256": "e2d198fba21b7273848184044b3ee04e16ccf52905fc87ddad14fec01153bab2",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj",
+            "https://github.com/advisories/GHSA-q7v9-x93c-xqv3",
+            "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
+          ],
+          "reason": "Select ZIP 9.5.0 with explicit whole-archive consistency validation before native format, IDML, DOCX and both XLSX consumers read semantic parts. Preserve existing lenient IDML reference resolution, bounded text parts, disabled AES features and ordinary errors. Synthetic regressions cover all five consumers and compatible Unicode, ZIP64 and descriptor forms.",
+          "removeWhen": "Remove when the pinned source uses a fixed ZIP release and equivalent complete validation at all five import boundaries, then passes the original and new archive tests without the patch. Keep the source and packaging lock synchronized."
+        },
         {
           "file": "appstream-screenshot.patch",
           "sha256": "69c1a84709ba4a22757394bfe041a25fc465962dce88155c187f1ac90e751f8a",

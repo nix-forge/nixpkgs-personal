@@ -9,6 +9,13 @@
  
  # ui
  egui = { version = "0.36", default-features = false }
+@@ -93,3 +93,6 @@
+ lto = "thin"
+ codegen-units = 16
+ debug = 0
++
++[patch.crates-io]
++zip = { path = "vendor/zip" }
 --- a/crates/format/src/lib.rs
 +++ b/crates/format/src/lib.rs
 @@ -99,6 +99,7 @@
@@ -21,7 +28,7 @@
      if m.format != "deckcraft" {
 --- /dev/null
 +++ b/crates/format/tests/archive_security.rs
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,134 @@
 +//! Synthetic ZIP boundary regressions; no third-party document fixtures.
 +use std::io::Cursor;
 +
@@ -139,6 +146,13 @@
 +}
 +
 +#[test]
++fn rejects_non_ascii_unicode_path_crc_collision() {
++    // These different original ASCII names share CRC32 0x4ddb0c25.
++    let bytes = extra_entry(valid(), b"plumless", b"buckeroo", Some("文"), 0x4ddb0c25, false);
++    assert!(deckcraft_format::load(&bytes).is_err());
++}
++
++#[test]
 +fn preserves_cp437_unicode_path() {
 +    let bytes = extra_entry(valid(), b"caf\x82.txt", b"caf\x82.txt", Some("café.txt"), 0xa0976e8f, false);
 +    assert!(deckcraft_format::load(&bytes).is_ok());
@@ -176,7 +190,7 @@
                  log::warn!("pptx: skipping oversized part {name} ({declared} bytes)");
 --- /dev/null
 +++ b/crates/pptx/tests/archive_security.rs
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,134 @@
 +//! Synthetic ZIP boundary regressions; no third-party document fixtures.
 +use std::io::Cursor;
 +
@@ -290,6 +304,13 @@
 +fn rejects_unicode_path_crc_collision() {
 +    // These different original ASCII names share CRC32 0x4ddb0c25.
 +    let bytes = extra_entry(valid(), b"plumless", b"buckeroo", Some("unused"), 0x4ddb0c25, false);
++    assert!(deckcraft_pptx::import(&bytes).is_err());
++}
++
++#[test]
++fn rejects_non_ascii_unicode_path_crc_collision() {
++    // These different original ASCII names share CRC32 0x4ddb0c25.
++    let bytes = extra_entry(valid(), b"plumless", b"buckeroo", Some("文"), 0x4ddb0c25, false);
 +    assert!(deckcraft_pptx::import(&bytes).is_err());
 +}
 +

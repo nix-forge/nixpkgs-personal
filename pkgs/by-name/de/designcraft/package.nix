@@ -1,5 +1,6 @@
 {
   replaceVars,
+  callPackage,
   lib,
   stdenv,
   rustPlatform,
@@ -27,6 +28,7 @@
 }:
 let
   source = import ./source.nix;
+  zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
   gitSources = lib.mapAttrs (
     _: dependency: fetchgit { inherit (dependency) url rev hash; }
   ) source.gitDependencies;
@@ -84,8 +86,17 @@ rustPlatform.buildRustPackage (finalAttrs: {
   patches = [
     ./remove-restricted-marks.patch
     ./register-all-craft-fonts.patch
+    ./archive-security.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];
+
+  # Keep the source and vendor lock on the same reviewed ZIP release.
+  postPatch = ''
+    cp ${./Cargo.lock} Cargo.lock
+    mkdir -p vendor
+    cp -R ${zipSource} vendor/zip
+    chmod -R u+w vendor/zip
+  '';
 
   nativeBuildInputs = [
     pkg-config
@@ -192,6 +203,55 @@ rustPlatform.buildRustPackage (finalAttrs: {
       package = finalAttrs.finalPackage;
     })
     // {
+
+      # Include the owning importers and the existing EPUB/engine API consumers.
+      archiveCompatibility = finalAttrs.finalPackage.overrideAttrs (previous: {
+        pname = "designcraft-archive-compatibility";
+        cargoBuildType = "debug";
+        cargoCheckType = "debug";
+        env = previous.env // {
+          CARGO_INCREMENTAL = "0";
+          CARGO_PROFILE_DEV_DEBUG = "0";
+          CARGO_PROFILE_TEST_DEBUG = "0";
+        };
+        cargoBuildFlags = [
+          "-p"
+          "designcraft-format"
+          "-p"
+          "designcraft-idml"
+          "-p"
+          "designcraft-textimport"
+          "-p"
+          "designcraft-epub"
+          "-p"
+          "designcraft-engine"
+          "--locked"
+        ];
+        cargoTestFlags = [
+          "-p"
+          "designcraft-format"
+          "-p"
+          "designcraft-idml"
+          "-p"
+          "designcraft-textimport"
+          "-p"
+          "designcraft-epub"
+          "-p"
+          "designcraft-engine"
+          "--lib"
+          "--locked"
+        ];
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
 
       licenses = runCommand "${finalAttrs.pname}-font-notices" { nativeBuildInputs = [ python3 ]; } ''
         python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}
