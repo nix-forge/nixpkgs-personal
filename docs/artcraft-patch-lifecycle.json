@@ -755,6 +755,16 @@
       "sourceRevision": "fc41918814f62645b6746ed68e71e8c2c2e85d6f",
       "patches": [
         {
+          "file": "bounded-format-probe.patch",
+          "sha256": "59d41be303de5f51c2822d70245b5fb50d91999402d22faffbe89321de52cf0e",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/wordcraft/blob/fc41918814f62645b6746ed68e71e8c2c2e85d6f/crates/engine/src/file_access.rs"
+          ],
+          "reason": "Move the existing Word 2003 XML format probe into the I/O gateway required by the native file-access architecture regression. Preserve its read-root check, 64 KiB read bound, false-on-error behavior and browser fallback; existing save-command tests retain format-preservation coverage.",
+          "removeWhen": "Remove when upstream routes the bounded format probe through the I/O gateway and both the file-access architecture and Word 2003 save-command regressions pass without this patch."
+        },
+        {
           "file": "optional-thai-cache-miss-fixture.patch",
           "sha256": "a488f0a2b6da8649791a51b77d6ed56e08bca09022f10567700aa276c41e7cb8",
           "kind": "upstream-candidate",

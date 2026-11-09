@@ -77,6 +77,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     inherit (source) rev hash;
   };
   patches = [
+    ./bounded-format-probe.patch
     ./register-all-craft-fonts.patch
     ./optional-thai-cache-miss-fixture.patch
   ];
