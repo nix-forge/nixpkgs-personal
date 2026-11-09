@@ -31,11 +31,11 @@
   };
   ocr = {
     detection = {
-      url = "https://ocrs-models.s3-accelerate.amazonaws.com/text-detection.rten";
+      url = "https://github.com/deeplabua/deepocr/releases/download/models-v1/text-detection.rten";
       hash = "sha256-8Vz7Vr0CxL9HiiA0OYZQSh8B4WZcKzoK1mNA8FSxtco=";
     };
     recognition = {
-      url = "https://ocrs-models.s3-accelerate.amazonaws.com/text-recognition.rten";
+      url = "https://github.com/deeplabua/deepocr/releases/download/models-v1/text-recognition.rten";
       hash = "sha256-5ISGbUzOQDF1vY0AsSj+sIq0LiCN4w5CzZiJ2PFzWm4=";
     };
     license = {

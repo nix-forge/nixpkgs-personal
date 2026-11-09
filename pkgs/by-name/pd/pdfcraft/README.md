@@ -3,6 +3,11 @@
 Source build of [PdfCraft 0.8.0](https://github.com/storytold/pdfcraft/releases/tag/v0.8.0) at `9931329b9fae0b05373b4dc3ac7c58541f0891a4`.
 Installs `pdfcraft` and `pdfcraft-cli`, retaining the default automation/plugin capabilities.
 The pinned CC-BY-SA OCR detection and recognition models are bundled, with their notices, and used by the native OCR test.
+The download URLs use [DeepOCR’s public mirror](https://github.com/deeplabua/deepocr/releases/tag/models-v1)
+of the exact original model files: both hashes still match the pinned PdfCraft
+`ATTRIBUTION.toml`. The model author clarified the [CC-BY-SA 4.0 terms](https://github.com/robertknight/ocrs-models/issues/34#issuecomment-5085587667)
+in response to that mirror’s redistribution question. This changes the download
+location without replacing the model bytes or OCR implementation.
 A policy-filtered, immutable font input is embedded with required-input checking for multilingual text.
 Restricted ArtCraft logo artwork is replaced with plain text; app icons, file types and functionality remain from upstream.
 
