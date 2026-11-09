@@ -891,6 +891,29 @@
           "removeWhen": "Remove when upstream routes the bounded format probe through the I/O gateway and both the file-access architecture and Word 2003 save-command regressions pass without this patch."
         },
         {
+          "file": "zip-header-identity.patch",
+          "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/zip-rs/zip2/pull/1256",
+            "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
+          ],
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+        },
+        {
+          "file": "archive-security.patch",
+          "sha256": "f4ffc9868daf7f40ccc52e3254055b37f13bd2959074d90d72e3898b701ecf50",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj"
+          ],
+          "reason": "Validate DOCX, mail-merge spreadsheet and ODT archives before optional recovery and page-layout reopens. Preserve part and total limits, normalized-name handling, public errors, encrypted Office workflows and existing pure-Rust deflate backends. Use the explicit hash-pinned patched ZIP source and synchronized source/vendor locks; original synthetic regressions cover malformed required and ignored members plus valid archive controls.",
+          "removeWhen": "Remove when the selected upstream source has an equivalent fixed dependency and complete validation before every consuming boundary, then pass the archive and compatibility suites. Update source and vendor locks together."
+        },
+        {
           "file": "optional-thai-cache-miss-fixture.patch",
           "sha256": "a488f0a2b6da8649791a51b77d6ed56e08bca09022f10567700aa276c41e7cb8",
           "kind": "upstream-candidate",

@@ -116,6 +116,7 @@
         filmcraft-archive-compatibility = packages.filmcraft.tests.archiveCompatibility;
         gridcraft-archive-compatibility = packages.gridcraft.tests.archiveCompatibility;
         lightcraft-segment-compatibility = packages.lightcraft.tests.segmentCompatibility;
+        wordcraft-archive-compatibility = packages.wordcraft.tests.archiveCompatibility;
         soundcraft-archive-compatibility = packages.soundcraft.tests.archiveCompatibility;
       }
       // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
