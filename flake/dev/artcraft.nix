@@ -113,6 +113,7 @@
         designcraft-archive-compatibility = packages.designcraft.tests.archiveCompatibility;
         figcraft-archive-compatibility = packages.figcraft.tests.archiveCompatibility;
         figcraft-server = packages.figcraft.tests.server;
+        filmcraft-archive-compatibility = packages.filmcraft.tests.archiveCompatibility;
       }
       // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
         craft-launcher-host-tests-artifact = packages.craft-launcher.hostTests.native;

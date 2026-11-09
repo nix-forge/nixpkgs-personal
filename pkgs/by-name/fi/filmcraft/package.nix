@@ -1,5 +1,6 @@
 {
   replaceVars,
+  callPackage,
   lib,
   stdenv,
   rustPlatform,
@@ -29,6 +30,8 @@
 }:
 let
   source = import ./source.nix;
+  zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
+  candleSource = callPackage ./candle-source.nix { patches = [ ./candle-zip-compatibility.patch ]; };
   gitSources = lib.mapAttrs (
     _: dependency: fetchgit { inherit (dependency) url rev hash; }
   ) source.gitDependencies;
@@ -89,11 +92,20 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "filmcraft-cli/whisper"
   ];
   patches = [
+    ./archive-security.patch
     ./remove-restricted-marks.patch
 
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ ./system-font-fixture.patch ]
   ++ [ ./japanese-font-test-system-fallbacks.patch ];
+
+  postPatch = ''
+    cmp Cargo.lock ${./Cargo.lock}
+    mkdir -p vendor
+    cp -R ${zipSource} vendor/zip
+    cp -R ${candleSource} vendor/candle-core
+    chmod -R u+w vendor
+  '';
 
   nativeBuildInputs = [
     pkg-config
@@ -201,6 +213,42 @@ rustPlatform.buildRustPackage (finalAttrs: {
       package = finalAttrs.finalPackage;
     })
     // {
+
+      # Exercise optional voices and Candle eager/lazy tensor archive readers.
+      archiveCompatibility = finalAttrs.finalPackage.overrideAttrs (previous: {
+        pname = "filmcraft-archive-compatibility";
+        cargoBuildType = "debug";
+        cargoCheckType = "debug";
+        env = previous.env // {
+          CARGO_INCREMENTAL = "0";
+          CARGO_PROFILE_DEV_DEBUG = "0";
+          CARGO_PROFILE_TEST_DEBUG = "0";
+        };
+        cargoBuildFeatures = [ "kokoro" ];
+        cargoCheckFeatures = [ "kokoro" ];
+        cargoBuildFlags = [
+          "-p"
+          "filmcraft-tts"
+          "--lib"
+          "--locked"
+        ];
+        cargoTestFlags = [
+          "-p"
+          "filmcraft-tts"
+          "--lib"
+          "--locked"
+        ];
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
 
       licenses = runCommand "${finalAttrs.pname}-font-notices" { nativeBuildInputs = [ python3 ]; } ''
         python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}

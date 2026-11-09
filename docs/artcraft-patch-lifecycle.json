@@ -449,6 +449,48 @@
       "sourceRevision": "f03e21556d8e3a7155b91892d958debd5255d7af",
       "patches": [
         {
+          "file": "zip-header-identity.patch",
+          "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/zip-rs/zip2/pull/1256",
+            "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
+          ],
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+        },
+        {
+          "file": "archive-security.patch",
+          "sha256": "fc0573b88cc156c66b18032fcfe1ac6b2e76d59c405979c735d7117dd3da3101",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj",
+            "https://github.com/advisories/GHSA-q7v9-x93c-xqv3",
+            "https://github.com/advisories/GHSA-hjqx-j4rw-g7xv",
+            "https://github.com/advisories/GHSA-9hj8-73fh-9963",
+            "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
+          ],
+          "reason": "Move FilmCraft and Candle to the pinned patched ZIP source. Validate voice-pack headers before selection, retaining fixed tensor size, bounded reads, finite-value checks and Model errors. Exercise optional Kokoro and tensor archives without changing normal application features or checks.",
+          "removeWhen": "Remove when selected upstream sources have equivalent fixed ZIP requirements and complete archive validation before member use and every reopen, then pass voice/PTH/NPZ regressions. Update source and vendor locks together."
+        },
+        {
+          "file": "candle-zip-compatibility.patch",
+          "sha256": "754b1b6b9cb81fdd8f94d5dde5aa997c3c2dbd8a576450a87d316505d7a4ac54",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj",
+            "https://github.com/advisories/GHSA-q7v9-x93c-xqv3",
+            "https://github.com/advisories/GHSA-hjqx-j4rw-g7xv",
+            "https://github.com/advisories/GHSA-9hj8-73fh-9963",
+            "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
+          ],
+          "reason": "Adapt Candle 0.9.2 to ZIP 9.5 fallible filename APIs and validate complete PTH/NPZ archives before metadata discovery and every lazy reopen. Preserve public tensor layouts, dtype, missing-name behavior and upstream license notices.",
+          "removeWhen": "Remove when selected upstream sources have equivalent fixed ZIP requirements and complete archive validation before member use and every reopen, then pass voice/PTH/NPZ regressions. Update source and vendor locks together."
+        },
+        {
           "file": "japanese-font-test-system-fallbacks.patch",
           "sha256": "e6c68f813709aba6804b840c860b19e21d5ce679facae0d469580ea020f2b4bb",
           "kind": "upstream-candidate",
