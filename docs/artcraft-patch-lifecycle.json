@@ -553,6 +553,44 @@
       "sourceRevision": "16dbb90499d3c63a6582fcbba1b2550a6e2da032",
       "patches": [
         {
+          "file": "zip-header-identity.patch",
+          "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/zip-rs/zip2/pull/1256",
+            "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
+          ],
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+        },
+        {
+          "file": "candle-zip-compatibility.patch",
+          "sha256": "754b1b6b9cb81fdd8f94d5dde5aa997c3c2dbd8a576450a87d316505d7a4ac54",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj",
+            "https://github.com/advisories/GHSA-q7v9-x93c-xqv3",
+            "https://github.com/advisories/GHSA-hjqx-j4rw-g7xv",
+            "https://github.com/advisories/GHSA-9hj8-73fh-9963",
+            "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
+          ],
+          "reason": "Adapt Candle 0.9.2 to ZIP 9.5 fallible filename APIs and validate complete PTH/NPZ archives before metadata discovery and every lazy reopen. Preserve public tensor layouts, dtype, missing-name behavior and upstream license notices.",
+          "removeWhen": "Remove when selected upstream sources have equivalent fixed ZIP requirements and complete archive validation before member use and every reopen, then pass voice/PTH/NPZ regressions. Update source and vendor locks together."
+        },
+        {
+          "file": "archive-security.patch",
+          "sha256": "80d4a597a7e2c33bc0b9c7789995483a7e6d00a3cdb30e4d194fa882c6bb9c25",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj"
+          ],
+          "reason": "Keep pure-Rust Candle 0.9.2 while moving its transitive ZIP dependency to the explicitly pinned patched source. Synchronize source/vendor locks and retain native safetensors inference plus the Darwin no-device CPU fallback. The repaired Candle PTH/NPZ boundaries are exercised through the matching FilmCraft dependency check.",
+          "removeWhen": "Remove when selected source uses equivalent repaired dependencies without this override and native segment, dependency archive and platform checks pass. Update source and vendor locks together."
+        },
+        {
           "file": "appstream-screenshot.patch",
           "sha256": "38802b2d5bcc40a18f5a4307da374e9cd003cdd68cca2fd88b5a1e98d61f45b9",
           "kind": "upstream-backport",

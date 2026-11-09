@@ -1,5 +1,6 @@
 {
   replaceVars,
+  callPackage,
   lib,
   stdenv,
   rustPlatform,
@@ -27,6 +28,14 @@
 }:
 let
   source = import ./source.nix;
+  zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
+  candleSource = callPackage ./candle-source.nix {
+    patches = [ ./candle-zip-compatibility.patch ];
+    # Preserve the no-GPU CPU fallback in the explicit source, before Cargo uses it.
+    postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
+      patch --fuzz=0 -p2 < ${./candle-metal-device-bounds.patch}
+    '';
+  };
   gitSources = lib.mapAttrs (
     _: dependency: fetchgit { inherit (dependency) url rev hash; }
   ) source.gitDependencies;
@@ -61,7 +70,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     repo = "lightcraft";
     inherit (source) rev hash;
   };
-  patches = lib.optionals stdenv.hostPlatform.isLinux [
+  patches = [
+    ./archive-security.patch
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
     ./appstream-screenshot.patch
     ./heif-mime-types.patch
   ];
@@ -70,15 +82,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # Library tests use synthetic servers on loopback; external networking stays blocked.
   __darwinAllowLocalNetworking = stdenv.buildPlatform.isDarwin;
 
-  # Candle assumes at least one Metal device exists. Return an error instead of
-  # panicking so upstream best_device can use CPU inference without a visible GPU.
-  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
-    source ${
-      replaceVars ./scripts/post-patch.sh {
-        candle_metal_device_bounds_patch = "${./candle-metal-device-bounds.patch}";
-        tests_update_vendor_checksum_py = "${./scripts/update_vendor_checksum.py}";
-      }
-    }
+  postPatch = ''
+    cmp Cargo.lock ${./Cargo.lock}
+    mkdir -p vendor
+    cp -R ${zipSource} vendor/zip
+    cp -R ${candleSource} vendor/candle-core
+    chmod -R u+w vendor
   '';
 
   cargoBuildFlags = [
@@ -216,6 +225,43 @@ rustPlatform.buildRustPackage (finalAttrs: {
       package = finalAttrs.finalPackage;
     })
     // {
+
+      # Keep safetensors loading and CPU inference compatible with the patched dependency.
+      segmentCompatibility = finalAttrs.finalPackage.overrideAttrs (previous: {
+        pname = "lightcraft-segment-compatibility";
+        cargoBuildType = "debug";
+        cargoCheckType = "debug";
+        env = previous.env // {
+          CARGO_INCREMENTAL = "0";
+          CARGO_PROFILE_DEV_DEBUG = "0";
+          CARGO_PROFILE_TEST_DEBUG = "0";
+        };
+        cargoBuildFeatures = [ ];
+        cargoCheckFeatures = [ ];
+        cargoBuildFlags = [
+          "-p"
+          "lightcraft-segment"
+          "--lib"
+          "--locked"
+        ];
+        cargoTestFlags = [
+          "-p"
+          "lightcraft-segment"
+          "--lib"
+          "--locked"
+        ];
+        postCheck = "";
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
 
       licenses = runCommand "${finalAttrs.pname}-font-notices" { nativeBuildInputs = [ python3 ]; } ''
         python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}
