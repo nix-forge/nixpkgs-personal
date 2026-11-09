@@ -540,6 +540,29 @@
       "sourceRevision": "d9d09f0baa912e88c5111107903fc8c640214b57",
       "patches": [
         {
+          "file": "zip-header-identity.patch",
+          "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/zip-rs/zip2/pull/1256",
+            "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
+          ],
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+        },
+        {
+          "file": "archive-security.patch",
+          "sha256": "8bb84eb516ed463a52180746673f058e61c298ed5cf5f231f461f695c7960d86",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj"
+          ],
+          "reason": "Validate complete XLSX/XLSB/ODS archives and all three CLI inspection boundaries before optional recovery. Preserve part and total bounds, normalized-name handling, encrypted Office workflows and existing pure-Rust deflate backends. Use the explicit hash-pinned patched ZIP source and synchronized source/vendor locks; original synthetic regressions cover malformed required and ignored members plus valid archive controls.",
+          "removeWhen": "Remove when the selected upstream source has an equivalent fixed dependency and complete validation before every consuming boundary, then pass the archive and compatibility suites. Update source and vendor locks together."
+        },
+        {
           "file": "appstream-screenshot.patch",
           "sha256": "cdc393054e9085feefa86f94902461c477bd751f182cb7d6f183d15e7650fb1a",
           "kind": "upstream-candidate",

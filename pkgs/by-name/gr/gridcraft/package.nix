@@ -1,5 +1,6 @@
 {
   replaceVars,
+  callPackage,
   lib,
   stdenv,
   rustPlatform,
@@ -26,6 +27,7 @@
 }:
 let
   source = import ./source.nix;
+  zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
   gitSources = lib.mapAttrs (
     _: dependency: fetchgit { inherit (dependency) url rev hash; }
   ) source.gitDependencies;
@@ -76,7 +78,17 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--locked"
   ];
 
-  patches = lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];
+  patches = [
+    ./archive-security.patch
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];
+
+  postPatch = ''
+    cmp Cargo.lock ${./Cargo.lock}
+    mkdir -p vendor
+    cp -R ${zipSource} vendor/zip
+    chmod -R u+w vendor/zip
+  '';
 
   nativeBuildInputs = [
     pkg-config
@@ -179,6 +191,52 @@ rustPlatform.buildRustPackage (finalAttrs: {
       package = finalAttrs.finalPackage;
     })
     // {
+
+      # Run complete owning-crate regressions without launching the GUI.
+      archiveCompatibility = finalAttrs.finalPackage.overrideAttrs (previous: {
+        pname = "gridcraft-archive-compatibility";
+        cargoBuildType = "debug";
+        cargoCheckType = "debug";
+        env = previous.env // {
+          CARGO_INCREMENTAL = "0";
+          CARGO_PROFILE_DEV_DEBUG = "0";
+          CARGO_PROFILE_TEST_DEBUG = "0";
+        };
+        cargoBuildFeatures = [ ];
+        cargoCheckFeatures = [ ];
+        cargoBuildFlags = [
+          "-p"
+          "gridcraft-xlsx"
+          "-p"
+          "gridcraft-engine"
+          "-p"
+          "gridcraft-cli"
+          "--lib"
+          "--bins"
+          "--locked"
+        ];
+        cargoTestFlags = [
+          "-p"
+          "gridcraft-xlsx"
+          "-p"
+          "gridcraft-engine"
+          "-p"
+          "gridcraft-cli"
+          "--lib"
+          "--bins"
+          "--locked"
+        ];
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
 
       licenses = runCommand "${finalAttrs.pname}-font-notices" { nativeBuildInputs = [ python3 ]; } ''
         python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}
