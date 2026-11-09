@@ -328,9 +328,9 @@ Presentation editor with PPTX interchange and media playback.
 
 [Recipe](../pkgs/by-name/de/deckcraft/package.nix) · [Package guide](../pkgs/by-name/de/deckcraft/README.md) · [Upstream](https://github.com/storytold/deckcraft)
 
-- `aarch64-darwin`: 0.7.0; (MIT OR Apache-2.0) AND OFL-1.1 AND Bitstream-Vera AND Ubuntu-font-1.0 AND Zlib AND BSD-3-Clause AND CC0-1.0 AND MPL-2.0.
-- `aarch64-linux`: 0.7.0; (MIT OR Apache-2.0) AND OFL-1.1 AND Bitstream-Vera AND Ubuntu-font-1.0 AND Zlib AND BSD-3-Clause AND CC0-1.0 AND MPL-2.0.
-- `x86_64-linux`: 0.7.0; (MIT OR Apache-2.0) AND OFL-1.1 AND Bitstream-Vera AND Ubuntu-font-1.0 AND Zlib AND BSD-3-Clause AND CC0-1.0 AND MPL-2.0.
+- `aarch64-darwin`: 0.7.0; (MIT OR Apache-2.0) AND OFL-1.1 AND Bitstream-Vera AND Ubuntu-font-1.0 AND Zlib AND BSD-3-Clause AND CC0-1.0 AND MPL-2.0 AND Unicode-Symbol-2011.
+- `aarch64-linux`: 0.7.0; (MIT OR Apache-2.0) AND OFL-1.1 AND Bitstream-Vera AND Ubuntu-font-1.0 AND Zlib AND BSD-3-Clause AND CC0-1.0 AND MPL-2.0 AND Unicode-Symbol-2011.
+- `x86_64-linux`: 0.7.0; (MIT OR Apache-2.0) AND OFL-1.1 AND Bitstream-Vera AND Ubuntu-font-1.0 AND Zlib AND BSD-3-Clause AND CC0-1.0 AND MPL-2.0 AND Unicode-Symbol-2011.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#deckcraft
