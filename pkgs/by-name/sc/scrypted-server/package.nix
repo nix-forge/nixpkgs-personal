@@ -6,6 +6,7 @@
   nodejs_24,
   python3,
   pkg-config,
+  esbuild,
   vips,
 }:
 let
@@ -41,13 +42,20 @@ buildNpmPackage (finalAttrs: {
   nativeBuildInputs = [
     python3
     pkg-config
+    esbuild
   ];
   buildInputs = [ vips ];
   env = {
     npm_config_build_from_source = "true";
     SHARP_FORCE_GLOBAL_LIBVIPS = "1";
   };
-  buildPhase = builtins.readFile ./scripts/build-phase.sh;
+  buildPhase = ''
+    source ${
+      replaceVars ./scripts/build-phase.sh {
+        tarPatch = "${./pax-entry-metadata.patch}";
+      }
+    }
+  '';
 
   # The upstream postinstall downloads a Python interpreter and ffmpeg-static
   # downloads a binary. Both are supplied by Nix at runtime instead.
@@ -69,6 +77,7 @@ buildNpmPackage (finalAttrs: {
       replaceVars ./scripts/install-check-phase.sh {
         inherit nodejs_24;
         nodeModulesCheck = "${./scripts/check_node_modules.mts}";
+        tarCheck = "${./scripts/check-tar.mts}";
 
       }
     }
@@ -77,7 +86,10 @@ buildNpmPackage (finalAttrs: {
   meta = {
     description = "Scrypted home video integration server";
     homepage = "https://github.com/koush/scrypted";
-    license = lib.licenses.isc;
+    license = with lib.licenses; [
+      isc
+      blueOak100
+    ];
     platforms = lib.platforms.linux;
     mainProgram = "scrypted-serve";
     sourceProvenance = [ lib.sourceTypes.fromSource ];

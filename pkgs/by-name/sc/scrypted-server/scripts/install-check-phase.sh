@@ -8,4 +8,7 @@ test -f "$out/lib/node_modules/@scrypted/server/python/plugin_remote.py"
 @nodejs_24@/bin/node @nodeModulesCheck@ require "$out/lib/node_modules/@scrypted/server/node_modules/@scrypted/node-pty"
 @nodejs_24@/bin/node @nodeModulesCheck@ require "$out/lib/node_modules/@scrypted/server/node_modules/sharp"
 @nodejs_24@/bin/node @nodeModulesCheck@ require "$out/lib/node_modules/@scrypted/server/node_modules/classic-level"
+app="$out/lib/node_modules/@scrypted/server"
+@nodejs_24@/bin/node @tarCheck@ "$app/node_modules/tar" "$app"
+test -f "$app/node_modules/tar/LICENSE.md"
 runHook postInstallCheck

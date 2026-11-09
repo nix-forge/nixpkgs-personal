@@ -1011,8 +1011,8 @@ Scrypted home video integration server.
 
 [Recipe](../pkgs/by-name/sc/scrypted-server/package.nix) · [Package guide](../pkgs/by-name/sc/scrypted-server/README.md) · [Upstream](https://github.com/koush/scrypted)
 
-- `aarch64-linux`: 0.147.0; [ISC](https://spdx.org/licenses/ISC.html).
-- `x86_64-linux`: 0.147.0; [ISC](https://spdx.org/licenses/ISC.html).
+- `aarch64-linux`: 0.147.0; [ISC](https://spdx.org/licenses/ISC.html), [BlueOak-1.0.0](https://spdx.org/licenses/BlueOak-1.0.0.html).
+- `x86_64-linux`: 0.147.0; [ISC](https://spdx.org/licenses/ISC.html), [BlueOak-1.0.0](https://spdx.org/licenses/BlueOak-1.0.0.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#scrypted-server
