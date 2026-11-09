@@ -40,6 +40,7 @@ buildNpmPackage (finalAttrs: {
       replaceVars ./scripts/install-check-phase.sh {
         inherit nodejs_24;
         credential_files_test_mts = "${./credential-files.test.mts}";
+        redirect_credentials_test_mts = "${./redirect-credentials.test.mts}";
         nodeModulesCheck = "${./scripts/check_node_modules.mts}";
 
       }
