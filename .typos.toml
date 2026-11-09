@@ -87,8 +87,12 @@ ser = "ser"
 
 [type.craft-archive]
 extend-glob = ["archive-security.patch"]
-# Preserve the exact CP437 filename bytes used by the Unicode-path regression.
-extend-ignore-re = ['b"caf\\x82\.txt"']
+# Preserve exact CP437/UTF-8 filename bytes used by the archive regressions.
+extend-ignore-re = ['b"caf\\x82\.txt"', 'b"caf\\xc3\\xa9"']
+
+[type.craft-archive.extend-identifiers]
+# Keep the published Rust compression crate identifier in manifest/lock patches.
+flate2 = "flate2"
 
 [type.deckcraft-symbol]
 extend-glob = ["symbol-font-unicode.patch"]

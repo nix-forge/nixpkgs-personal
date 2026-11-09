@@ -263,7 +263,7 @@
                  x
 --- /dev/null
 +++ b/tests/zip_fixtures.rs
-@@ -0,0 +1,165 @@
+@@ -0,0 +1,188 @@
 +//! Original synthetic ZIP mutations shared by archive-consumer regressions.
 +use std::io::{Cursor, Read, Write};
 +
@@ -372,6 +372,13 @@
 +    let duplicate = extra_entry(first, b"spare", b"spare", &[], &[], false);
 +    assert!(!accepts(&duplicate), "duplicate unused member");
 +
++    for (local, central) in [(true, false), (false, true)] {
++        let bad = extra_entry(bytes.to_vec(), b"caf\xc3\xa9", b"caf\xc3\xa9", &[], &[], false);
++        assert!(!accepts(&set_last_encoding_flags(bad, local, central)), "conflicting filename encodings");
++        let ascii = extra_entry(bytes.to_vec(), b"ascii", b"ascii", &[], &[], false);
++        assert!(accepts(&set_last_encoding_flags(ascii, local, central)), "ASCII-compatible encoding flags");
++    }
++
 +    let legacy = extra_entry(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", &unicode, &unicode, false);
 +    assert!(accepts(&legacy), "valid CP437 UnicodePath");
 +    let streamed = extra_entry(bytes.to_vec(), b"notes.txt", b"notes.txt", &[], &[], true);
@@ -428,4 +435,20 @@
 +    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
 +    archive.validate_header_consistency().expect("valid UTF-8 archive");
 +    assert_eq!(archive.by_index(0).expect("entry").name().expect("name"), "é");
++}
++
++fn set_last_encoding_flags(mut bytes: Vec<u8>, local_utf8: bool, central_utf8: bool) -> Vec<u8> {
++    let (local, central) = {
++        let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).expect("fixture archive");
++        let index = archive.len() - 1;
++        let file = archive.by_index(index).expect("last fixture entry");
++        (file.header_start() as usize, file.central_header_start() as usize)
++    };
++    if local_utf8 {
++        bytes[local + 7] |= 8;
++    }
++    if central_utf8 {
++        bytes[central + 9] |= 8;
++    }
++    bytes
 +}

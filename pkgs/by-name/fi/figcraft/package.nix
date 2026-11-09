@@ -1,5 +1,6 @@
 {
   replaceVars,
+  callPackage,
   lib,
   stdenv,
   rustPlatform,
@@ -25,6 +26,7 @@
 }:
 let
   source = import ./source.nix;
+  zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
   fonts = fetchFromGitHub {
     owner = "storytold";
     repo = "craft-fonts";
@@ -65,6 +67,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./native-window-app-id.patch
     ./nix-fontconfig-discovery.patch
     ./portable-ui-regressions.patch
+    ./archive-security.patch
   ];
   cargoBuildFlags = [
     "-p"
@@ -101,6 +104,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
   };
   postPatch = ''
     cmp Cargo.lock ${./Cargo.lock}
+    mkdir -p vendor
+    cp -R ${zipSource} vendor/zip
+    chmod -R u+w vendor/zip
     python3 ${./scripts/check_fonts.py} input ${fonts}
   '';
   preCheck = builtins.readFile ./scripts/pre-check.sh;
@@ -183,6 +189,48 @@ rustPlatform.buildRustPackage (finalAttrs: {
       package = finalAttrs.finalPackage;
     })
     // {
+      # Test the owning format library and its engine/server consumers without a GUI launch.
+      archiveCompatibility = finalAttrs.finalPackage.overrideAttrs (previous: {
+        pname = "figcraft-archive-compatibility";
+        cargoBuildType = "debug";
+        cargoCheckType = "debug";
+        env = previous.env // {
+          CARGO_INCREMENTAL = "0";
+          CARGO_PROFILE_DEV_DEBUG = "0";
+          CARGO_PROFILE_TEST_DEBUG = "0";
+        };
+        cargoBuildFlags = [
+          "-p"
+          "figcraft-format"
+          "-p"
+          "figcraft-engine"
+          "-p"
+          "figcraft-server"
+          "--lib"
+          "--locked"
+        ];
+        cargoTestFlags = [
+          "-p"
+          "figcraft-format"
+          "-p"
+          "figcraft-engine"
+          "-p"
+          "figcraft-server"
+          "--lib"
+          "--locked"
+        ];
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
+
       licenses = runCommand "figcraft-font-notices" { nativeBuildInputs = [ python3 ]; } ''
         python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} figcraft
         python3 ${./scripts/check_fonts.py} installed ${fonts} ${finalAttrs.finalPackage}

@@ -1,6 +1,6 @@
 --- a/src/read/mod.rs
 +++ b/src/read/mod.rs
-@@ -482,6 +482,24 @@
+@@ -482,9 +482,39 @@
              ));
          }
  
@@ -25,6 +25,21 @@
          if self.name.as_ref() != central.name.as_ref() {
              return Err(invalid!(
                  "header inconsistency detected: Local file header filename mismatch (does not match central directory)"
++            ));
++        }
++
++        // Equal bytes can name different files under UTF-8 and CP437. A successfully
++        // applied UnicodePath also selects UTF-8. ASCII remains identical under either
++        // encoding, so harmless flag differences on ASCII names stay compatible.
++        let local_utf8 = self.has_language_encoding || self.overridden_header_name.is_some();
++        let central_utf8 =
++            central.has_language_encoding || central.overridden_header_name.is_some();
++        if local_utf8 != central_utf8 && self.name.as_ref().iter().any(|byte| !byte.is_ascii()) {
++            return Err(invalid!(
++                "header inconsistency detected: filename encoding mismatch"
+             ));
+         }
+ 
 --- a/src/read/zip_archive.rs
 +++ b/src/read/zip_archive.rs
 @@ -714,12 +714,17 @@

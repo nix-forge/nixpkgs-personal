@@ -184,14 +184,14 @@
       "patches": [
         {
           "file": "zip-header-identity.patch",
-          "sha256": "5b10275fd52f1685435dd6fd2c3b2446aa08373df61110dde872e7ec23be9fc1",
+          "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
             "https://github.com/zip-rs/zip2/pull/1256",
             "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
           ],
-          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names during whole-archive validation, and retain flag-selected CP437/UTF-8 decoding and matching name lookup. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
           "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
         },
         {
@@ -207,7 +207,7 @@
         },
         {
           "file": "archive-security.patch",
-          "sha256": "257463c6f8c93e675fc6c0b87e84a32efd8f0f9b870a7ac3b791268ee8dcbf79",
+          "sha256": "609fec64072d3a07d1fad805adf4db3065607a5e502902105c86baeb5a54a555",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/advisories/GHSA-m665-v7pm-7grj",
@@ -245,19 +245,19 @@
       "patches": [
         {
           "file": "zip-header-identity.patch",
-          "sha256": "5b10275fd52f1685435dd6fd2c3b2446aa08373df61110dde872e7ec23be9fc1",
+          "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
             "https://github.com/zip-rs/zip2/pull/1256",
             "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
           ],
-          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names during whole-archive validation, and retain flag-selected CP437/UTF-8 decoding and matching name lookup. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
           "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
         },
         {
           "file": "archive-security.patch",
-          "sha256": "e2d198fba21b7273848184044b3ee04e16ccf52905fc87ddad14fec01153bab2",
+          "sha256": "f9fd80632621d524f24f321d5e38fb22dbd81e40a7fd8f64c181ca97894a3f2e",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
@@ -366,6 +366,31 @@
     "figcraft": {
       "sourceRevision": "833f0d2c27f0acbae5394848930ae531fc89c724",
       "patches": [
+        {
+          "file": "archive-security.patch",
+          "sha256": "ae50b70b866738191088a86cd52ccf9586b895f28209af85bdb0b5fefd6c4601",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj",
+            "https://github.com/advisories/GHSA-q7v9-x93c-xqv3",
+            "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
+          ],
+          "reason": "Upgrade FigCraft ZIP while retaining the existing flate2/rust_backend and Zopfli backends. Validate complete archives at the six consuming native, FIG, library and preview boundaries before optional recovery or server retention. Preserve metadata-only FIG classification, bounded payload reads and the existing Rustls source/vendor lock assertion. Original synthetic regressions cover all consuming APIs and server publication.",
+          "removeWhen": "Remove when the selected source has an equivalent fixed dependency and complete archive validation at all six consuming entry points, then passes format, engine and server archive/compatibility regressions without these changes. Update the source and vendor locks together."
+        },
+        {
+          "file": "zip-header-identity.patch",
+          "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/zip-rs/zip2/pull/1256",
+            "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
+          ],
+          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
+          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+        },
         {
           "file": "native-window-app-id.patch",
           "sha256": "3ef1254fc79a5295b3e7afaca55a44065bb6b6b1e7049d52ca46f20bf0ff0ed4",

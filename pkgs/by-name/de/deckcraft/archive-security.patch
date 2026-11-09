@@ -28,7 +28,7 @@
      if m.format != "deckcraft" {
 --- /dev/null
 +++ b/crates/format/tests/archive_security.rs
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,160 @@
 +//! Synthetic ZIP boundary regressions; no third-party document fixtures.
 +use std::io::Cursor;
 +
@@ -163,6 +163,32 @@
 +    let bytes = extra_entry(valid(), b"notes.txt", b"notes.txt", None, 0, true);
 +    assert!(deckcraft_format::load(&bytes).is_ok());
 +}
++
++fn set_last_encoding_flags(mut bytes: Vec<u8>, local_utf8: bool, central_utf8: bool) -> Vec<u8> {
++    let (local, central) = {
++        let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).expect("fixture archive");
++        let index = archive.len() - 1;
++        let file = archive.by_index(index).expect("last fixture entry");
++        (file.header_start() as usize, file.central_header_start() as usize)
++    };
++    if local_utf8 {
++        bytes[local + 7] |= 8;
++    }
++    if central_utf8 {
++        bytes[central + 9] |= 8;
++    }
++    bytes
++}
++
++#[test]
++fn rejects_conflicting_filename_encodings() {
++    for (local, central) in [(true, false), (false, true)] {
++        let bad = extra_entry(valid(), b"caf\xc3\xa9", b"caf\xc3\xa9", None, 0, false);
++        assert!(deckcraft_format::load(&set_last_encoding_flags(bad, local, central)).is_err());
++        let ascii = extra_entry(valid(), b"ascii", b"ascii", None, 0, false);
++        assert!(deckcraft_format::load(&set_last_encoding_flags(ascii, local, central)).is_ok());
++    }
++}
 --- a/crates/pptx/src/opc.rs
 +++ b/crates/pptx/src/opc.rs
 @@ -40,6 +40,7 @@
@@ -190,7 +216,7 @@
                  log::warn!("pptx: skipping oversized part {name} ({declared} bytes)");
 --- /dev/null
 +++ b/crates/pptx/tests/archive_security.rs
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,160 @@
 +//! Synthetic ZIP boundary regressions; no third-party document fixtures.
 +use std::io::Cursor;
 +
@@ -324,6 +350,32 @@
 +fn preserves_streaming_data_descriptor() {
 +    let bytes = extra_entry(valid(), b"notes.txt", b"notes.txt", None, 0, true);
 +    assert!(deckcraft_pptx::import(&bytes).is_ok());
++}
++
++fn set_last_encoding_flags(mut bytes: Vec<u8>, local_utf8: bool, central_utf8: bool) -> Vec<u8> {
++    let (local, central) = {
++        let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).expect("fixture archive");
++        let index = archive.len() - 1;
++        let file = archive.by_index(index).expect("last fixture entry");
++        (file.header_start() as usize, file.central_header_start() as usize)
++    };
++    if local_utf8 {
++        bytes[local + 7] |= 8;
++    }
++    if central_utf8 {
++        bytes[central + 9] |= 8;
++    }
++    bytes
++}
++
++#[test]
++fn rejects_conflicting_filename_encodings() {
++    for (local, central) in [(true, false), (false, true)] {
++        let bad = extra_entry(valid(), b"caf\xc3\xa9", b"caf\xc3\xa9", None, 0, false);
++        assert!(deckcraft_pptx::import(&set_last_encoding_flags(bad, local, central)).is_err());
++        let ascii = extra_entry(valid(), b"ascii", b"ascii", None, 0, false);
++        assert!(deckcraft_pptx::import(&set_last_encoding_flags(ascii, local, central)).is_ok());
++    }
 +}
 --- a/crates/pptx/tests/fills.rs
 +++ b/crates/pptx/tests/fills.rs
