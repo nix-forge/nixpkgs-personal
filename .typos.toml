@@ -94,6 +94,9 @@ extend-ignore-re = ['b"caf\\x82\.txt"', 'b"caf\\xc3\\xa9"']
 # Keep the published Rust compression crate identifier in manifest/lock patches.
 flate2 = "flate2"
 
+[type.craft-archive.extend-words]
+caf = "caf" # Core Audio Format identifier in the upstream audio feature list.
+
 [type.deckcraft-symbol]
 extend-glob = ["symbol-font-unicode.patch"]
 # U+03BA is Greek small letter kappa in the published Symbol encoding table.
