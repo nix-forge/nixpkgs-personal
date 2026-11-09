@@ -26,6 +26,7 @@
   rcodesign,
   alsa-lib,
   ffmpeg,
+  mesa,
 }:
 let
   source = import ./source.nix;
@@ -112,7 +113,28 @@ rustPlatform.buildRustPackage (finalAttrs: {
   env.CRAFT_FONTS_DIR = fonts;
   env.CRAFT_FONTS_REQUIRED = "1";
 
-  preCheck = builtins.readFile ./scripts/pre-check.sh;
+  # The canvas regressions need a real adapter in headless Linux builders.
+  # Match the repository GUI checks' Mesa software-rendering environment.
+  checkInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    mesa
+    vulkan-loader
+    libGL
+  ];
+  preCheck =
+    builtins.readFile ./scripts/pre-check.sh
+    + lib.optionalString stdenv.hostPlatform.isLinux ''
+      source ${
+        replaceVars ./scripts/linux-check-renderer.sh {
+          softwareRendererLibraryPath = lib.makeLibraryPath [
+            mesa
+            vulkan-loader
+            libGL
+          ];
+          inherit mesa;
+          vulkanIcdArchitecture = stdenv.hostPlatform.parsed.cpu.name;
+        }
+      }
+    '';
 
   postInstall = ''
     source ${
