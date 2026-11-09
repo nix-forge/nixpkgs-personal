@@ -1,0 +1,414 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -60,7 +60,7 @@
+ krilla = { version = "0.8", features = ["pdf"] }
+ i_overlay = "9"
+ quick-xml = "0.38"
+-zip = { version = "3", default-features = false, features = ["deflate"] }
++zip = { version = "=9.5.0", default-features = false, features = ["deflate"] }
+ 
+ # ui
+ egui = { version = "0.36", default-features = false }
+--- a/crates/format/src/lib.rs
++++ b/crates/format/src/lib.rs
+@@ -99,6 +99,7 @@
+ /// Read a presentation.
+ pub fn load(bytes: &[u8]) -> Result<Presentation> {
+     let mut z = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|e| FormatError::NotOurs(e.to_string()))?;
++    z.validate_header_consistency().map_err(|e| FormatError::Damaged(e.to_string()))?;
+     let json = read_entry(&mut z, "presentation.json").map_err(|_| FormatError::NotOurs("no presentation.json".into()))?;
+     let m: Manifest = serde_json::from_slice(&json).map_err(|e| FormatError::Damaged(e.to_string()))?;
+     if m.format != "deckcraft" {
+--- /dev/null
++++ b/crates/format/tests/archive_security.rs
+@@ -0,0 +1,127 @@
++//! Synthetic ZIP boundary regressions; no third-party document fixtures.
++use std::io::Cursor;
++
++fn local_header(bytes: &[u8], name: &str) -> usize {
++    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).expect("archive");
++    archive.by_name(name).expect("part").header_start() as usize
++}
++
++fn valid() -> Vec<u8> {
++    deckcraft_format::save(&deckcraft_model::Presentation::default()).expect("save")
++}
++
++fn rejects_local_change(offset: usize) {
++    let mut bytes = valid();
++    let start = local_header(&bytes, "presentation.json");
++    // Keep the central directory and payload unchanged.
++    bytes[start + offset] ^= 1;
++    assert!(deckcraft_format::load(&bytes).is_err(), "local offset {offset}");
++}
++
++#[test]
++fn rejects_local_filename_mismatch() {
++    rejects_local_change(30);
++}
++
++#[test]
++fn rejects_local_compression_mismatch() {
++    rejects_local_change(8);
++}
++
++#[test]
++fn rejects_local_crc_mismatch() {
++    rejects_local_change(14);
++}
++
++#[test]
++fn oversized_symlink_declaration_is_an_error() {
++    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
++    writer.add_symlink("presentation.json", "x", zip::write::SimpleFileOptions::default()).expect("symlink");
++    let mut bytes = writer.finish().expect("finish").into_inner();
++    let local = local_header(&bytes, "presentation.json");
++    let central = bytes.windows(4).position(|b| b == b"PK\x01\x02").expect("central directory");
++    // Declare nearly 4 GiB without allocating or decompressing it; retain a
++    // one-byte symlink target and matching local/central declared sizes.
++    bytes[local + 22..local + 26].copy_from_slice(&0xffff_fffe_u32.to_le_bytes());
++    bytes[central + 24..central + 28].copy_from_slice(&0xffff_fffe_u32.to_le_bytes());
++    assert!(deckcraft_format::load(&bytes).is_err());
++}
++
++#[test]
++fn valid_archive_roundtrip() {
++    assert!(deckcraft_format::load(&valid()).is_ok());
++}
++
++/// Append one original synthetic entry, retaining all normal presentation parts.
++fn extra_entry(mut bytes: Vec<u8>, local: &[u8], central: &[u8], unicode: Option<&str>, name_crc: u32, descriptor: bool) -> Vec<u8> {
++    let end = bytes.len() - 22;
++    assert_eq!(&bytes[end..end + 4], b"PK\x05\x06");
++    let count = u16::from_le_bytes(bytes[end + 10..end + 12].try_into().expect("count"));
++    let size = u32::from_le_bytes(bytes[end + 12..end + 16].try_into().expect("size"));
++    let start = u32::from_le_bytes(bytes[end + 16..end + 20].try_into().expect("offset"));
++    let mut extra = Vec::new();
++    if let Some(name) = unicode {
++        extra.extend_from_slice(&0x7075_u16.to_le_bytes());
++        extra.extend_from_slice(&((5 + name.len()) as u16).to_le_bytes());
++        extra.push(1);
++        extra.extend_from_slice(&name_crc.to_le_bytes());
++        extra.extend_from_slice(name.as_bytes());
++    }
++    let flags = if descriptor { 8_u16 } else { 0 };
++    let mut header = b"PK\x03\x04".to_vec();
++    for word in [20_u16, flags, 0, 0, 0] {
++        header.extend_from_slice(&word.to_le_bytes());
++    }
++    header.extend_from_slice(&[0; 12]); // CRC and empty compressed/uncompressed sizes.
++    header.extend_from_slice(&(local.len() as u16).to_le_bytes());
++    header.extend_from_slice(&(extra.len() as u16).to_le_bytes());
++    header.extend_from_slice(local);
++    header.extend_from_slice(&extra);
++    if descriptor {
++        header.extend_from_slice(b"PK\x07\x08");
++        header.extend_from_slice(&[0; 12]);
++    }
++    let mut directory = b"PK\x01\x02".to_vec();
++    for word in [20_u16, 20, flags, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&[0; 12]);
++    for word in [central.len() as u16, extra.len() as u16, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&0_u32.to_le_bytes());
++    directory.extend_from_slice(&start.to_le_bytes());
++    directory.extend_from_slice(central);
++    directory.extend_from_slice(&extra);
++    let mut eocd = bytes.split_off(end);
++    let old_directory = bytes.split_off(start as usize);
++    bytes.extend_from_slice(&header);
++    bytes.extend_from_slice(&old_directory);
++    bytes.extend_from_slice(&directory);
++    for offset in [8, 10] {
++        eocd[offset..offset + 2].copy_from_slice(&(count + 1).to_le_bytes());
++    }
++    eocd[12..16].copy_from_slice(&(size + directory.len() as u32).to_le_bytes());
++    eocd[16..20].copy_from_slice(&(start + header.len() as u32).to_le_bytes());
++    bytes.extend_from_slice(&eocd);
++    bytes
++}
++
++#[test]
++fn rejects_unicode_path_crc_collision() {
++    // These different original ASCII names share CRC32 0x4ddb0c25.
++    let bytes = extra_entry(valid(), b"plumless", b"buckeroo", Some("unused"), 0x4ddb0c25, false);
++    assert!(deckcraft_format::load(&bytes).is_err());
++}
++
++#[test]
++fn preserves_cp437_unicode_path() {
++    let bytes = extra_entry(valid(), b"caf\x82.txt", b"caf\x82.txt", Some("café.txt"), 0xa0976e8f, false);
++    assert!(deckcraft_format::load(&bytes).is_ok());
++}
++
++#[test]
++fn preserves_streaming_data_descriptor() {
++    let bytes = extra_entry(valid(), b"notes.txt", b"notes.txt", None, 0, true);
++    assert!(deckcraft_format::load(&bytes).is_ok());
++}
+--- a/crates/pptx/src/opc.rs
++++ b/crates/pptx/src/opc.rs
+@@ -40,6 +40,7 @@
+         if zip.len() > MAX_ENTRIES {
+             return Err(PptxError::NotPptx(format!("too many entries ({})", zip.len())));
+         }
++        zip.validate_header_consistency().map_err(|e| PptxError::NotPptx(format!("{e}")))?;
+         let mut parts = HashMap::new();
+         let mut total: u64 = 0;
+         for i in 0..zip.len() {
+@@ -53,7 +54,13 @@
+             if f.is_dir() {
+                 continue;
+             }
+-            let name = f.name().trim_start_matches('/').to_string();
++            let name = match f.name() {
++                Ok(name) => name.trim_start_matches('/').to_string(),
++                Err(e) => {
++                    log::warn!("pptx: skipping entry {i} with an invalid name: {e}");
++                    continue;
++                }
++            };
+             let declared = f.size();
+             if declared > MAX_PART {
+                 log::warn!("pptx: skipping oversized part {name} ({declared} bytes)");
+--- /dev/null
++++ b/crates/pptx/tests/archive_security.rs
+@@ -0,0 +1,127 @@
++//! Synthetic ZIP boundary regressions; no third-party document fixtures.
++use std::io::Cursor;
++
++fn local_header(bytes: &[u8], name: &str) -> usize {
++    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).expect("archive");
++    archive.by_name(name).expect("part").header_start() as usize
++}
++
++fn valid() -> Vec<u8> {
++    deckcraft_pptx::export(&deckcraft_model::Presentation::default()).expect("save")
++}
++
++fn rejects_local_change(offset: usize) {
++    let mut bytes = valid();
++    let start = local_header(&bytes, "ppt/presentation.xml");
++    // Keep the central directory and payload unchanged.
++    bytes[start + offset] ^= 1;
++    assert!(deckcraft_pptx::import(&bytes).is_err(), "local offset {offset}");
++}
++
++#[test]
++fn rejects_local_filename_mismatch() {
++    rejects_local_change(30);
++}
++
++#[test]
++fn rejects_local_compression_mismatch() {
++    rejects_local_change(8);
++}
++
++#[test]
++fn rejects_local_crc_mismatch() {
++    rejects_local_change(14);
++}
++
++#[test]
++fn oversized_symlink_declaration_is_an_error() {
++    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
++    writer.add_symlink("ppt/presentation.xml", "x", zip::write::SimpleFileOptions::default()).expect("symlink");
++    let mut bytes = writer.finish().expect("finish").into_inner();
++    let local = local_header(&bytes, "ppt/presentation.xml");
++    let central = bytes.windows(4).position(|b| b == b"PK\x01\x02").expect("central directory");
++    // Declare nearly 4 GiB without allocating or decompressing it; retain a
++    // one-byte symlink target and matching local/central declared sizes.
++    bytes[local + 22..local + 26].copy_from_slice(&0xffff_fffe_u32.to_le_bytes());
++    bytes[central + 24..central + 28].copy_from_slice(&0xffff_fffe_u32.to_le_bytes());
++    assert!(deckcraft_pptx::import(&bytes).is_err());
++}
++
++#[test]
++fn valid_archive_roundtrip() {
++    assert!(deckcraft_pptx::import(&valid()).is_ok());
++}
++
++/// Append one original synthetic entry, retaining all normal presentation parts.
++fn extra_entry(mut bytes: Vec<u8>, local: &[u8], central: &[u8], unicode: Option<&str>, name_crc: u32, descriptor: bool) -> Vec<u8> {
++    let end = bytes.len() - 22;
++    assert_eq!(&bytes[end..end + 4], b"PK\x05\x06");
++    let count = u16::from_le_bytes(bytes[end + 10..end + 12].try_into().expect("count"));
++    let size = u32::from_le_bytes(bytes[end + 12..end + 16].try_into().expect("size"));
++    let start = u32::from_le_bytes(bytes[end + 16..end + 20].try_into().expect("offset"));
++    let mut extra = Vec::new();
++    if let Some(name) = unicode {
++        extra.extend_from_slice(&0x7075_u16.to_le_bytes());
++        extra.extend_from_slice(&((5 + name.len()) as u16).to_le_bytes());
++        extra.push(1);
++        extra.extend_from_slice(&name_crc.to_le_bytes());
++        extra.extend_from_slice(name.as_bytes());
++    }
++    let flags = if descriptor { 8_u16 } else { 0 };
++    let mut header = b"PK\x03\x04".to_vec();
++    for word in [20_u16, flags, 0, 0, 0] {
++        header.extend_from_slice(&word.to_le_bytes());
++    }
++    header.extend_from_slice(&[0; 12]); // CRC and empty compressed/uncompressed sizes.
++    header.extend_from_slice(&(local.len() as u16).to_le_bytes());
++    header.extend_from_slice(&(extra.len() as u16).to_le_bytes());
++    header.extend_from_slice(local);
++    header.extend_from_slice(&extra);
++    if descriptor {
++        header.extend_from_slice(b"PK\x07\x08");
++        header.extend_from_slice(&[0; 12]);
++    }
++    let mut directory = b"PK\x01\x02".to_vec();
++    for word in [20_u16, 20, flags, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&[0; 12]);
++    for word in [central.len() as u16, extra.len() as u16, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&0_u32.to_le_bytes());
++    directory.extend_from_slice(&start.to_le_bytes());
++    directory.extend_from_slice(central);
++    directory.extend_from_slice(&extra);
++    let mut eocd = bytes.split_off(end);
++    let old_directory = bytes.split_off(start as usize);
++    bytes.extend_from_slice(&header);
++    bytes.extend_from_slice(&old_directory);
++    bytes.extend_from_slice(&directory);
++    for offset in [8, 10] {
++        eocd[offset..offset + 2].copy_from_slice(&(count + 1).to_le_bytes());
++    }
++    eocd[12..16].copy_from_slice(&(size + directory.len() as u32).to_le_bytes());
++    eocd[16..20].copy_from_slice(&(start + header.len() as u32).to_le_bytes());
++    bytes.extend_from_slice(&eocd);
++    bytes
++}
++
++#[test]
++fn rejects_unicode_path_crc_collision() {
++    // These different original ASCII names share CRC32 0x4ddb0c25.
++    let bytes = extra_entry(valid(), b"plumless", b"buckeroo", Some("unused"), 0x4ddb0c25, false);
++    assert!(deckcraft_pptx::import(&bytes).is_err());
++}
++
++#[test]
++fn preserves_cp437_unicode_path() {
++    let bytes = extra_entry(valid(), b"caf\x82.txt", b"caf\x82.txt", Some("café.txt"), 0xa0976e8f, false);
++    assert!(deckcraft_pptx::import(&bytes).is_ok());
++}
++
++#[test]
++fn preserves_streaming_data_descriptor() {
++    let bytes = extra_entry(valid(), b"notes.txt", b"notes.txt", None, 0, true);
++    assert!(deckcraft_pptx::import(&bytes).is_ok());
++}
+--- a/crates/pptx/tests/fills.rs
++++ b/crates/pptx/tests/fills.rs
+@@ -15,7 +15,7 @@
+         let mut f = z.by_index(i).expect("entry");
+         let mut d = vec![];
+         f.read_to_end(&mut d).expect("read");
+-        let name = f.name().to_string();
++        let name = f.name().expect("entry name").into_owned();
+         if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") {
+             d = edit(String::from_utf8(d).expect("utf8")).into_bytes();
+         }
+--- a/crates/pptx/tests/locks.rs
++++ b/crates/pptx/tests/locks.rs
+@@ -85,7 +85,7 @@
+             let mut f = z.by_index(i).expect("entry");
+             let mut d = vec![];
+             f.read_to_end(&mut d).expect("read");
+-            (f.name().to_string(), d)
++            (f.name().expect("entry name").into_owned(), d)
+         })
+         .collect()
+ }
+--- a/crates/pptx/tests/malformed.rs
++++ b/crates/pptx/tests/malformed.rs
+@@ -26,7 +26,7 @@
+             let mut f = z.by_index(i).expect("entry");
+             let mut d = vec![];
+             std::io::Read::read_to_end(&mut f, &mut d).expect("read");
+-            (f.name().to_string(), d)
++            (f.name().expect("entry name").into_owned(), d)
+         })
+         .collect()
+ }
+--- a/crates/pptx/tests/ole.rs
++++ b/crates/pptx/tests/ole.rs
+@@ -20,7 +20,7 @@
+     let o = zip::write::SimpleFileOptions::default();
+     for i in 0..z.len() {
+         let mut f = z.by_index(i).expect("entry");
+-        let name = f.name().to_string();
++        let name = f.name().expect("entry name").into_owned();
+         if parts.iter().any(|(n, _)| *n == name) {
+             continue;
+         }
+--- a/crates/pptx/tests/ole_vml.rs
++++ b/crates/pptx/tests/ole_vml.rs
+@@ -35,7 +35,7 @@
+         let mut f = z.by_index(i).expect("entry");
+         let mut d = vec![];
+         f.read_to_end(&mut d).expect("read");
+-        let name = f.name().to_string();
++        let name = f.name().expect("entry name").into_owned();
+         if name == "ppt/slides/slide1.xml" {
+             let s = String::from_utf8(d).expect("utf8");
+             let at = s.rfind("</p:spTree>").expect("spTree");
+--- a/crates/pptx/tests/placeholders.rs
++++ b/crates/pptx/tests/placeholders.rs
+@@ -13,7 +13,7 @@
+         let mut f = z.by_index(i).expect("entry");
+         let mut d = vec![];
+         f.read_to_end(&mut d).expect("read");
+-        let name = f.name().to_string();
++        let name = f.name().expect("entry name").into_owned();
+         if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") {
+             d = edit(String::from_utf8(d).expect("utf8")).into_bytes();
+         }
+--- a/crates/pptx/tests/roundtrip.rs
++++ b/crates/pptx/tests/roundtrip.rs
+@@ -842,7 +842,7 @@
+     let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+     for i in 0..zip.len() {
+         let mut f = zip.by_index(i).expect("entry");
+-        let name = f.name().to_string();
++        let name = f.name().expect("entry name").into_owned();
+         let mut data = vec![];
+         std::io::Read::read_to_end(&mut f, &mut data).expect("read");
+         if name == "ppt/slides/slide1.xml" {
+@@ -976,7 +976,7 @@
+         let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+         for i in 0..zip.len() {
+             let mut f = zip.by_index(i).expect("entry");
+-            let name = f.name().to_string();
++            let name = f.name().expect("entry name").into_owned();
+             let mut data = vec![];
+             std::io::Read::read_to_end(&mut f, &mut data).expect("read");
+             if name == "ppt/slides/slide1.xml" {
+--- a/crates/pptx/tests/sniff.rs
++++ b/crates/pptx/tests/sniff.rs
+@@ -21,7 +21,7 @@
+     let stored = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+     out.start_file("ppt/media/padding.bin", stored).expect("start");
+     out.write_all(&vec![0u8; 64 * 1024]).expect("padding");
+-    let names: Vec<String> = (0..src.len()).map(|i| src.by_index(i).expect("entry").name().to_string()).collect();
++    let names: Vec<String> = (0..src.len()).map(|i| src.by_index(i).expect("entry").name().expect("entry name").into_owned()).collect();
+     for name in names.iter().filter(|n| *n != "[Content_Types].xml").chain(std::iter::once(&"[Content_Types].xml".to_string())) {
+         let mut data = Vec::new();
+         src.by_name(name).expect("by_name").read_to_end(&mut data).expect("read");
+--- a/crates/pptx/tests/table_styles.rs
++++ b/crates/pptx/tests/table_styles.rs
+@@ -40,7 +40,7 @@
+         let mut f = z.by_index(i).expect("entry");
+         let mut d = vec![];
+         f.read_to_end(&mut d).expect("read");
+-        let name = f.name().to_string();
++        let name = f.name().expect("entry name").into_owned();
+         if name == "ppt/tableStyles.xml" {
+             d = style_xml().into_bytes();
+         } else if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") {

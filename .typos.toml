@@ -84,3 +84,8 @@ extend-glob = ["atomic-state-upstream-314.patch"]
 [type.craft-atomic-state.extend-identifiers]
 # ron::ser is the upstream Rust serialization namespace.
 ser = "ser"
+
+[type.deckcraft-archive]
+extend-glob = ["archive-security.patch"]
+# Preserve the exact CP437 filename bytes used by the Unicode-path regression.
+extend-ignore-re = ['b"caf\\x82\.txt"']

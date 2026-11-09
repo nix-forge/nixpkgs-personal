@@ -63,9 +63,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
   };
   patches = [
     ./approved-ui-fonts.patch
+    ./archive-security.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];
-  # Match the lockfile to the default-font features disabled by the policy patch.
+  # Match the vendor lock to the font policy and archive-security patches.
   postPatch = ''
     cp ${./Cargo.lock} Cargo.lock
   '';
@@ -199,6 +200,38 @@ rustPlatform.buildRustPackage (finalAttrs: {
         python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}
         touch "$out"
       '';
+
+      # The normal workspace --lib suite does not run PPTX integration tests.
+      archiveCompatibility = finalAttrs.finalPackage.overrideAttrs (_: {
+        pname = "deckcraft-archive-compatibility";
+        cargoBuildType = "debug";
+        cargoCheckType = "debug";
+        cargoBuildFlags = [
+          "-p"
+          "deckcraft-format"
+          "-p"
+          "deckcraft-pptx"
+          "--locked"
+        ];
+        cargoTestFlags = [
+          "-p"
+          "deckcraft-format"
+          "-p"
+          "deckcraft-pptx"
+          "--tests"
+          "--locked"
+        ];
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
 
       fontPolicy = runCommand "deckcraft-font-policy" { nativeBuildInputs = [ python3 ]; } ''
         python3 ${./check_font_policy.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps}

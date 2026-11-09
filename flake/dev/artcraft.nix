@@ -109,6 +109,7 @@
       )
       // {
         craft-launcher-quit-state = packages.craft-launcher.tests.quitState;
+        deckcraft-archive-compatibility = packages.deckcraft.tests.archiveCompatibility;
         figcraft-server = packages.figcraft.tests.server;
       }
       // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {

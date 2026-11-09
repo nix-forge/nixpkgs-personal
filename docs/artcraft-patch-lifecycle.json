@@ -183,6 +183,20 @@
       "sourceRevision": "d78e657e4cb1e490ceb5445785c052d9cf5ad963",
       "patches": [
         {
+          "file": "archive-security.patch",
+          "sha256": "5118962c875ba94dfef684b9b327661caf9c32d3aa8acc28b733978906f5a054",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj",
+            "https://github.com/advisories/GHSA-q7v9-x93c-xqv3",
+            "https://github.com/advisories/GHSA-8hxf-qr8p-62x4",
+            "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
+            "https://github.com/zip-rs/zip2/pull/1256"
+          ],
+          "reason": "Select ZIP 9.5.0, including upstream UnicodePath hardening, and explicitly validate local/central header consistency before either native-format or PPTX content is consumed. Adapt fallible filename decoding without changing bounded reads or enabling AES/extraction. Synthetic loader regressions and the complete format/PPTX integration suite cover rejection and round trips.",
+          "removeWhen": "Remove when the selected upstream source uses a fixed ZIP release, enforces equivalent archive header validation at both loaders, and passes the archive compatibility suite without this patch. Update the packaging lock together with source changes."
+        },
+        {
           "file": "approved-ui-fonts.patch",
           "sha256": "4841e84418b20866634124c007379ff87b84305dd8fbd58db319a895a98dee6f",
           "kind": "upstream-candidate",
