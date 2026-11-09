@@ -1,5 +1,6 @@
 """Verify that installed font notices retain the complete pinned licence texts."""
 
+import hashlib
 import sys
 from pathlib import Path
 
@@ -29,6 +30,17 @@ def check(package: Path, vendor: Path, name: str) -> None:
         original = (bundle / notice).read_bytes()
         if not original or (installed / notice).read_bytes() != original:
             raise ValueError(f"Incomplete font notice: {notice}")
+
+    # The local epaint source retains the notices omitted from the registry archive.
+    for notice, digest in {
+        "LICENSE-MIT": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
+        "LICENSE-APACHE": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
+    }.items():
+        installed_notice = (
+            package / "share/doc" / name / "licenses/vendor/epaint" / notice
+        )
+        if hashlib.sha256(installed_notice.read_bytes()).hexdigest() != digest:
+            raise ValueError(f"Incomplete epaint notice: {notice}")
 
 
 if __name__ == "__main__":

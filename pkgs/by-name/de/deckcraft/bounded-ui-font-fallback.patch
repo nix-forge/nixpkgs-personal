@@ -1,0 +1,158 @@
+--- a/crates/fonts/src/fontdb.rs
++++ b/crates/fonts/src/fontdb.rs
+@@ -1034,9 +1034,62 @@
+         None
+     }
+ 
++    /// A monochrome face covering `c` whose backing file fits `max_bytes`.
++    /// Unlike document fallback, skip unsuitable faces and continue searching. Native
++    /// catalogue reads retain their existing 40 MiB ceiling. Newly borrowed faces are
++    /// returned without registering them in the document database or its miss cache.
++    pub fn bounded_plain_fallback_for(&self, c: char, max_bytes: usize) -> Option<Arc<FontFace>> {
++        let pick = || self.loaded_fallback_matching(c, u32::MAX, |f| !f.is_color() && f.data().len() <= max_bytes);
++        if let Some(f) = pick() {
++            return Some(f);
++        }
++        #[cfg(not(target_arch = "wasm32"))]
++        {
++            return self.bounded_plain_system_face_for(c, max_bytes.min(40 << 20));
++        }
++        #[cfg(target_arch = "wasm32")]
++        None
++    }
++
++    /// Borrow a bounded installed face without changing subsequent document fallback.
++    #[cfg(not(target_arch = "wasm32"))]
++    fn bounded_plain_system_face_for(&self, c: char, max_bytes: usize) -> Option<Arc<FontFace>> {
++        if c.is_control() || c.is_whitespace() || !self.sys.lock().unwrap_or_else(|e| e.into_inner()).enabled {
++            return None;
++        }
++        let mut paths: Vec<std::path::PathBuf> = self.read_catalog().iter().map(|e| e.path.clone()).collect();
++        paths.sort();
++        paths.dedup();
++        for p in paths {
++            if std::fs::metadata(&p).map(|m| m.len() > max_bytes as u64).unwrap_or(true) {
++                continue;
++            }
++            let Ok(data) = std::fs::read(&p) else { continue };
++            if data.len() > max_bytes {
++                continue;
++            }
++            let data = Arc::new(data);
++            for (index, family, style, coords) in enumerate_faces(&data) {
++                if has_color_tables(&data, index) {
++                    continue;
++                }
++                if let Some(face) = make_face(FontBytes::Owned(data.clone()), index, family, style, coords)
++                    && face.covers(c)
++                {
++                    return Some(Arc::new(face));
++                }
++            }
++        }
++        None
++    }
++
+     fn loaded_fallback(&self, c: char, exclude: u32) -> Option<Arc<FontFace>> {
++        self.loaded_fallback_matching(c, exclude, |_| true)
++    }
++
++    fn loaded_fallback_matching(&self, c: char, exclude: u32, accept: impl Fn(&FontFace) -> bool) -> Option<Arc<FontFace>> {
+         let faces = self.read_faces();
+-        let mut order: Vec<&Arc<FontFace>> = faces.iter().filter(|f| f.id != exclude).collect();
++        let mut order: Vec<&Arc<FontFace>> = faces.iter().filter(|f| f.id != exclude && accept(f)).collect();
+         order.sort_by_key(|f| (!f.family.eq_ignore_ascii_case(FALLBACK_FAMILY), f.italic, (f.weight - 400.0).abs() as i32));
+         order.into_iter().find(|f| f.covers(c)).cloned()
+     }
+@@ -1251,3 +1304,74 @@
+         self.0.close_path();
+     }
+ }
++
++#[cfg(test)]
++mod bounded_fallback_tests {
++    #![allow(clippy::unwrap_used, clippy::expect_used)]
++    use super::*;
++
++    fn isolated_db() -> FontDb {
++        let db = FontDb::with_font_dirs(Vec::new());
++        db.set_system_fallback(false);
++        db.faces.write().unwrap().clear();
++        db
++    }
++
++    #[test]
++    fn skips_oversized_preferred_face_and_accepts_exact_limit() {
++        let db = isolated_db();
++        let mut fonts = [epaint_default_fonts::UBUNTU_LIGHT, epaint_default_fonts::HACK_REGULAR];
++        fonts.sort_by_key(|data| data.len());
++        assert!(fonts[0].len() < fonts[1].len());
++        let small = Arc::new(make_face(FontBytes::Static(fonts[0]), 0, "Small".into(), "Regular".into(), Vec::new()).unwrap());
++        let preferred = Arc::new(make_face(FontBytes::Static(fonts[1]), 0, FALLBACK_FAMILY.into(), "Regular".into(), Vec::new()).unwrap());
++        assert!(small.covers('A') && preferred.covers('A'));
++        *db.faces.write().unwrap() = vec![preferred.clone(), small.clone()];
++        assert_eq!(db.fallback_for('A', u32::MAX).unwrap().id(), preferred.id(), "document preference is unchanged");
++        assert_eq!(db.bounded_plain_fallback_for('A', small.data().len()).unwrap().id(), small.id());
++        assert!(db.bounded_plain_fallback_for('A', small.data().len() - 1).is_none());
++        assert!(db.bounded_plain_fallback_for('\u{10FFFF}', usize::MAX).is_none());
++        assert_eq!(db.bounded_plain_fallback_for('A', preferred.data().len()).unwrap().id(), preferred.id());
++    }
++
++    #[cfg(not(target_arch = "wasm32"))]
++    #[test]
++    fn constrained_catalog_miss_does_not_hide_an_eligible_system_face() {
++        static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
++        struct Fixture(std::path::PathBuf);
++        impl Drop for Fixture {
++            fn drop(&mut self) {
++                let _ = std::fs::remove_dir_all(&self.0);
++            }
++        }
++        let fixture = Fixture(std::env::temp_dir().join(format!(
++            "deckcraft-bounded-font-{}-{}",
++            std::process::id(),
++            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
++        )));
++        std::fs::create_dir(&fixture.0).unwrap();
++        let mut fonts = [epaint_default_fonts::UBUNTU_LIGHT, epaint_default_fonts::HACK_REGULAR];
++        fonts.sort_by_key(|data| data.len());
++        let data = fonts[0];
++        let preferred_data = fonts[1];
++        std::fs::write(fixture.0.join("fallback.ttf"), data).unwrap();
++        let preferred_path = fixture.0.join("preferred.ttf");
++        std::fs::write(&preferred_path, preferred_data).unwrap();
++        let db = FontDb::with_font_dirs(vec![fixture.0.clone()]);
++        db.faces.write().unwrap().clear();
++        assert!(db.bounded_plain_fallback_for('A', data.len() - 1).is_none());
++        assert!(db.read_faces().is_empty(), "an oversized catalogue file must not be loaded");
++        db.set_system_fallback(false);
++        assert!(db.bounded_plain_fallback_for('A', data.len()).is_none());
++        db.set_system_fallback(true);
++        let face = db.bounded_plain_fallback_for('A', data.len()).expect("eligible installed fallback");
++        assert!(face.covers('A') && !face.is_color());
++        assert_eq!(face.data().len(), data.len());
++        assert!(db.read_faces().is_empty(), "borrowing a UI face must not register it for documents");
++        // Give the larger real font the catalogue's preferred-family role. The font bytes
++        // remain unmodified; only catalogue metadata models the native preference order.
++        db.catalog.write().unwrap().insert(0, CatalogEntry { family: SYSTEM_FALLBACKS[0].into(), style: "Regular".into(), path: preferred_path });
++        let document = db.fallback_for('A', u32::MAX).expect("document preferred system fallback");
++        assert_eq!(document.data(), preferred_data, "UI-first lookup must not replace the document preference");
++    }
++}
+--- a/crates/ui-egui/src/uifonts.rs
++++ b/crates/ui-egui/src/uifonts.rs
+@@ -67,7 +67,13 @@
+         }
+         let font = egui::FontId::proportional(13.0);
+         let new = ctx.fonts_mut(|f| {
+-            faces_for_text(text, &self.faces, &mut self.seen, |c| f.has_glyph(&font, c), |c| FontDb::global().fallback_for(c, u32::MAX))
++            faces_for_text(
++                text,
++                &self.faces,
++                &mut self.seen,
++                |c| f.has_glyph(&font, c),
++                |c| FontDb::global().bounded_plain_fallback_for(c, MAX_FACE_BYTES),
++            )
+         });
+         if !new.is_empty() {
+             log::debug!("interface fallback fonts: {}", new.iter().map(|f| f.family.as_str()).collect::<Vec<_>>().join(", "));

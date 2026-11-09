@@ -195,6 +195,37 @@
           "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
         },
         {
+          "file": "epaint-glyph-presence.patch",
+          "sha256": "02f473f1a4f3b2e6c42bac95b6df7da8e363e884bb282148207a9c58f0392a44",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://docs.rs/epaint/0.36.2/src/epaint/text/font.rs.html",
+            "https://github.com/emilk/egui/tree/49682f8baa058bf49e011035cfbd6e825f88a5ef/crates/epaint"
+          ],
+          "reason": "Correct glyph detection when a real glyph shares the face selected for the replacement character. Keep face-resolution caching and verify coverage in that face. Pin the original crate archive and retain its complete MIT and Apache notices from the recorded VCS revision.",
+          "removeWhen": "Remove the local epaint source and synchronized Cargo override when the selected dependency correctly distinguishes real coverage from replacement fallback and the glyph-presence regression passes without the patch."
+        },
+        {
+          "file": "ui-glyph-presence.patch",
+          "sha256": "0fce4c1e6960aa210031f0871e6c592b0efb402f5bb874a7272e4610ef1bf106",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://docs.rs/epaint/0.36.2/src/epaint/text/font.rs.html"
+          ],
+          "reason": "Select the pinned corrected epaint source and test actual coverage, missing characters, replacement-face glyphs, repeated cached queries and an empty font family using approved unmodified font data. Reinstate public-API coverage assertions alongside the existing font-policy character-map checks.",
+          "removeWhen": "Remove the local Cargo override and synchronize the lock when the dependency includes equivalent glyph-presence behavior. Retain the regression tests and approved font policy."
+        },
+        {
+          "file": "bounded-ui-font-fallback.patch",
+          "sha256": "379e285becfa03c366ab8e8b7da15c2b9e7fe57266459a0fa60b77d7e49b592b",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/deckcraft/blob/d78e657e4cb1e490ceb5445785c052d9cf5ad963/crates/ui-egui/src/uifonts.rs"
+          ],
+          "reason": "Continue searching for a bounded monochrome UI fallback when a preferred installed face is oversized or unsuitable. Keep document font preference, the 48 MiB UI copy limit, and the 40 MiB catalogue-read ceiling. Newly borrowed UI faces are kept outside the document database and its miss cache. Regressions cover preferred-face rejection, exact size limits, catalogue borrowing, disabled system fallback and UI-first/document-second preference. Original native Korean UI regressions remain intact.",
+          "removeWhen": "Remove when the selected source searches beyond unsuitable UI fallback faces with equivalent bounds and document-state isolation, and the native Korean UI and portable font regressions pass without the patch."
+        },
+        {
           "file": "symbol-font-unicode.patch",
           "sha256": "727a402b454e763f49208a5165426dc3e2094b6a405c77b4afbe69d258a013ef",
           "kind": "upstream-candidate",

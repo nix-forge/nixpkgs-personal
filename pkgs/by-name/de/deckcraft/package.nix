@@ -29,6 +29,7 @@
 }:
 let
   source = import ./source.nix;
+  epaintSource = callPackage ./epaint-source.nix { };
   zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
   gitSources = lib.mapAttrs (
     _: dependency: fetchgit { inherit (dependency) url rev hash; }
@@ -67,14 +68,17 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./approved-ui-fonts.patch
     ./archive-security.patch
     ./symbol-font-unicode.patch
+    ./ui-glyph-presence.patch
+    ./bounded-ui-font-fallback.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];
-  # Match the vendor lock to the font policy and archive-security patches.
+  # Keep local dependency sources and the font-policy lock synchronized.
   postPatch = ''
     cp ${./Cargo.lock} Cargo.lock
     mkdir -p vendor
     cp -R ${zipSource} vendor/zip
-    chmod -R u+w vendor/zip
+    cp -R ${epaintSource} vendor/epaint
+    chmod -R u+w vendor/zip vendor/epaint
   '';
   strictDeps = true;
   checkType = "debug";

@@ -1,0 +1,50 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -96,3 +96,4 @@
+ 
+ [patch.crates-io]
+ zip = { path = "vendor/zip" }
++epaint = { path = "vendor/epaint" }
+--- a/crates/ui-egui/src/theme.rs
++++ b/crates/ui-egui/src/theme.rs
+@@ -280,6 +280,27 @@
+     use super::*;
+ 
+     #[test]
++    fn glyph_detection_accepts_the_replacement_face_without_accepting_missing_glyphs() {
++        let mut definitions = FontDefinitions::empty();
++        definitions.font_data.insert("approved".into(), std::sync::Arc::new(FontData::from_static(deckcraft_fonts::last_resort_bytes())));
++        definitions.families.insert(FontFamily::Proportional, vec!["approved".into()]);
++        let mut fonts = egui::epaint::text::Fonts::new(egui::epaint::text::TextOptions::default(), definitions);
++        let mut view = fonts.with_pixels_per_point(1.0);
++        let id = egui::FontId::proportional(13.0);
++        for _ in 0..2 {
++            for c in ['A', '?', '◻'] {
++                let present = view.fonts.font(&id.family).characters().contains_key(&c);
++                assert_eq!(view.has_glyph(&id, c), present, "glyph detection must use coverage for {c:?}");
++            }
++            assert!(view.has_glyphs(&id, "A?"));
++            assert!(!view.has_glyph(&id, '\u{10FFFF}'));
++            assert!(!view.has_glyphs(&id, "A\u{10FFFF}"));
++        }
++        let mut empty = egui::epaint::text::Fonts::new(egui::epaint::text::TextOptions::default(), FontDefinitions::empty());
++        assert!(!empty.with_pixels_per_point(1.0).has_glyph(&id, 'A'));
++    }
++
++    #[test]
+     fn approved_faces_render_without_vendor_emoji() {
+         let definitions = font_definitions(&[]);
+         assert!(definitions.font_data.keys().all(|name| !name.contains("NotoEmoji") && !name.contains("emoji-icon-font")));
+@@ -292,11 +313,10 @@
+         let mut fonts = egui::epaint::text::Fonts::new(egui::epaint::text::TextOptions::default(), definitions);
+         let mut view = fonts.with_pixels_per_point(1.0);
+         for id in [font(13.0), bold(18.0), egui::FontId::monospace(13.0)] {
+-            // epaint 0.36.2 has_glyphs compares the owning face with the replacement
+-            // face, rejecting valid glyphs from that same face. Inspect the charmap.
+             let mut family = view.fonts.font(&id.family);
+             let characters = family.characters();
+             assert!("Open presentation 0123456789".chars().all(|glyph| characters.contains_key(&glyph)));
++            assert!(view.has_glyphs(&id, "Open presentation 0123456789"));
+         }
+         let id = egui::FontId::monospace(13.0);
+         let advance = view.glyph_width(&id, 'i');
