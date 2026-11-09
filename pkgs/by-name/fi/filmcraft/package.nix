@@ -95,6 +95,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   patches = [
     ./archive-security.patch
     ./rustcrypto-provider.patch
+    ./disable-unused-gtk-menu-features.patch
     ./remove-restricted-marks.patch
 
   ]
@@ -245,6 +246,42 @@ rustPlatform.buildRustPackage (finalAttrs: {
           runHook preInstall
           mkdir -p "$out"
           touch "$out/passed"
+          runHook postInstall
+        '';
+        postInstall = "";
+        postFixup = "";
+        doInstallCheck = false;
+        passthru = { };
+      });
+
+      menuDependencies = finalAttrs.finalPackage.overrideAttrs (_: {
+        pname = "filmcraft-menu-dependencies";
+        buildPhase = ''
+          runHook preBuild
+          for configuration in normal neural-voices; do
+            features="filmcraft/whisper,filmcraft-cli/whisper"
+            if [ "$configuration" = neural-voices ]; then
+              features="$features,filmcraft/neural-voices"
+            fi
+            for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc wasm32-unknown-unknown; do
+              cargo metadata --offline --locked --format-version 1 --filter-platform "$target" --features "$features" > "metadata-$configuration-$target.json"
+              python3 ${./check_menu_dependencies.py} "metadata-$configuration-$target.json" "$target"
+            done
+          done
+          runHook postBuild
+        '';
+        checkPhase = ''
+          runHook preCheck
+          # Check both owning binaries, including the target-selected native menu backend.
+          cargo check --offline --locked --package filmcraft --package filmcraft-cli --bins --features "filmcraft/whisper,filmcraft-cli/whisper"
+          runHook postCheck
+        '';
+        doCheck = true;
+        preCheck = "";
+        installPhase = ''
+          runHook preInstall
+          mkdir -p "$out"
+          cp metadata-*.json "$out/"
           runHook postInstall
         '';
         postInstall = "";

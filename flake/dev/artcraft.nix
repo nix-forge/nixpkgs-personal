@@ -113,6 +113,7 @@
         designcraft-archive-compatibility = packages.designcraft.tests.archiveCompatibility;
         figcraft-archive-compatibility = packages.figcraft.tests.archiveCompatibility;
         figcraft-server = packages.figcraft.tests.server;
+        filmcraft-menu-dependencies = packages.filmcraft.tests.menuDependencies;
         filmcraft-tls-provider = packages.filmcraft.tests.tlsProvider;
         filmcraft-archive-compatibility = packages.filmcraft.tests.archiveCompatibility;
         gridcraft-archive-compatibility = packages.gridcraft.tests.archiveCompatibility;

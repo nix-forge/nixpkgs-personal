@@ -480,6 +480,18 @@
       "sourceRevision": "f03e21556d8e3a7155b91892d958debd5255d7af",
       "patches": [
         {
+          "file": "disable-unused-gtk-menu-features.patch",
+          "sha256": "6e66c4dd95a4ea07566e2c0a0f7d577364bfcc36906dc8bb6e1bf2f295822725",
+          "kind": "packaging-policy",
+          "upstream": [
+            "https://github.com/storytold/filmcraft/blob/f03e21556d8e3a7155b91892d958debd5255d7af/apps/filmcraft/Cargo.toml",
+            "https://github.com/tauri-apps/muda/blob/88e0c3658a85668872c621f77d6aad1616f42780/Cargo.toml",
+            "https://github.com/advisories/GHSA-wrw7-89jp-8q8g"
+          ],
+          "reason": "Disable unused Linux/BSD GTK defaults on the macOS-only Muda dependency and prune the unreachable GLib 0.18 graph. Preserve Muda 0.21.0, AppKit menus, all retained dependency versions, checksums and unrelated Windows selections. Locked target graph checks and native Darwin backend compilation guard the boundary.",
+          "removeWhen": "Remove when the selected application source disables these unused menu defaults or otherwise removes the affected GLib graph while preserving the native menu backend and passing the same target checks."
+        },
+        {
           "file": "rustcrypto-pki-types.patch",
           "sha256": "69fd22723366fa5f65fe2e26fa4a62b2a39ecc3b93056d63420804057136c738",
           "kind": "upstream-backport",
