@@ -275,6 +275,16 @@
       "sourceRevision": "11a51d5b665aec8d6e675bd107a8a01514f10d00",
       "patches": [
         {
+          "file": "print-fixture-timestamp.patch",
+          "sha256": "66d4ba637ec7c23c1e144d576b1e9477f16206028d2e80fe007b46f448b14b6a",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/designcraft/blob/11a51d5b665aec8d6e675bd107a8a01514f10d00/crates/engine/src/cmd/print.rs"
+          ],
+          "reason": "Give the existing private print seam an optional PDF creation timestamp. Production keeps the default wall clock; the selected-export test passes one fixed time to both exports, retaining exact PDF-byte equality and every spooler, selection and refusal assertion across second boundaries.",
+          "removeWhen": "Remove when upstream uses deterministic metadata in the print-submission fixture and the original full engine suite passes across a controlled delay between exports."
+        },
+        {
           "file": "zip-header-identity.patch",
           "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
           "kind": "upstream-candidate",

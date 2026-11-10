@@ -87,6 +87,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./remove-restricted-marks.patch
     ./register-all-craft-fonts.patch
     ./archive-security.patch
+    ./print-fixture-timestamp.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];
 

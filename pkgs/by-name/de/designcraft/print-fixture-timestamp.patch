@@ -1,0 +1,55 @@
+--- a/crates/engine/src/cmd/print.rs
++++ b/crates/engine/src/cmd/print.rs
+@@ -38,17 +38,19 @@
+         Err(bad("file.print", "printing isn't available on the web: export a PDF and print it"))
+     }
+     #[cfg(not(target_arch = "wasm32"))]
+-    print_with(s, p, craft_print::submit)
++    print_with(s, p, None, craft_print::submit)
+ }
+ 
+ #[cfg(not(target_arch = "wasm32"))]
+ fn print_with(
+     s: &mut Session,
+     p: &Value,
++    created: Option<i64>,
+     submit: impl FnOnce(&[u8], &craft_print::Job) -> std::result::Result<String, craft_print::Error>,
+ ) -> Result<Value> {
+     let d = &s.doc()?.doc;
+-    let opts = super::export::options(p, d.page_count())?;
++    let mut opts = super::export::options(p, d.page_count())?;
++    opts.created = created;
+     let copies = p.get("copies").and_then(Value::as_u64).unwrap_or(1).clamp(1, 999) as u32;
+     let job = craft_print::Job {
+         printer: str_param(p, "printer").map(str::to_string),
+@@ -96,12 +98,15 @@
+         let mut s = Session::new();
+         s.execute("file.new", &json!({"pages": 4})).unwrap();
+         let params = json!({"printer": "Office (east)", "copies": 2, "pages": "2-3", "marks": true, "bleed": true});
++        // Both exports describe the same fixture, independent of wall-clock boundaries.
++        let created = 1_700_000_000;
+         let expected = {
+             let d = &s.doc().unwrap().doc;
+-            let options = super::super::export::options(&params, d.page_count()).unwrap();
++            let mut options = super::super::export::options(&params, d.page_count()).unwrap();
++            options.created = Some(created);
+             designcraft_pdf::export_pdf(d, &s.cache, &options).unwrap()
+         };
+-        let r = print_with(&mut s, &params, |pdf, job| {
++        let r = print_with(&mut s, &params, Some(created), |pdf, job| {
+             // The production export options and full bytes reach the shared spooler boundary.
+             assert_eq!(pdf, expected);
+             assert!(pdf.starts_with(b"%PDF-"));
+@@ -114,9 +119,9 @@
+         })
+         .unwrap();
+         assert_eq!(r["pages"], 2);
+-        let refusal = print_with(&mut s, &params, |_, _| Err(craft_print::Error::Spool("printer offline".into()))).unwrap_err();
++        let refusal = print_with(&mut s, &params, None, |_, _| Err(craft_print::Error::Spool("printer offline".into()))).unwrap_err();
+         assert!(refusal.to_string().contains("printer offline"));
+-        print_with(&mut s, &json!({"dryRun": true}), |_, _| panic!("dry runs must not spool")).unwrap();
+-        assert!(print_with(&mut s, &json!({"pages": "9"}), |_, _| panic!("invalid ranges must not spool")).is_err());
++        print_with(&mut s, &json!({"dryRun": true}), None, |_, _| panic!("dry runs must not spool")).unwrap();
++        assert!(print_with(&mut s, &json!({"pages": "9"}), None, |_, _| panic!("invalid ranges must not spool")).is_err());
+     }
+ }
