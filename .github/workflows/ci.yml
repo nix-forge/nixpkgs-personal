@@ -29,7 +29,9 @@ jobs:
             exit 1
           fi
           cat baseline.log
-          grep -F 'not ok' baseline.log
+          grep -F 'ℹ tests 8' baseline.log
+          grep -F 'ℹ pass 4' baseline.log
+          grep -F 'ℹ fail 4' baseline.log
       - name: Determine exact npm dependency cache hash
         id: cache
         shell: bash
