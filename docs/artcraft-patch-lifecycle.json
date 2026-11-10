@@ -1000,6 +1000,16 @@
       "sourceRevision": "fc41918814f62645b6746ed68e71e8c2c2e85d6f",
       "patches": [
         {
+          "file": "chrome-focus-before-typing.patch",
+          "sha256": "3d72b5e01f1ff2a6d1cb9ffea6ba7fc21e965dab6b073375fc236a3c95e93b99",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/wordcraft/blob/fc41918814f62645b6746ed68e71e8c2c2e85d6f/crates/ui-egui/src/canvas.rs"
+          ],
+          "reason": "Honor a pending canvas focus request before consuming text in the frame following a ribbon click, while preserving focus taken by another widget. The original ribbon and status-bar typing regression fails on the pinned source because text is handled before the delayed response focus request. Keep every original UI assertion.",
+          "removeWhen": "Remove when the selected upstream canvas handles pending chrome focus before keyboard input and the original full native UI library suite passes without this patch."
+        },
+        {
           "file": "bounded-format-probe.patch",
           "sha256": "59d41be303de5f51c2822d70245b5fb50d91999402d22faffbe89321de52cf0e",
           "kind": "upstream-candidate",

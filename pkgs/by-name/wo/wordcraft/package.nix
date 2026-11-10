@@ -82,6 +82,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   patches = [
     ./archive-security.patch
     ./bounded-format-probe.patch
+    ./chrome-focus-before-typing.patch
     ./register-all-craft-fonts.patch
     ./optional-thai-cache-miss-fixture.patch
   ];
