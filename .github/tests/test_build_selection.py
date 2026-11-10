@@ -135,7 +135,7 @@ class BuildSelectionTests(unittest.TestCase):
                 command(["git", "config", "user.email", "ci@example.invalid"], root)
                 command(["git", "config", "core.hooksPath", "/dev/null"], root)
                 name = (
-                    "openai-codex-desktop"
+                    "chatgpt-latest"
                     if case == "unchanged-contracts"
                     else "maintainerr"
                     if case == "partitioned-maintainerr"
@@ -164,7 +164,8 @@ class BuildSelectionTests(unittest.TestCase):
                     name,
                     empty=case == "new-package",
                     invalid=case == "base-eval-failure",
-                    application=case == "application-contracts",
+                    application=case
+                    in {"application-contracts", "unchanged-contracts"},
                 )
                 if case == "registry-change":
                     registry = root / "flake/dev/packages.nix"
@@ -197,7 +198,8 @@ class BuildSelectionTests(unittest.TestCase):
                     root,
                     name,
                     invalid=case == "current-eval-failure",
-                    application=case == "application-contracts",
+                    application=case
+                    in {"application-contracts", "unchanged-contracts"},
                 )
                 if case == "registry-change":
                     package(registry, "other", version="2")
@@ -291,7 +293,7 @@ class BuildSelectionTests(unittest.TestCase):
                 elif case == "registry-change":
                     self.assertEqual(len(builds), 1, builds)
                     self.assertIn(".#other", builds[0])
-                elif case == "application-contracts":
+                elif case in {"application-contracts", "unchanged-contracts"}:
                     contracts = (
                         "cli",
                         "gui",
@@ -307,20 +309,11 @@ class BuildSelectionTests(unittest.TestCase):
                     self.assertEqual(len(builds), len(contracts), builds)
                     for index, contract in enumerate(contracts):
                         self.assertIn(
-                            f"applicationChecks.x86_64-linux.demo-{contract}",
+                            f"applicationChecks.x86_64-linux.{name}-{contract}",
                             builds[index],
                         )
                     self.assertNotIn("other-cli", "\n".join(builds))
                     self.assertIn("unchanged derivation", result.stdout)
-                elif case == "unchanged-contracts":
-                    self.assertEqual(len(builds), 1, builds)
-                    self.assertIn(
-                        "checks.x86_64-linux.openai-codex-desktop-updater", builds[0]
-                    )
-                    self.assertIn(
-                        "checks.x86_64-linux.openai-codex-desktop-package-contract",
-                        builds[0],
-                    )
                 else:
                     full_rebuild = case in {
                         "base-eval-failure",

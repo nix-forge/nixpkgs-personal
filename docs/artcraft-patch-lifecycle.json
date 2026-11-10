@@ -476,13 +476,13 @@
         },
         {
           "file": "home-recents-failure-context.patch",
-          "sha256": "2b7db69b31f4a92a258eae5b6627ab95d991d6c9f91da4695bf694ef7858ea2f",
+          "sha256": "d7994089c9434013ce7ce43003a08a2e7426252d90afa1c3f4e43ec0ed3920af",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/figcraft/blob/833f0d2c27f0acbae5394848930ae531fc89c724/crates/ui-egui/src/home_tests.rs"
           ],
-          "reason": "Report the actual home section and rendered text when the existing recent-file assertion fails. Preserve the assertion, test count and production UI behavior. Isolated and workspace UI probes pass locally; the hosted native ARM failure remains a required gate rather than a claimed fix.",
-          "removeWhen": "Remove when upstream includes equivalent assertion context or resolves the hosted failure, then run the original full native workspace suite without this patch."
+          "reason": "Wait for repaint notifications from the asynchronous recent-file metadata reader under one bounded deadline before checking the existing rendered-card assertions. Fixed virtual frames can finish while the real reader is still pending. Retain the assertion context, every functional assertion and the production UI behavior.",
+          "removeWhen": "Remove when the pinned upstream home-screen test waits for asynchronous recent-file metadata with equivalent assertions, then run the original full native workspace suite without this patch."
         }
       ]
     },

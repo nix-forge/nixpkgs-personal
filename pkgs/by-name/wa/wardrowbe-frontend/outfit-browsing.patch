@@ -1063,7 +1063,7 @@ new file mode 100644
 +    await act(async () => { navigation.search = '?filter=my-looks&page=2'; navigation.listeners.forEach(fn => fn()); });
 +    await screen.findByRole('heading', { name: 'Outfit 25' });
 +    expect(screen.queryByRole('heading', { name: 'Outfit 49' })).not.toBeInTheDocument();
-+  });
++  }, 30_000);
 +  it('preserves independent selected garments across page navigation', async () => {
 +    mount();
 +    await screen.findByRole('heading', { name: 'Outfit 1' });

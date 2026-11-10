@@ -1,10 +1,22 @@
 --- a/crates/ui-egui/src/home_tests.rs
 +++ b/crates/ui-egui/src/home_tests.rs
-@@ -217,7 +217,7 @@
+@@ -215,9 +215,18 @@
+     assert_eq!(u.app.session.doc().unwrap().name, "Landing page");
+     // With a recent file, the list shows in the row's place.
      u.app.ui.home = true;
++    // Recent-file metadata arrives off-thread; frames alone do not wait for it.
++    let (repaint_tx, repaint_rx) = std::sync::mpsc::channel();
++    u.ctx.set_request_repaint_callback(move |_| { let _ = repaint_tx.send(()); });
      u.app.session.prefs.recent_files = vec!["/tmp/ridgeline.figcraft".into()];
-     let s = settle(&mut u);
+-    let s = settle(&mut u);
 -    assert!(has_text(&s, "Recent files") && has_text(&s, "ridgeline"));
++    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
++    let mut s = settle(&mut u);
++    while !has_text(&s, "ridgeline") {
++        let Some(remaining) = deadline.checked_duration_since(std::time::Instant::now()) else { break; };
++        if repaint_rx.recv_timeout(remaining).is_err() { break; }
++        s = shapes(&mut u);
++    }
 +    assert!(has_text(&s, "Recent files") && has_text(&s, "ridgeline"), "home={} section={:?} texts={:?}", u.app.ui.home, u.app.ui.home_view.section, crate::live_tests::texts(&s));
      assert!(!has_text(&s, "Start from a template") && !has_text(&s, "See all templates"));
      assert!(has_text(&s, "Open files"), "the document opened from the template is listed");

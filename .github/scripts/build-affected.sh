@@ -93,11 +93,6 @@ while IFS= read -r package; do
       nix build ".#$package" --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
   fi
   # Additional contracts run even when the package output is unchanged.
-  if [[ $package == openai-codex-desktop ]]; then
-    nix build --no-link --keep-going --show-trace --print-build-logs \
-      ".#checks.$SYSTEM.openai-codex-desktop-updater" \
-      ".#checks.$SYSTEM.openai-codex-desktop-package-contract"
-  fi
   for contract in "$package-cli" "$package-gui" "$package-wayland" "$package-licenses" "$package-appstream" "$package-wayland-clipboard" "$package-server" "$package-quit-state" "$package-host-tests-artifact" "$package-appimage-runtime"; do
     if jq -e --arg contract "$contract" 'index($contract) != null' <<<"$application_checks" >/dev/null; then
       bash .github/scripts/build-with-fetch-retry.sh \
