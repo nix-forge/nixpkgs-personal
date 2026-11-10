@@ -121,11 +121,11 @@ stdenv.mkDerivation (finalAttrs: {
         pnpmWorkspaces
         ;
       inherit pnpm;
-      fetcherVersion = 4;
+      fetcherVersion = 5;
       hash = source.pnpmHash;
-      # pnpm 12's native CLI can use portable JSON package indexes instead of
-      # SQLite. This avoids relying on the pnpm 11 state-database ABI.
-      env.pnpm_config_store_index_format = "files";
+      # The pinned fetcher normalizes SQLite metadata and archives a stable SQL
+      # dump. pnpm 12 file indexes are binary and retain per-file timestamps.
+      env.pnpm_config_store_index_format = "sqlite";
       env.pnpm_config_force_ignores_platform = "true";
       nativeBuildInputs = [ buildNodejs ];
     };
@@ -151,7 +151,7 @@ stdenv.mkDerivation (finalAttrs: {
     NODE_PATH = lib.makeSearchPath "lib/node_modules" [ (node-gyp.override { nodejs = buildNodejs; }) ];
     npm_config_build_from_source = "true";
     npm_config_nodedir = "${buildNodejs}";
-    pnpm_config_store_index_format = "files";
+    pnpm_config_store_index_format = "sqlite";
     pnpm_config_pm_on_fail = "ignore";
     CI = "true";
     SHARP_FORCE_GLOBAL_LIBVIPS = "1";

@@ -1,7 +1,7 @@
 {
   version = "2.13.0";
   hash = "sha256-covP+bdzYNxAo+DFL2Ck2A3XCltsHz431PFdrs2cWO0=";
-  pnpmHash = "sha256-BAuT+lRV/RpgA9rnfofp0Dax5ENvsU9j4zj+Vjs6hkE=";
+  pnpmHash = "sha256-Jk0peGx9sSIFgx/M+h1ORVPw7+eAi2sNbq8g7unAiG8=";
   pnpm = {
     version = "12.15.0";
     sources = {
