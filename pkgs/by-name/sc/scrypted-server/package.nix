@@ -106,6 +106,7 @@ buildNpmPackage (finalAttrs: {
         cacheCheck = "${./scripts/check-cache-compatibility.mts}";
         runtimeCheck = "${./scripts/check-runtime-compatibility.mts}";
         transportCheck = "${./scripts/check-transports.mts}";
+        forgeCheck = "${./scripts/check-forge.mts}";
         nativeSvgLibrary = lib.getLib svgLibrary;
 
       }

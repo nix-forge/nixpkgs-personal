@@ -15,4 +15,5 @@ test -f "$app/node_modules/tar/LICENSE.md"
 timeout --kill-after=5s 90s @nodejs_24@/bin/node @cacheCheck@ "$app"
 timeout --kill-after=5s 90s @nodejs_24@/bin/node @runtimeCheck@ "$app" @nativeSvgLibrary@
 timeout --kill-after=5s 90s @nodejs_24@/bin/node @transportCheck@ "$app"
+timeout --kill-after=5s 30s @nodejs_24@/bin/node @forgeCheck@ "$app/node_modules/node-forge"
 runHook postInstallCheck
