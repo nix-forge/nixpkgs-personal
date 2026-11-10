@@ -226,17 +226,38 @@ jobs:
             partition-index: 5
           - system: aarch64-darwin
             runner: macos-26
-            name: Build (aarch64-darwin 1/2)
-            partition-count: 2
+            name: Build (aarch64-darwin 1/6)
+            partition-count: 6
             partition-index: 0
           - system: aarch64-darwin
             runner: macos-26
             name: Build (aarch64-darwin 2/2)
-            partition-count: 2
+            partition-count: 6
             partition-index: 1
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 3/6)
+            partition-count: 6
+            partition-index: 2
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 4/6)
+            partition-count: 6
+            partition-index: 3
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 5/6)
+            partition-count: 6
+            partition-index: 4
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 6/6)
+            partition-count: 6
+            partition-index: 5
     runs-on: ${{ matrix.runner }}
-    # Stable aggregate jobs below gate every shard. Six Linux shards
+    # Stable aggregate jobs below gate every shard. Six shards per system
     # bound cold application batches that exceeded the six-hour hosted limit.
+    # Legacy 2/2 names remain stable for branch-protection compatibility.
     # Each check/package still belongs to exactly one shard per native system.
     timeout-minutes: 360
     permissions:
@@ -296,6 +317,7 @@ jobs:
     timeout-minutes: 2
     permissions: {}
     strategy:
+      fail-fast: false
       matrix:
         system: [x86_64-linux, aarch64-linux, aarch64-darwin]
     steps:
