@@ -283,8 +283,7 @@ class BuildSelectionTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 evaluations = (temp / "eval.log").read_text().splitlines()
                 current_maps = [
-                    line for line in evaluations
-                    if ".#packages.x86_64-linux" in line
+                    line for line in evaluations if ".#packages.x86_64-linux" in line
                 ]
                 self.assertEqual(len(current_maps), 1, evaluations)
                 self.assertIn("builtins.mapAttrs", current_maps[0])
