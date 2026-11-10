@@ -166,27 +166,67 @@ jobs:
         include:
           - system: x86_64-linux
             runner: ubuntu-24.04
-            name: Build (x86_64-linux)
-            partition-count: 2
+            name: Build (x86_64-linux 1/6)
+            partition-count: 6
             partition-index: 0
           - system: x86_64-linux
             runner: ubuntu-24.04
             name: Build (x86_64-linux 2/2)
-            partition-count: 2
+            partition-count: 6
             partition-index: 1
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 3/6)
+            partition-count: 6
+            partition-index: 2
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 4/6)
+            partition-count: 6
+            partition-index: 3
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 5/6)
+            partition-count: 6
+            partition-index: 4
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 6/6)
+            partition-count: 6
+            partition-index: 5
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
-            name: Build (aarch64-linux)
-            partition-count: 2
+            name: Build (aarch64-linux 1/6)
+            partition-count: 6
             partition-index: 0
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
             name: Build (aarch64-linux 2/2)
-            partition-count: 2
+            partition-count: 6
             partition-index: 1
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 3/6)
+            partition-count: 6
+            partition-index: 2
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 4/6)
+            partition-count: 6
+            partition-index: 3
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 5/6)
+            partition-count: 6
+            partition-index: 4
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 6/6)
+            partition-count: 6
+            partition-index: 5
           - system: aarch64-darwin
             runner: macos-26
-            name: Build (aarch64-darwin)
+            name: Build (aarch64-darwin 1/2)
             partition-count: 2
             partition-index: 0
           - system: aarch64-darwin
@@ -195,7 +235,9 @@ jobs:
             partition-count: 2
             partition-index: 1
     runs-on: ${{ matrix.runner }}
-    # Cold source-build batches include optimized Rust apps and workspace tests.
+    # Stable aggregate jobs below gate every shard. Six Linux shards
+    # bound cold application batches that exceeded the six-hour hosted limit.
+    # Each check/package still belongs to exactly one shard per native system.
     timeout-minutes: 360
     permissions:
       contents: read
@@ -234,7 +276,7 @@ jobs:
         shell: bash
         run: bash .github/scripts/build-affected.sh
       - name: Verify ChatGPT bundle with Apple's signature verifier
-        if: matrix.system == 'aarch64-darwin'
+        if: matrix.system == 'aarch64-darwin' && matrix.partition-index == 0
         shell: bash
         run: |
           set -euo pipefail
@@ -246,6 +288,21 @@ jobs:
           bundle="$package/Applications/$bundle_name"
           test -d "$bundle"
           /usr/bin/codesign --verify --deep --strict --verbose=2 "$bundle"
+  build-complete:
+    name: Build (${{ matrix.system }})
+    needs: [build]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    strategy:
+      matrix:
+        system: [x86_64-linux, aarch64-linux, aarch64-darwin]
+    steps:
+      - name: Require every native build shard to pass
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: test "$BUILD_RESULT" = success
   expensive-font-audit:
     needs: [source-start]
     name: Manual expensive font audit (${{ matrix.system }})
@@ -311,6 +368,7 @@ jobs:
       - lint
       - flake
       - build
+      - build-complete
       - expensive-font-audit
       - expensive-audiomuse-audit
       - nur

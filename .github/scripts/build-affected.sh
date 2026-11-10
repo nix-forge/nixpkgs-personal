@@ -37,7 +37,9 @@ else
   echo '::notice::Base history unavailable; rebuilding all current packages.'
 fi
 
-all_packages=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
+current_derivations=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" \
+  --apply 'builtins.mapAttrs (_: package: package.drvPath)')
+all_packages=$(jq -r 'keys[]' <<<"$current_derivations")
 if [[ $base_available == false ]] || grep -qE '^((flake\.nix|flake\.lock|pkgs/default\.nix|\.github/ci-policy\.json)$|flake/|tests/|\.github/(scripts|tests|workflows)/)' <<<"$changed_files"; then
   targets="$all_packages"
 elif grep -q '^pkgs/by-name/' <<<"$changed_files"; then
@@ -85,7 +87,7 @@ while IFS= read -r package; do
     continue
   fi
   base_drv=$(jq -r --arg package "$package" '.[$package] // empty' <<<"$base_derivations")
-  current_drv=$(nix eval --raw ".#packages.$SYSTEM.$package.drvPath")
+  current_drv=$(jq -er --arg package "$package" '.[$package]' <<<"$current_derivations")
   if [[ -n $base_drv && $base_drv == "$current_drv" ]]; then
     echo "$package: unchanged derivation; no rebuild needed."
   else

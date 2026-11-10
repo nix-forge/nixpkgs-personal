@@ -49,7 +49,7 @@ def flake(root, name, empty=False, invalid=False, application=False):
 class BuildSelectionTests(unittest.TestCase):
     def test_weighted_partition_scales_with_new_packages(self):
         names = ["maintainerr", "alpha", "beta", "gamma", "future"]
-        for count in (1, 2, 3):
+        for count in (1, 2, 3, 6):
             shards = []
             for index in range(count):
                 result = subprocess.run(
@@ -255,6 +255,7 @@ class BuildSelectionTests(unittest.TestCase):
                     "REAL_GIT": real_git,
                     "TEST_CASE": case,
                     "BUILD_LOG": str(log),
+                    "EVAL_LOG": str(temp / "eval.log"),
                     "BASE_SHA": base,
                     "SYSTEM": "x86_64-linux",
                 }
@@ -280,6 +281,14 @@ class BuildSelectionTests(unittest.TestCase):
                         self.assertIn("policy", result.stdout.lower())
                     continue
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                evaluations = (temp / "eval.log").read_text().splitlines()
+                current_maps = [
+                    line for line in evaluations
+                    if ".#packages.x86_64-linux" in line
+                ]
+                self.assertEqual(len(current_maps), 1, evaluations)
+                self.assertIn("builtins.mapAttrs", current_maps[0])
+                self.assertFalse(any("--raw" in line for line in evaluations))
                 if case == "evaluation-only":
                     self.assertEqual(builds, [])
                     self.assertIn("fixture restriction", result.stdout)
