@@ -9,6 +9,7 @@
   pkg-config,
   makeWrapper,
   python3,
+  coreutils,
   runCommand,
   appstream,
   desktop-file-utils,
@@ -69,6 +70,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./headless-shortcut-test.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./statm-rss-sampling.patch ];
+  # The isolated fake spooler deliberately hides PATH. Linux sandboxes have
+  # /bin/sh but no /bin/cat; keep the PDF transport assertions intact.
+  postPatch = lib.optionalString stdenv.hostPlatform.isLinux ''
+    substituteInPlace crates/engine/src/print_cmds/tests.rs \
+      --replace-fail '/bin/cat >' '${coreutils}/bin/cat >'
+  '';
   strictDeps = true;
   checkType = "debug";
   # This native integration test requires macOS services outside the build sandbox.
