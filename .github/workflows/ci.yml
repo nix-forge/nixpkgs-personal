@@ -4,8 +4,8 @@ on:
 permissions: {}
 jobs:
   photocraft-spool:
-    name: Photocraft isolated PDF spool transport
-    runs-on: ubuntu-24.04
+    name: Photocraft ARM isolated PDF spool transport
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
     permissions:
       contents: read

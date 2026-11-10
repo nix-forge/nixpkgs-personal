@@ -1,7 +1,7 @@
 let
   flake = builtins.getFlake ("git+file://" + toString ../..);
 in
-flake.packages.x86_64-linux.photocraft.overrideAttrs (previous: {
+flake.packages.${builtins.currentSystem}.photocraft.overrideAttrs (previous: {
   pname = "photocraft-spool-diagnostic";
   cargoBuildType = "debug";
   cargoCheckType = "debug";
