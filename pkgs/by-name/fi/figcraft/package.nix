@@ -68,6 +68,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./nix-fontconfig-discovery.patch
     ./portable-ui-regressions.patch
     ./archive-security.patch
+    ./home-recents-failure-context.patch
   ];
   cargoBuildFlags = [
     "-p"
