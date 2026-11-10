@@ -4,7 +4,7 @@ on:
 permissions: {}
 jobs:
   wordcraft-ui:
-    name: WordCraft ARM UI with Mesa and assertion context
+    name: WordCraft ARM unchanged UI suite
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
     permissions:
