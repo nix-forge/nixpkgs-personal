@@ -262,7 +262,7 @@ Anthropic's official Claude AI desktop app.
 
 [Recipe](../pkgs/by-name/cl/claude-desktop/package.nix) · [Package guide](../pkgs/by-name/cl/claude-desktop/README.md) · [Upstream](https://claude.com/download)
 
-- `aarch64-darwin`: 4.23118.0; unfree; includes unfree terms.
+- `aarch64-darwin`: 4.23118.1; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#claude-desktop
@@ -919,9 +919,9 @@ Agent skills catalog from pstack.
 
 [Recipe](../pkgs/by-name/ps/pstack-skills/package.nix) · [Package guide](../pkgs/by-name/ps/pstack-skills/README.md) · [Upstream](https://github.com/cursor/plugins/tree/main/pstack)
 
-- `aarch64-darwin`: unstable-2026-11-07; [MIT](https://spdx.org/licenses/MIT.html).
-- `aarch64-linux`: unstable-2026-11-07; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: unstable-2026-11-07; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: unstable-2026-11-10; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: unstable-2026-11-10; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: unstable-2026-11-10; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#pstack-skills
