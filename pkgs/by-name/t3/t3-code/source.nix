@@ -1,14 +1,14 @@
 {
-  version = "0.1.7";
+  version = "0.1.9";
   appName = "T3 Code (Beta)";
   darwin = {
-    url = "https://github.com/pingdotgg/t3code/releases/download/v0.1.7/T3-Code-0.1.7-arm64.zip";
-    hash = "sha256-N6TwR0kLg+jX4OTtD47ZAzji0gNlXgopNiHyTBOSF6E=";
+    url = "https://github.com/pingdotgg/t3code/releases/download/v0.1.9/T3-Code-0.1.9-arm64.zip";
+    hash = "sha256-A+9CbmasWxZwAYhZbBOU9EhYa4q3zDeeHjIbKfLEWX4=";
   };
   linux = {
-    rev = "v0.1.7";
-    hash = "sha256-oQLmDCDuJPNBsf8MHMD2xhMq+CF6L836/PQesM91Clw=";
-    pnpmHash = "sha256-mGMdPJhaSrMEAXlo2cqOpkS7QQFJSj4cdRpjwD7QNfU=";
+    rev = "v0.1.9";
+    hash = "sha256-3i5o9gs/nYx0vxyn2ukYtLEA21UZZdX0x4ebgxY8bhI=";
+    pnpmHash = "sha256-ZFh1hR/xKU1dfo2bZVR8xvyZ3BX6VXKO91sX/E8YNmM=";
     cargoHash = "sha256-5cmG2daM1bVOA23gjjoalbx0fEL1hmqV6WZov0sUZp8=";
     kdeCargoHash = "sha256-ZbetrRAvnNLLS51IwR9xLb1NhnpFQB4J1ahn4CthJy0=";
     hyprlandCargoHash = "sha256-oki1DAzUJ/8YIFhaJlw2wOukiQMcAaexdJqxDcFXFW4=";
