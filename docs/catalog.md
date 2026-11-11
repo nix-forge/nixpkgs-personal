@@ -248,9 +248,9 @@ Desktop application for ChatGPT.
 
 [Recipe](../pkgs/by-name/ch/chatgpt-latest/package.nix) · [Package guide](../pkgs/by-name/ch/chatgpt-latest/README.md) · [Upstream](https://developers.openai.com/codex/app)
 
-- `aarch64-darwin`: 26.1103.60933; unfree; includes unfree terms.
-- `aarch64-linux`: 26.1103.60933; unfree; includes unfree terms.
-- `x86_64-linux`: 26.1103.60933; unfree; includes unfree terms.
+- `aarch64-darwin`: 26.1106.51428; unfree; includes unfree terms.
+- `aarch64-linux`: 26.1106.51428; unfree; includes unfree terms.
+- `x86_64-linux`: 26.1106.51428; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#chatgpt-latest
@@ -262,7 +262,7 @@ Anthropic's official Claude AI desktop app.
 
 [Recipe](../pkgs/by-name/cl/claude-desktop/package.nix) · [Package guide](../pkgs/by-name/cl/claude-desktop/README.md) · [Upstream](https://claude.com/download)
 
-- `aarch64-darwin`: 4.23118.1; unfree; includes unfree terms.
+- `aarch64-darwin`: 5.1231.2; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#claude-desktop
