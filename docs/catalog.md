@@ -919,9 +919,9 @@ Agent skills catalog from pstack.
 
 [Recipe](../pkgs/by-name/ps/pstack-skills/package.nix) · [Package guide](../pkgs/by-name/ps/pstack-skills/README.md) · [Upstream](https://github.com/cursor/plugins/tree/main/pstack)
 
-- `aarch64-darwin`: unstable-2026-11-10; [MIT](https://spdx.org/licenses/MIT.html).
-- `aarch64-linux`: unstable-2026-11-10; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: unstable-2026-11-10; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: unstable-2026-11-11; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: unstable-2026-11-11; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: unstable-2026-11-11; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#pstack-skills
