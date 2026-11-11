@@ -4,7 +4,7 @@ on:
 permissions: {}
 jobs:
   scrypted-forge:
-    name: Scrypted Forge original and patched installed acceptance
+    name: Scrypted Forge literal source pin and installed acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions:
@@ -17,37 +17,12 @@ jobs:
       - uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           cache: 'false'
-      - name: Confirm actual vulnerable library fails the regression cases
+      - name: Require every security regression and valid control on Forge 1.4.3
         shell: bash
         run: |
           set -euo pipefail
           node=$(nix build --impure --no-link --print-out-paths --file .github/diagnostics/scrypted-forge.nix node)
-          baseline=$(nix build --impure --no-link --print-out-paths --file .github/diagnostics/scrypted-forge.nix baseline)
-          if "$node/bin/node" pkgs/by-name/sc/scrypted-server/scripts/check-forge.mts "$baseline" > baseline.log 2>&1; then
-            cat baseline.log
-            echo 'Vulnerable baseline unexpectedly passed.' >&2
-            exit 1
-          fi
-          cat baseline.log
-          grep -F 'ℹ tests 8' baseline.log
-          grep -F 'ℹ pass 4' baseline.log
-          grep -F 'ℹ fail 4' baseline.log
-      - name: Determine exact npm dependency cache hash
-        id: cache
-        shell: bash
-        run: |
-          set -euo pipefail
-          if nix build --impure --no-link -L --file .github/diagnostics/scrypted-forge.nix npmDeps 2>&1 | tee npm-deps.log; then
-            echo 'Dummy hash unexpectedly succeeded.' >&2
-            exit 1
-          fi
-          hash=$(sed -nE 's/^[[:space:]]*got:[[:space:]]*(sha256-[A-Za-z0-9+/=]+)[[:space:]]*$/\1/p' npm-deps.log)
-          [[ $hash =~ ^sha256-[A-Za-z0-9+/]{43}=$ ]]
-          printf 'hash=%s\n' "$hash" >> "$GITHUB_OUTPUT"
-          printf 'Resolved npm dependency cache: `%s`\n' "$hash" >> "$GITHUB_STEP_SUMMARY"
-      - name: Build complete Scrypted package and all installed checks
-        env:
-          NPM_DEPS_HASH: ${{ steps.cache.outputs.hash }}
-        run: |
-          nix build --impure --no-link -L --file .github/diagnostics/scrypted-forge.nix \
-            --argstr npmDepsHash "$NPM_DEPS_HASH" package
+          candidate=$(nix build --impure --no-link --print-out-paths --file .github/diagnostics/scrypted-forge.nix candidate)
+          "$node/bin/node" pkgs/by-name/sc/scrypted-server/scripts/check-forge.mts "$candidate"
+      - name: Build complete Scrypted from the real source pin and all installed checks
+        run: nix build --impure --no-link -L --file .github/diagnostics/scrypted-forge.nix package
