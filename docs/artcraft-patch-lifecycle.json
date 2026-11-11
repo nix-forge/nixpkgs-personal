@@ -1004,7 +1004,19 @@
     },
     "vectorcraft": {
       "sourceRevision": "8bc65329286dc1b84aa392997bb205613c3e96cb",
-      "patches": []
+      "patches": [
+        {
+          "file": "pdf13-test-inspection.patch",
+          "sha256": "7d3564f9a3558267debebb7b157b22110034275fd1f9d40927222776a5fa44c5",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/vectorcraft/blob/8bc65329286dc1b84aa392997bb205613c3e96cb/crates/engine/src/cmd/fileio/tests_pdf13.rs",
+            "https://github.com/storytold/vectorcraft/blob/8bc65329286dc1b84aa392997bb205613c3e96cb/crates/pdf/src/pdfx.rs"
+          ],
+          "reason": "Inspect whole PDF object names and values outside stream data in the PDF 1.3 test helper. Binary image bytes and longer names can contain /BM without blend-mode state. Check every graphics state so a Normal entry cannot hide Multiply, while preserving all original export and rendered-equivalence assertions.",
+          "removeWhen": "Remove when upstream uses an equivalent writer-format-aware test inspector, the binary image and mixed-state controls pass, and the complete engine suite passes without this patch."
+        }
+      ]
     },
     "wordcraft": {
       "sourceRevision": "fc41918814f62645b6746ed68e71e8c2c2e85d6f",

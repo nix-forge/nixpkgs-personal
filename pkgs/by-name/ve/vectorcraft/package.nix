@@ -60,6 +60,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     repo = "vectorcraft";
     inherit (source) rev hash;
   };
+  patches = [ ./pdf13-test-inspection.patch ];
   strictDeps = true;
   checkType = "debug";
   # Library tests use synthetic servers on loopback; external networking stays blocked.
