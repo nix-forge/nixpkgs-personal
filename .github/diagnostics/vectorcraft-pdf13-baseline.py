@@ -7,6 +7,7 @@ text = source.read_text()
 start = text.index("fn transparency(")
 end = text.index("// Like the writer's PDF/X", start)
 original = Path(sys.argv[1]).read_text()
+assert original.startswith("fn transparency(") and original.count("fn transparency(") == 1, "Missing original transparency inspector"
 original = original.replace("    let text =", '    let _ = name_values(&pdf_objects(pdf), b"/BM");\n    let text =', 1)
 text = text[:start] + original + "\n\n" + text[end:]
 needle = "    assert_eq!(transparency(&pdf), Vec::<&str>::new());"
