@@ -14,7 +14,15 @@ let
   py = python313Packages;
   # PostHog 7.x's optional MCP test integration requires MCP <2. Preserve its
   # complete upstream suite using Nixpkgs' maintained compatibility package.
-  enginePosthog = py.posthog.override { mcp = py.mcp_1 or py.mcp; };
+  enginePosthog = (py.posthog.override { mcp = py.mcp_1 or py.mcp; }).overridePythonAttrs (previous: {
+    # Nix's 64 MiB thread stacks inflate this thread-heavy suite's virtual
+    # address space enough to deny real forks despite spare physical memory.
+    # Use the normal Linux soft stack limit before Python starts; retain all
+    # tests, thread counts, hard limits and compiler parallelism.
+    preCheck = (previous.preCheck or "") + ''
+      ulimit -S -s 8192
+    '';
+  });
   # The engine explicitly requires Pydantic AI 1.x. Keep both halves on the
   # version in engine/uv.lock instead of taking Nixpkgs' incompatible 2.x.
   aiSource = fetchFromGitHub {
