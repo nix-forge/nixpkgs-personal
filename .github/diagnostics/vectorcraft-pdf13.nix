@@ -26,7 +26,10 @@ flake.packages.${builtins.currentSystem}.vectorcraft.overrideAttrs (previous: {
       echo 'Old raw inspector unexpectedly accepted the binary fixture.' >&2
       exit 1
     fi
-    grep -F 'test result: FAILED. 0 passed; 1 failed;' baseline.log
+    if ! grep -F 'test result: FAILED. 0 passed; 1 failed;' baseline.log; then
+      cat baseline.log
+      exit 1
+    fi
     if run_engine cmd::fileio::tests_pdf13::pdf_1_3_flattens_all_transparency_and_looks_the_same --exact > export-context.log 2>&1; then
       cat export-context.log
     else
