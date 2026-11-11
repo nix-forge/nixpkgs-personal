@@ -34,17 +34,22 @@ def snapshot(phase, error=None):
     os.write(_trace_fd, ("POSTHOG_FORK_RESOURCE " + json.dumps(result) + "\n").encode())
 
 
-def traced_fork():
+def observe(phase, error=None):
     try:
-        snapshot("before-fork")
-    except Exception as exc:
-        os.write(_trace_fd, ("POSTHOG_FORK_RESOURCE observation error: " + str(exc) + "\n").encode())
+        snapshot(phase, error)
+    except Exception:
+        # Observation must never replace the original fork result or exception.
+        pass
+
+
+def traced_fork():
+    observe("before-fork")
     try:
         return _native_fork()
     except OSError as exc:
-        snapshot("fork-error", exc.errno)
+        observe("fork-error", exc.errno)
         raise
 
 
-snapshot("python-start")
+observe("python-start")
 os.fork = traced_fork
