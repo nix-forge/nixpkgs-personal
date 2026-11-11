@@ -1,7 +1,9 @@
 {
   "default": 1,
   "weights": {
+    "aurral": 150,
     "cadcraft": 25,
+    "codex-latest": 90,
     "craft-launcher": 25,
     "deckcraft": 25,
     "designcraft": 25,
