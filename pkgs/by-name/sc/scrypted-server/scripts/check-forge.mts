@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { test } from "node:test";
 
-const modulePath = process.argv[2];
+const modulePath = process.argv[2] ?? "";
 assert.ok(modulePath, "Pass the installed node-forge directory");
 const require = createRequire(import.meta.url);
 const forge: unknown = require(modulePath);
