@@ -7,6 +7,16 @@
     in
     {
       devShells = {
+        # NUR needs the pinned process helper, not the developer formatter,
+        # compiler and hook closures. Keep the shared admission deadline for
+        # actual restricted-index and native-platform evaluation.
+        nur = pkgs.buildPackages.mkShellNoCC {
+          packages = [
+            (pkgs.buildPackages.python3.withPackages (_: [
+              (pkgs.buildPackages.callPackage ../../pkgs/by-name/no/notification-process/package.nix { })
+            ]))
+          ];
+        };
         default = pkgs.buildPackages.mkShellNoCC {
           inherit shellHook;
           LIBRARY_PATH = lib.optionalString pkgs.buildPackages.stdenv.hostPlatform.isDarwin "${pkgs.buildPackages.libiconv}/lib";

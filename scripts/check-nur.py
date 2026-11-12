@@ -11,6 +11,7 @@ os.execvp(  # ruff: ignore[start-process-with-no-shell] - Fixed argv replaces th
     [
         "nix",
         "develop",
+        ".#nur",
         "--command",
         "python3",
         str(Path(__file__).with_name("check_nur.py")),

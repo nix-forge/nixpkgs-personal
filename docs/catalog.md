@@ -87,9 +87,9 @@ Official Actual Budget command line client.
 
 [Recipe](../pkgs/by-name/ac/actual-cli/package.nix) · [Package guide](../pkgs/by-name/ac/actual-cli/README.md) · [Upstream](https://actualbudget.org/)
 
-- `aarch64-darwin`: 26.10.0; [MIT](https://spdx.org/licenses/MIT.html).
-- `aarch64-linux`: 26.10.0; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: 26.10.0; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: 26.11.0; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: 26.11.0; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: 26.11.0; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#actual-cli
@@ -323,8 +323,8 @@ Screenshot utility with freeform region capture.
 
 [Recipe](../pkgs/by-name/gr/grimblast-region/package.nix) · [Package guide](../pkgs/by-name/gr/grimblast-region/README.md) · [Upstream](https://github.com/hyprwm/contrib)
 
-- `aarch64-linux`: 0.1-unstable-2026-08-21; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: 0.1-unstable-2026-08-21; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: 0.1-unstable-2026-10-22; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: 0.1-unstable-2026-10-22; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#grimblast-region
@@ -453,9 +453,9 @@ Jellyfin Web with configurable caption rendering.
 
 [Recipe](../pkgs/by-name/je/jellyfin-web-personal/package.nix) · [Package guide](../pkgs/by-name/je/jellyfin-web-personal/README.md) · [Upstream](https://jellyfin.org/)
 
-- `aarch64-darwin`: 12.2; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html).
-- `aarch64-linux`: 12.2; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html).
-- `x86_64-linux`: 12.2; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html).
+- `aarch64-darwin`: 12.4; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html).
+- `aarch64-linux`: 12.4; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html).
+- `x86_64-linux`: 12.4; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#jellyfin-web-personal
