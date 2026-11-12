@@ -61,6 +61,10 @@ let
                       checkPhase = ''
                         runHook preCheck
                         test -f tests/run/pure_pxd.srctree
+                        # Python 3.12+ removed stdlib distutils. Keep the entire
+                        # upstream fixture, using its declared build backend.
+                        substituteInPlace tests/run/pure_pxd.srctree \
+                          --replace-fail 'from distutils.core import setup' 'from setuptools import setup'
                         ${python3.interpreter} runtests.py -j"$NIX_BUILD_CORES" --no-code-style pure_pxd
                         runHook postCheck
                       '';
