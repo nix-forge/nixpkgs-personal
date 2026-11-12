@@ -35,8 +35,6 @@ let
     "firefox-emoji"
     "google-fonts-design"
     "jellyfin-plugin-moonbase"
-    "libreoffice"
-    "linearmouse"
     "microsoft-teams"
     "moonfin"
     "mplus-outline-fonts-compatible"
@@ -149,11 +147,7 @@ let
         # The Arlo build toolchain pulls cargo-bootstrap, which has independent
         # non-source provenance. The inventory above checks Arlo's own output.
         // lib.optionalAttrs (system == "x86_64-linux") { scrypted-plugin-homekit = false; }
-        // lib.optionalAttrs base.stdenv.hostPlatform.isDarwin {
-          bitwarden-desktop-bin = false;
-          libreoffice = false;
-          linearmouse = false;
-        }
+        // lib.optionalAttrs base.stdenv.hostPlatform.isDarwin { bitwarden-desktop-bin = false; }
       );
   variants = {
     anthropicFullDenied =
