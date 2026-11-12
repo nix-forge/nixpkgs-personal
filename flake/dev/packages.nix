@@ -88,8 +88,6 @@ in
               ../../tests/check_desktop_items.py
               ../../tests/check_app_bundle.py
               ../../tests/test_app_bundle_metadata.py
-              ../../pkgs/by-name/da/darktable-app-personal/test_bundle.py
-              ../../pkgs/by-name/da/darktable-app-personal/scripts/configure_bundle.py
             ];
           };
           desktopContracts =
@@ -115,7 +113,6 @@ in
           (
             ''
               python3 -B ${source}/tests/test_app_bundle_metadata.py
-              python3 -B ${source}/pkgs/by-name/da/darktable-app-personal/test_bundle.py
             ''
             + lib.concatMapStrings (
               contract:

@@ -1,7 +1,0 @@
-[workspace]
-resolver = "2"
-members = [
-  "crates/swc_native_addon",
-  "tools/swc-native-addon-pack",
-  "bindings/binding_native_addon",
-]

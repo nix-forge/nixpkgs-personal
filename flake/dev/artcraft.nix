@@ -109,30 +109,19 @@
       )
       // {
         craft-launcher-quit-state = packages.craft-launcher.tests.quitState;
-        deckcraft-archive-compatibility = packages.deckcraft.tests.archiveCompatibility;
         designcraft-archive-compatibility = packages.designcraft.tests.archiveCompatibility;
         figcraft-archive-compatibility = packages.figcraft.tests.archiveCompatibility;
         figcraft-server = packages.figcraft.tests.server;
         filmcraft-menu-dependencies = packages.filmcraft.tests.menuDependencies;
         filmcraft-tls-provider = packages.filmcraft.tests.tlsProvider;
         filmcraft-archive-compatibility = packages.filmcraft.tests.archiveCompatibility;
-        gridcraft-archive-compatibility = packages.gridcraft.tests.archiveCompatibility;
-        lightcraft-tls-provider = packages.lightcraft.tests.tlsProvider;
-        lightcraft-segment-compatibility = packages.lightcraft.tests.segmentCompatibility;
-        wordcraft-archive-compatibility = packages.wordcraft.tests.archiveCompatibility;
-        soundcraft-archive-compatibility = packages.soundcraft.tests.archiveCompatibility;
       }
       // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
         craft-launcher-host-tests-artifact = packages.craft-launcher.hostTests.native;
-        photocraft-host-tests-artifact = packages.photocraft.hostTests.native;
-        soundcraft-host-tests-artifact = packages.soundcraft.hostTests.native;
       }
       // pkgs.lib.optionalAttrs (
         pkgs.stdenv.hostPlatform.isLinux && (packages.craft-launcher.tests ? appimageRuntime)
       ) { craft-launcher-appimage-runtime = packages.craft-launcher.tests.appimageRuntime; }
-      // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-        pdfcraft-wayland-clipboard = packages.pdfcraft.tests.waylandClipboard;
-      }
       // guiChecks
       // waylandChecks
       // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {

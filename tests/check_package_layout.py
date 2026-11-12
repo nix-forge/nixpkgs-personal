@@ -14,16 +14,12 @@ from notification_process import run as run_command
 # List intended copies explicitly; specialized Windows and emoji font inspectors
 # have separate behavior and do not belong to the Apple font helper group.
 HELPER_COPIES = {
-    "release_support.py": ("chatgpt-latest", "codex-latest"),
     "run_update.py": (
-        "chatgpt-latest",
-        "codex-latest",
         "anthropic-skills",
         "apple-color-emoji",
         "apple-fonts",
         "audiomuse-ai",
         "bitwarden-desktop",
-        "claude-desktop",
         "jellyfin-plugin-moonbase",
         "jellyfin-plugin-subtitle-extract",
         "libreoffice",
@@ -45,14 +41,11 @@ HELPER_COPIES = {
         "wootility",
     ),
     "update_transaction.py": (
-        "chatgpt-latest",
-        "codex-latest",
         "anthropic-skills",
         "apple-color-emoji",
         "apple-fonts",
         "audiomuse-ai",
         "bitwarden-desktop",
-        "claude-desktop",
         "jellyfin-plugin-moonbase",
         "jellyfin-plugin-subtitle-extract",
         "libreoffice",
@@ -81,8 +74,6 @@ HELPER_COPIES = {
     ),
     "notification_process.py": (
         "notification-process",
-        "chatgpt-latest",
-        "codex-latest",
         "jellyfin-plugin-moonbase",
         "jellyfin-plugin-subtitle-extract",
         "moonfin",
@@ -93,13 +84,10 @@ HELPER_COPIES = {
     ),
     "catalog.py": ("anthropic-skills", "openai-skills"),
     "update_support.py": (
-        "chatgpt-latest",
-        "codex-latest",
         "anthropic-skills",
         "apple-color-emoji",
         "apple-fonts",
         "bitwarden-desktop",
-        "claude-desktop",
         "libreoffice",
         "linearmouse",
         "mattpocock-skills",

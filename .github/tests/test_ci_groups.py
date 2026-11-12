@@ -37,7 +37,7 @@ class CheckGroupTests(unittest.TestCase):
                 before = inspect { first = null; } {};
                 added = inspect { first = null; new-check = null; } {};
                 removed = inspect { new-check = null; } {};
-                application = inspect { photocraft-cli = null; photocraft-gui = null; photocraft-wayland = null; photocraft-licenses = null; photocraft-appstream = null; photocraft-host-tests-artifact = null; soundcraft-host-tests-artifact = null; craft-launcher-host-tests-artifact = null; craft-launcher-quit-state = null; craft-launcher-appimage-runtime = null; figcraft-server = null; artcraft-gui = null; } {};
+                application = inspect { designcraft-cli = null; designcraft-gui = null; designcraft-wayland = null; designcraft-licenses = null; designcraft-appstream = null; designcraft-host-tests-artifact = null; effectcraft-host-tests-artifact = null; craft-launcher-host-tests-artifact = null; craft-launcher-quit-state = null; craft-launcher-appimage-runtime = null; figcraft-server = null; artcraft-gui = null; } {};
                 newOwner = inspect { first = null; } { new-lint-check = null; };
             }
         """.replace("MODULE", json.dumps(str(MODULE)))
@@ -61,14 +61,14 @@ class CheckGroupTests(unittest.TestCase):
                 "craft-launcher-appimage-runtime",
                 "craft-launcher-host-tests-artifact",
                 "craft-launcher-quit-state",
+                "designcraft-appstream",
+                "designcraft-cli",
+                "designcraft-gui",
+                "designcraft-host-tests-artifact",
+                "designcraft-licenses",
+                "designcraft-wayland",
+                "effectcraft-host-tests-artifact",
                 "figcraft-server",
-                "photocraft-appstream",
-                "photocraft-cli",
-                "photocraft-gui",
-                "photocraft-host-tests-artifact",
-                "photocraft-licenses",
-                "photocraft-wayland",
-                "soundcraft-host-tests-artifact",
             ],
         )
         for case in result.values():

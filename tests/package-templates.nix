@@ -65,10 +65,6 @@ let
     ++ lib.optionals (packages ? navidrome-plugin-audiomuseai-personal) [
       packages.navidrome-plugin-audiomuseai-personal.wasmSource
     ]
-    ++ lib.optionals (packages ? pdfcraft) [ packages.pdfcraft.drvAttrs.PDFCRAFT_MODELS ]
-    ++ lib.optionals (packages ? pdfcraft && base.stdenv.hostPlatform.isLinux) [
-      packages.pdfcraft.tests.waylandClipboard.artifact
-    ]
     ++ lib.optionals (packages ? jellyfin-plugin-moonbase) [
       (scope.callPackage ../pkgs/by-name/je/jellyfin-plugin-moonbase/web.nix { })
     ];

@@ -296,19 +296,7 @@ jobs:
           PARTITION_INDEX: ${{ matrix.partition-index }}
         shell: bash
         run: bash .github/scripts/build-affected.sh
-      - name: Verify ChatGPT bundle with Apple's signature verifier
-        if: matrix.system == 'aarch64-darwin' && matrix.partition-index == 0
-        shell: bash
-        run: |
-          set -euo pipefail
-          package=$(nix eval --raw --no-write-lock-file .#packages.aarch64-darwin.chatgpt-latest.outPath)
-          bundle_name=$(nix eval --raw --no-write-lock-file .#packages.aarch64-darwin.chatgpt-latest.meta.mainDarwinApp)
-          if [[ ! -d "$package" ]]; then
-            nix build --no-link --no-write-lock-file .#packages.aarch64-darwin.chatgpt-latest
-          fi
-          bundle="$package/Applications/$bundle_name"
-          test -d "$bundle"
-          /usr/bin/codesign --verify --deep --strict --verbose=2 "$bundle"
+
   build-complete:
     name: Build (${{ matrix.system }})
     needs: [build]

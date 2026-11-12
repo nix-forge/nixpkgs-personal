@@ -135,7 +135,7 @@ class BuildSelectionTests(unittest.TestCase):
                 command(["git", "config", "user.email", "ci@example.invalid"], root)
                 command(["git", "config", "core.hooksPath", "/dev/null"], root)
                 name = (
-                    "chatgpt-latest"
+                    "unchanged-app"
                     if case == "unchanged-contracts"
                     else "maintainerr"
                     if case == "partitioned-maintainerr"

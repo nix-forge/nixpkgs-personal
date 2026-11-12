@@ -2,7 +2,6 @@
 let
   applicationCheckNames = [
     "artcraft-gui"
-    "pdfcraft-wayland-clipboard"
   ]
   ++ builtins.concatMap (name: [
     "${name}-cli"

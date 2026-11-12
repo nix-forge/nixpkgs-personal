@@ -34,9 +34,7 @@
     "pkgs/by-name/re/reactflux/*.mts",
     "pkgs/by-name/ho/homebridge-samsung-tizen/strict-power-state.test.mts",
     "tests/javascript/**/*.test.mts",
-    "tests/javascript/**/*.mts",
-    "pkgs/by-name/au/aurral/test-api.mts",
-    "pkgs/by-name/bo/bookorbit/scripts/select-swc.cjs"
+    "tests/javascript/**/*.mts"
   ],
   "exclude": ["pkgs/by-name/re/reactflux/images.test.mts"]
 }

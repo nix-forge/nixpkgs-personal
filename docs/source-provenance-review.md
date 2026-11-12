@@ -8,10 +8,10 @@ or generated in the derivation.
 
 | Current treatment | Packages | Reason |
 | --- | --- | --- |
-| Built from source, sometimes with binary dependencies | `audiomuse-ai`, `aurral`, `codex-latest`, `bibata-cursors-hyprcursor`, `finder-favorites`, `grimblast-region`, `hyprlock-personal`, `jellyfin-plugin-intro-skipper`, `jellyfin-plugin-moonbase`, `jellyfin-plugin-subtitle-extract`, `maintainerr`, `moonfin` (Linux), `msdl-cli`, `mutant-standard-emoji`, `navidrome-plugin-audiomuseai-personal`, `nd-lyrics`, `noctalia-greeter-personal`, `noctalia-personal`, `ocr-capture`, `psscriptanalyzer`, `steam-cef-scale-override`, `vorssaint`, `wardrowbe-backend`, `wardrowbe-frontend` | The recipe compiles or transforms the package's own code from pinned source. See the retained inputs below; the classification does not imply that every dependency is compiled locally. |
+| Built from source, sometimes with binary dependencies | `audiomuse-ai`, `bibata-cursors-hyprcursor`, `finder-favorites`, `grimblast-region`, `hyprlock-personal`, `jellyfin-plugin-intro-skipper`, `jellyfin-plugin-moonbase`, `jellyfin-plugin-subtitle-extract`, `maintainerr`, `moonfin` (Linux), `msdl-cli`, `mutant-standard-emoji`, `navidrome-plugin-audiomuseai-personal`, `nd-lyrics`, `noctalia-greeter-personal`, `noctalia-personal`, `ocr-capture`, `psscriptanalyzer`, `steam-cef-scale-override`, `vorssaint`, `wardrowbe-backend`, `wardrowbe-frontend` | The recipe compiles or transforms the package's own code from pinned source. See the retained inputs below; the classification does not imply that every dependency is compiled locally. |
 | Source text or vector assets | `anthropic-skills`, `mattpocock-skills`, `noctalia-dark-app-icons`, `openai-skills`, `pstack-skills` | The deliverable is source text or SVG data; compilation would add no value. |
 | Font binaries or distribution assets | `apple-color-emoji`, `apple-fonts`, `emojione-legacy`, `firefox-emoji`, `google-fonts-design`, `mplus-outline-fonts-compatible`, `ttf-ms-win11-auto`, `twemoji-color-font-optional` | These recipes select, repair, or install particular distributed fonts. Rebuilding historical or vendor fonts could change glyphs and family metadata; Apple and Microsoft inputs also have source and licensing limits. [Nixpkgs uses the prebuilt Twemoji font](https://github.com/NixOS/nixpkgs/blob/44a91898084f46797b5fac650c7e8c9ac38c43d4/pkgs/by-name/tw/twemoji-color-font/package.nix) because its source build takes about 1.5 hours on Hydra. |
-| Vendor application or patched vendor runtime | `bitwarden-desktop`, `chatgpt-latest`, `claude-desktop`, `libreoffice`, `linearmouse`, `microsoft-teams`, `moonfin` (macOS), `remindctl`, `spotify-spotx`, `steam`, `wootility` | Several are closed-source. `bitwarden-desktop`, `libreoffice`, `linearmouse`, `moonfin`, and `remindctl` publish source, but the macOS variants preserve signed vendor bundles. `spotify-spotx` patches a vendor Spotify installation. |
+| Vendor application or patched vendor runtime | `bitwarden-desktop`, `libreoffice`, `linearmouse`, `microsoft-teams`, `moonfin` (macOS), `remindctl`, `spotify-spotx`, `steam`, `wootility` | Several are closed-source. `bitwarden-desktop`, `libreoffice`, `linearmouse`, `moonfin`, and `remindctl` publish source, but the macOS variants preserve signed vendor bundles. `spotify-spotx` patches a vendor Spotify installation. |
 
 The `nd-lyrics` release archive was replaced by a Rust/WASI source build. The
 `jellyfin-plugin-subtitle-extract` release assembly was replaced by a .NET 10
@@ -69,7 +69,6 @@ Other prebuilt inputs found inside nominally source-built packages:
 | `psscriptanalyzer` | Pluralize.NET NuGet assembly and Gallery help XML | The analyzer and built-in rules compile from tagged source. Pluralize.NET remains a pinned third-party .NET dependency; the Gallery contributes only generated help text. |
 | `jellyfin-plugin-moonbase` | SharpCompress NuGet assembly, Flutter engine WebAssembly, fonts, and other web assets | The server and Dart app compile from source. The pinned NuGet and Flutter dependency graphs retain these upstream assets; the package declares mixed provenance and preserves Flutter's notices. |
 | `moonfin` (Linux) | Flutter native engine, fonts, and WebAssembly assets | The app and native plugins compile from source; the Flutter SDK supplies its engine. Nixpkgs builds the linked PDFium library from source. |
-| `aurral` | Honker Rust/N-API binaries from npm | The [Honker source](https://github.com/russellromney/honker) is public and has a `node-v0.5.1` source tag matching Aurral's Node binding. The installed extension is 0.4.6, while upstream's published extension tags jump from 0.4.0 to 0.5.0. Its matching source revision and N-API/SQLite compatibility need to be established before replacing either binary. The recipe already compiles other native addons such as `sharp`, `bcrypt`, and `better-sqlite3` locally. |
 | `wardrowbe-backend` | ONNX Runtime Python dependency | The current pinned Nixpkgs `onnxruntime` recipe builds a wheel from a GitHub source checkout. The earlier manylinux-wheel classification no longer applies. Wardrowbe's install check imports ONNX Runtime and verifies its CPU provider on x86-64 Linux. |
 | `audiomuse-ai` | Downloaded model weights | The weights are trained data, not a reproducible output of compiling the application source. The package records their hashes and `binaryBytecode` provenance separately. |
 | `anthropic-skills`, `openai-skills` | Bundled font files | Source-text catalogs also contain font binaries; their package metadata already declares both provenance kinds. |
@@ -144,28 +143,15 @@ skill output decision, licenses, and Darwin helper requirements.
 
 ## Crafting Apps source inputs
 
-The thirteen Crafting Apps compile their desktop and CLI executables from pinned
-Rust source with locked offline Cargo dependencies: `cadcraft`, `deckcraft`,
-`designcraft`, `effectcraft`, `figcraft`, `filmcraft`, `gridcraft`, `lightcraft`,
-`pdfcraft`, `photocraft`, `soundcraft`, `vectorcraft`, and `wordcraft`. Their
-installed outputs retain reviewed binary font inputs from upstream sources or
-the pinned Craft font manifest. Curated variants replace selected bundled fonts
-with redistributable alternatives and preserve their notices. `craft-fonts`
-installs the validated distributed font binaries directly. PdfCraft additionally
-bundles two pinned redistributable RTen OCR models. These fourteen outputs
-therefore declare non-source provenance independently of their free licenses;
-the application recipes also declare `fromSource` for their compiled code.
+The personal collection retains only `craft-launcher`, `designcraft`,
+`effectcraft`, `figcraft` and `filmcraft`: no matching Nixpkgs recipes are
+available for these applications. They compile their executables from pinned
+Rust sources with locked offline Cargo dependencies. Their retained binary
+font inputs preserve the upstream notices and source-provenance metadata.
+`craft-fonts` installs the reviewed font collection and is retained separately.
 
-`craft-launcher` also compiles its Rust executable from source and retains
-distributed font binaries. Its recipe pins Noto Sans CJK SC from the Craft font
-input and preserves the bundled font notices. Its independent inventory entry
-therefore includes non-source provenance alongside the compiled executable.
-
-[The packaging research](artcraft-packaging-research.md) records the immutable
-source pins, font notices, model attribution and per-application build plans.
-Optional user-downloaded models are not part of the installed output.
-
-The `chatgpt-latest` variant reuses the upstream recipe with pinned vendor binaries.
-The `codex-latest` variant reuses the upstream source build and pins the matching
-prebuilt V8 static archive and generated binding. Both have package-local release
-updaters; these variants do not copy the upstream application recipes.
+The nine applications now available in Nixpkgs are no longer personal package
+outputs. Consumers select upstream CadCraft, DeckCraft, GridCraft, LightCraft,
+PdfCraft, PhotoCraft, SoundCraft, VectorCraft and WordCraft. Their former local
+application patches and package-specific tests are retired with those recipes.
+Upstream build and runtime verification belongs to the consuming configuration.
