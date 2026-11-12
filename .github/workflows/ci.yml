@@ -6,14 +6,14 @@ on:
         description: All native probes or only the repaired tooling.
         type: choice
         default: all
-        options: [all, tools, vorssaint]
+        options: [all, tools, vorssaint, metadata]
 permissions: {}
 concurrency:
   group: retained-package-${{ github.ref }}-${{ inputs.scope }}
   cancel-in-progress: false
 jobs:
   tools:
-    if: inputs.scope != 'vorssaint'
+    if: inputs.scope == 'all' || inputs.scope == 'tools'
     name: Tooling, catalog and Blueair dependency hash
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -83,3 +83,31 @@ jobs:
           cache: 'false'
       - name: Run all original owning UI regressions under the real package build
         run: nix build --no-link -L .#wardrowbe-frontend
+  metadata:
+    if: inputs.scope == 'metadata'
+    name: Generate authoritative locked package catalog
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ee7d3ad2321ff0d4ac08451348889bb33e772a2f
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
+        with:
+          cache: 'false'
+      - name: Render the catalog from actual public output metadata
+        run: |
+          mkdir receipt
+          git rev-parse HEAD > receipt/source.txt
+          python3 scripts/package_catalog.py
+          cp docs/catalog.md receipt/catalog.md
+          git diff -- docs/catalog.md > receipt/catalog.patch
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: locked-package-catalog
+          path: receipt
