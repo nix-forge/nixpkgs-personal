@@ -355,8 +355,8 @@ network access, import-from-derivation or a new clock dependency. A future stabl
 release should instead obtain its reviewed release date through the updater.
 This is a packaging recommendation based on the current pin format, not evidence
 that every version suffix is an upstream publication date.
-[Example source pin](../pkgs/by-name/ve/vectorcraft/source.nix),
-[Current desktop asset installation](../pkgs/by-name/ve/vectorcraft/scripts/linux-install-desktop-assets.sh)
+[Example source pin](https://github.com/nix-forge/nixpkgs-personal/blob/d199632c9727bd2ed2ff8782c2ac7fcd69d27254/pkgs/by-name/ve/vectorcraft/source.nix),
+[Current desktop asset installation](https://github.com/nix-forge/nixpkgs-personal/blob/d199632c9727bd2ed2ff8782c2ac7fcd69d27254/pkgs/by-name/ve/vectorcraft/scripts/linux-install-desktop-assets.sh)
 
 ### Darwin identity and version sources
 
