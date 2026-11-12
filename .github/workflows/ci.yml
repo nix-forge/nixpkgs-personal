@@ -6,9 +6,9 @@ on:
         description: All native probes or only the repaired tooling.
         type: choice
         default: all
-        options: [all, tools, vorssaint, metadata]
+        options: [all, tools, vorssaint, metadata, audiomuse]
       source_ref:
-        description: Immutable source commit required for the metadata scope.
+        description: Immutable source commit required for metadata or AudioMuse probes.
         type: string
         required: false
 permissions: {}
@@ -118,4 +118,40 @@ jobs:
         if: always()
         with:
           name: locked-package-catalog
+          path: receipt
+  audiomuse:
+    if: inputs.scope == 'audiomuse'
+    name: AudioMuse composed Python and offline tokenizer compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Require an immutable AudioMuse source
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: '[[ "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
+        with:
+          cache: 'false'
+      - name: Record source and frozen inputs
+        run: |
+          mkdir receipt
+          git rev-parse HEAD > receipt/source.txt
+          cp flake.lock receipt/flake.lock
+          cp flake/dev/flake.lock receipt/dev-flake.lock
+      - name: Build the owning Python check without model weights
+        run: |
+          nix build -L --out-link "$RUNNER_TEMP/audiomuse-python-result" \
+            .#ciChecks.x86_64-linux.audiomuse-ai-python
+          readlink "$RUNNER_TEMP/audiomuse-python-result" > receipt/result.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: audiomuse-tokenizers-compatibility
           path: receipt
