@@ -1,9 +1,9 @@
 {
-  version = "unstable-2026-11-11";
+  version = "unstable-2026-11-12";
   src = {
     owner = "cursor";
     repo = "plugins";
-    rev = "5866df557357d005b3c0c9d3da0d9e739b4bdde3";
-    hash = "sha256-mmxJFRHgDc0zpfyrzUZCoA+PPQV9lNlkuJ0xsnkaXLQ=";
+    rev = "a5539b15a3d56e04992565aafee2b37051329ce3";
+    hash = "sha256-mJPXPDaQpD4WdXRhrNHViE+a2rkp6XsZL/PlGeT+5P0=";
   };
 }
