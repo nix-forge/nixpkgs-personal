@@ -1,9 +1,15 @@
 name: Retained package qualification
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: All native probes or only the repaired tooling.
+        type: choice
+        default: all
+        options: [all, tools]
 permissions: {}
 concurrency:
-  group: retained-package-${{ github.ref }}
+  group: retained-package-${{ github.ref }}-${{ inputs.scope }}
   cancel-in-progress: false
 jobs:
   tools:
@@ -24,9 +30,10 @@ jobs:
         run: |
           mkdir receipt
           git rev-parse HEAD > receipt/source.txt
-          nix develop --command prefetch-npm-deps \
+          nix run --inputs-from . nixpkgs#prefetch-npm-deps -- \
             pkgs/by-name/ho/homebridge-blueair-purifier/package-lock.json > receipt/blueair-npm-hash.txt
-      - name: Run repository hooks with the upstream Zizmor dependency backport
+      - name: Run repository hooks with the upstream tooling backports
+        if: ${{ !cancelled() }}
         run: nix develop --command prek run --all-files --show-diff-on-failure
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -34,6 +41,7 @@ jobs:
           name: retained-tooling-receipt
           path: receipt
   vorssaint:
+    if: inputs.scope == 'all'
     name: Vorssaint native Swift and C target qualification
     runs-on: macos-26
     timeout-minutes: 90
@@ -50,6 +58,7 @@ jobs:
       - name: Build application, helpers and existing native install checks
         run: nix build --no-link -L .#vorssaint
   wardrowbe:
+    if: inputs.scope == 'all'
     name: Wardrowbe deterministic search (${{ matrix.system }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
