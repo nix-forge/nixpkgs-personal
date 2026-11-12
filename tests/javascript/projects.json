@@ -1,13 +1,5 @@
 {
   "scopes": ["tests", "pkgs/by-name"],
   "fixtures": {},
-  "application": {
-    "pkgs/by-name/re/reactflux/application-types.json": {
-      "pkgs/by-name/re/reactflux/browser-auth.mts": "src/utils/browser-auth.mts",
-      "pkgs/by-name/re/reactflux/media-policy.mts": "src/utils/media-policy.mts",
-      "pkgs/by-name/re/reactflux/authState.mts": "src/store/authState.mts",
-      "pkgs/by-name/re/reactflux/ArticleImageGallery.tsx": "src/components/Article/ArticleImageGallery.tsx",
-      "pkgs/by-name/re/reactflux/images.test.mts": "images.test.mts"
-    }
-  }
+  "application": {}
 }

@@ -1,4 +1,0 @@
-        await mpvTransition;
-        await cleanupMpv();
-      } catch (err) {
-        mpvLog({ action: `Failed to cleanly before-quit`

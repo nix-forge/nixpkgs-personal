@@ -1,2 +1,0 @@
-const createMpv = async (data) => {
-  const ipcGeneration = require("./mpv-readiness.cjs").setIpcReady(false);

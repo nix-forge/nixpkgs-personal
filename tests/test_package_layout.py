@@ -67,7 +67,7 @@ class HelperCopiesTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_changed_common_helper_is_rejected(self) -> None:
-        relative = "pkgs/by-name/wo/wootility/update_support.py"
+        relative = "pkgs/by-name/wo/wootility-bin/update_support.py"
         helper = self.root / relative
         helper.write_text(helper.read_text() + "\nUPDATER_BEHAVIOR_CHANGED = True\n")
         result = self.run_checker()
@@ -75,7 +75,7 @@ class HelperCopiesTest(unittest.TestCase):
         self.assertIn(f"Divergent helper copy: {relative}", result.stderr)
 
     def test_missing_common_helper_is_rejected(self) -> None:
-        relative = "pkgs/by-name/wo/wootility/update_support.py"
+        relative = "pkgs/by-name/wo/wootility-bin/update_support.py"
         (self.root / relative).unlink()
         result = self.run_checker()
         self.assertNotEqual(result.returncode, 0)

@@ -51,7 +51,7 @@ class UpdateToolchainTests(unittest.TestCase):
                 "else:\n    raise SystemExit('unexpected Nix invocation')\n"
             )
             nix.chmod(0o755)
-            for package in ("bitwarden-desktop", "apple-fonts"):
+            for package in ("bitwarden-desktop-bin", "apple-fonts"):
                 with self.subTest(package=package):
                     result = subprocess.run(
                         ["bash", "-euo", "pipefail", "-c", shell],

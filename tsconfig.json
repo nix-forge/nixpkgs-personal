@@ -31,10 +31,9 @@
     "tests/check_node_modules.mts",
     "tests/javascript/**/*.d.ts",
     "pkgs/by-name/**/scripts/*.mts",
-    "pkgs/by-name/re/reactflux/*.mts",
     "pkgs/by-name/ho/homebridge-samsung-tizen/strict-power-state.test.mts",
     "tests/javascript/**/*.test.mts",
     "tests/javascript/**/*.mts"
   ],
-  "exclude": ["pkgs/by-name/re/reactflux/images.test.mts"]
+  "exclude": []
 }

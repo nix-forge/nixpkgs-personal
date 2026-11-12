@@ -1,3 +1,0 @@
-  try {
-    await getMpvInstance()?.stop();
-    await quit$1();

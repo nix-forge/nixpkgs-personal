@@ -24,7 +24,7 @@ let
     "anthropic-skills"
     "apple-color-emoji"
     "apple-fonts"
-    "bitwarden-desktop"
+    "bitwarden-desktop-bin"
     "craft-fonts"
     "craft-launcher"
     "designcraft"
@@ -42,15 +42,13 @@ let
     "mplus-outline-fonts-compatible"
     "psscriptanalyzer"
     "rea"
-    "remindctl"
     "scrypted-plugin-homekit"
     "spotify-spotx"
     "steam"
-    "stirling-pdf-v3"
     "ttf-ms-win11-auto"
     "twemoji-color-font-optional"
     "wardrowbe-frontend"
-    "wootility"
+    "wootility-bin"
   ];
   provenanceAudit = lib.mapAttrs (
     name: package:
@@ -71,9 +69,8 @@ let
     "spotify-spotx"
     "steam"
     "stirling-pdf-engine"
-    "stirling-pdf-v3"
     "ttf-ms-win11-auto"
-    "wootility"
+    "wootility-bin"
   ];
   succeeds = package: (builtins.tryEval package.drvPath).success;
   defaultPolicy = lib.mapAttrs (
@@ -149,16 +146,14 @@ let
           mattpocock-skills = true;
           pstack-skills = true;
           rea = false;
-          stirling-pdf-v3 = false;
         }
         # The Arlo build toolchain pulls cargo-bootstrap, which has independent
         # non-source provenance. The inventory above checks Arlo's own output.
         // lib.optionalAttrs (system == "x86_64-linux") { scrypted-plugin-homekit = false; }
         // lib.optionalAttrs base.stdenv.hostPlatform.isDarwin {
-          bitwarden-desktop = false;
+          bitwarden-desktop-bin = false;
           libreoffice = false;
           linearmouse = false;
-          remindctl = false;
         }
       );
   variants = {

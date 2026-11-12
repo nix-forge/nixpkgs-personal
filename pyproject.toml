@@ -210,7 +210,7 @@ strict = true
   "too-many-branches",
   "too-many-statements",
 ]
-"pkgs/by-name/bi/bitwarden-desktop/update.py" = ["complex-structure"]
+"pkgs/by-name/bi/bitwarden-desktop-bin/update.py" = ["complex-structure"]
 "scripts/*.py" = [
   # Repository maintenance CLIs invoke fixed local tools and print results.
   "docstring-missing-exception",
