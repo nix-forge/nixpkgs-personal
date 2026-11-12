@@ -6,9 +6,9 @@ on:
         description: All native probes or only the repaired tooling.
         type: choice
         default: all
-        options: [all, tools, vorssaint, metadata, audiomuse]
+        options: [all, tools, vorssaint, metadata, audiomuse, wardrowbe]
       source_ref:
-        description: Immutable source commit required for metadata or AudioMuse probes.
+        description: Immutable source commit required for targeted source probes.
         type: string
         required: false
 permissions: {}
@@ -154,4 +154,38 @@ jobs:
         if: always()
         with:
           name: audiomuse-tokenizers-compatibility
+          path: receipt
+  wardrowbe:
+    if: inputs.scope == 'wardrowbe'
+    name: Wardrowbe native ARM compiler, SQLAlchemy and service checks
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Require an immutable Wardrowbe source
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: '[[ "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
+        with:
+          cache: 'false'
+      - name: Record source and frozen inputs
+        run: |
+          mkdir receipt
+          git rev-parse HEAD > receipt/source.txt
+          cp flake.lock receipt/flake.lock
+      - name: Build the original failing backend and its native install checks
+        run: |
+          nix build -L --out-link "$RUNNER_TEMP/wardrowbe-backend-result" .#wardrowbe-backend
+          readlink "$RUNNER_TEMP/wardrowbe-backend-result" > receipt/result.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: wardrowbe-cython-compatibility
           path: receipt
