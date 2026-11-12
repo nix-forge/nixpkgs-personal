@@ -19,8 +19,7 @@
     {
       "files": [
         "pkgs/by-name/ho/homelab-iot-scripts/scrypted-plugin-marker.cts",
-        "pkgs/by-name/ho/homelab-iot-scripts/scrypted-plugin-install.cts",
-        "pkgs/by-name/fe/feishin-managed/mpv-now-playing.cts"
+        "pkgs/by-name/ho/homelab-iot-scripts/scrypted-plugin-install.cts"
       ],
       "rules": {
         "eslint/no-await-in-loop": "off"
