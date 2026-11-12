@@ -1,0 +1,779 @@
+diff --git a/app/dashboard/settings/page.tsx b/app/dashboard/settings/page.tsx
+index 3110d8574e29..e45381e172e6 100644
+--- a/app/dashboard/settings/page.tsx
++++ b/app/dashboard/settings/page.tsx
+@@ -3,6 +3,7 @@
+ import { useState, useEffect, useRef } from 'react';
+ import { useSession } from 'next-auth/react';
+ import { Loader2, Save, RotateCcw, Check, Plus, Trash2, ChevronUp, ChevronDown, Server, MapPin, Navigation, Ruler } from 'lucide-react';
++import { OpenAISettings } from '@/components/openai-settings';
+ import { Button } from '@/components/ui/button';
+ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+ import { Input } from '@/components/ui/input';
+@@ -1024,6 +1025,13 @@ export default function SettingsPage() {
+             </CardDescription>
+           </CardHeader>
+           <CardContent className="space-y-4">
++            <OpenAISettings endpoints={formData.ai_endpoints || []} onSelect={async (url, vision, text) => {
++              const endpoint: AIEndpoint = { name: 'OpenAI account', url, vision_model: vision, text_model: text, enabled: true };
++              const endpoints = [endpoint, ...(formData.ai_endpoints || []).filter((item) => item.url !== url)];
++              await updatePreferences.mutateAsync({ ai_endpoints: endpoints });
++              setFormData((current) => ({ ...current, ai_endpoints: endpoints }));
++              setEndpointTests({});
++            }} />
+             {(formData.ai_endpoints || []).length === 0 ? (
+               <p className="text-sm text-muted-foreground">
+                 {t('aiEndpoints.noEndpoints')}
+@@ -1184,6 +1192,7 @@ export default function SettingsPage() {
+                       <div className="space-y-1">
+                         <Label className="text-xs">{t('aiEndpoints.fields.visionModel')}</Label>
+                         <Input
++                          list={`wardrowbe-vision-models-${index}`}
+                           value={endpoint.vision_model}
+                           onChange={(e) => {
+                             const updated = [...(formData.ai_endpoints || [])];
+@@ -1193,10 +1202,16 @@ export default function SettingsPage() {
+                           placeholder={EXAMPLE_VISION_MODEL}
+                           className="h-8"
+                         />
++                        <datalist id={`wardrowbe-vision-models-${index}`}>
++                          {(endpointTests[index]?.visionModels ?? []).map((model) => (
++                            <option key={model} value={model} />
++                          ))}
++                        </datalist>
+                       </div>
+                       <div className="space-y-1">
+                         <Label className="text-xs">{t('aiEndpoints.fields.textModel')}</Label>
+                         <Input
++                          list={`wardrowbe-text-models-${index}`}
+                           value={endpoint.text_model}
+                           onChange={(e) => {
+                             const updated = [...(formData.ai_endpoints || [])];
+@@ -1206,6 +1221,11 @@ export default function SettingsPage() {
+                           placeholder={EXAMPLE_TEXT_MODEL}
+                           className="h-8"
+                         />
++                        <datalist id={`wardrowbe-text-models-${index}`}>
++                          {(endpointTests[index]?.textModels ?? []).map((model) => (
++                            <option key={model} value={model} />
++                          ))}
++                        </datalist>
+                       </div>
+                     </div>
+                   </div>
+diff --git a/components/openai-settings.tsx b/components/openai-settings.tsx
+new file mode 100644
+index 000000000000..30fcef658795
+--- /dev/null
++++ b/components/openai-settings.tsx
+@@ -0,0 +1,415 @@
++'use client';
++
++import { useEffect, useState } from 'react';
++import { useSession } from 'next-auth/react';
++import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
++import { AIEndpoint } from '@/lib/types';
++import { api, setAccessToken } from '@/lib/api';
++import { Button } from '@/components/ui/button';
++import { Label } from '@/components/ui/label';
++
++interface Login {
++  method: 'browser' | 'device';
++  authUrl?: string;
++  verificationUrl?: string;
++  userCode?: string;
++  expiresAt: number;
++}
++interface Connection {
++  enabled: boolean;
++  connected: boolean;
++  pending?: Login | null;
++  error?: string | null;
++  models: string[];
++  endpoint?: string;
++  selection?: {
++    text_model: string | null;
++    vision_model: string | null;
++    reason: string;
++    refreshed_at: string | number | null;
++  };
++}
++
++export function OpenAISettings({
++  onSelect,
++  endpoints,
++}: {
++  endpoints: AIEndpoint[];
++  onSelect: (url: string, vision: string, text: string) => Promise<void>;
++}) {
++  const { data: session, status } = useSession();
++  const client = useQueryClient();
++  const [method, setMethod] = useState<'browser' | 'device'>('browser');
++  const [vision, setVision] = useState('');
++  const [text, setText] = useState('');
++  const [editedModels, setEditedModels] = useState(false);
++  const [saving, setSaving] = useState(false);
++  const [saved, setSaved] = useState(false);
++  const [saveError, setSaveError] = useState('');
++  function authenticate() {
++    if (session?.accessToken) setAccessToken(session.accessToken as string);
++  }
++  const connection = useQuery({
++    queryKey: ['openai-connection'],
++    queryFn: () => {
++      authenticate();
++      return api.get<Connection>('/users/me/preferences/openai/status', {
++        cache: 'no-store',
++      });
++    },
++    enabled: status === 'authenticated',
++    retry: false,
++    refetchInterval: (query) => (query.state.data?.pending ? 3000 : 30000),
++  });
++  const login = useMutation({
++    mutationFn: () => {
++      authenticate();
++      return api.post<Login>(
++        `/users/me/preferences/openai/login?method=${method}`,
++      );
++    },
++    onSuccess: () =>
++      client.invalidateQueries({ queryKey: ['openai-connection'] }),
++  });
++  const disconnect = useMutation({
++    mutationFn: () => {
++      authenticate();
++      return api.post('/users/me/preferences/openai/disconnect');
++    },
++    onSuccess: () => {
++      setSaved(false);
++      client.invalidateQueries({ queryKey: ['openai-connection'] });
++    },
++  });
++  const restart = useMutation({
++    mutationFn: async () => {
++      authenticate();
++      await api.post('/users/me/preferences/openai/disconnect');
++      return api.post<Login>(
++        `/users/me/preferences/openai/login?method=${connection.data?.pending?.method || method}`,
++      );
++    },
++    onMutate: () => {
++      login.reset();
++      disconnect.reset();
++    },
++    onSuccess: () =>
++      client.invalidateQueries({ queryKey: ['openai-connection'] }),
++  });
++  const data = connection.data;
++  const selected = endpoints.find(
++    (endpoint) => endpoint.url === data?.endpoint,
++  );
++  useEffect(() => {
++    if (data?.models.length && !editedModels) {
++      setVision(
++        selected?.vision_model ||
++          (data.models.includes('auto-value') ? 'auto-value' : data.models[0]),
++      );
++      setText(
++        selected?.text_model ||
++          (data.models.includes('auto-value') ? 'auto-value' : data.models[0]),
++      );
++    }
++  }, [
++    data?.models,
++    selected?.vision_model,
++    selected?.text_model,
++    editedModels,
++  ]);
++  async function saveModels(nextVision: string, nextText: string) {
++    if (!data?.endpoint || saving) return;
++    setSaving(true);
++    setSaved(false);
++    setSaveError('');
++    try {
++      await onSelect(data.endpoint, nextVision, nextText);
++      setVision(nextVision);
++      setText(nextText);
++      setEditedModels(true);
++      setSaved(true);
++    } catch {
++      setSaveError('Could not save the AI selection. Try again.');
++    } finally {
++      setSaving(false);
++    }
++  }
++  const error =
++    connection.error || restart.error || login.error || disconnect.error;
++  if (data && !data.enabled) return null;
++
++  return (
++    <section
++      aria-labelledby="openai-settings-title"
++      className="rounded-lg border p-4 space-y-3"
++    >
++      <h3 id="openai-settings-title" className="font-medium">
++        OpenAI account
++      </h3>
++      <p className="text-sm text-muted-foreground">
++        Connect with your ChatGPT account. Authorization happens on OpenAI's
++        website; Wardrowbe never asks for your OpenAI password. This connection
++        is shared by this Wardrowbe installation and managed by the user who
++        connects it.
++      </p>
++      <p className="text-sm" role="status" aria-live="polite">
++        {connection.isPending
++          ? 'Checking connection…'
++          : data?.connected
++            ? 'Connected to OpenAI'
++            : 'Not connected'}
++      </p>
++      {(error || data?.error || saveError) && (
++        <p role="alert" className="text-sm text-destructive">
++          {saveError || (error instanceof Error ? error.message : data?.error)}
++        </p>
++      )}
++      {!data?.connected && !data?.pending && (
++        <div className="space-y-2 text-sm">
++          <Label htmlFor="openai-login-method">Where are you signing in?</Label>
++          <select
++            id="openai-login-method"
++            value={method}
++            disabled={login.isPending || restart.isPending}
++            onChange={(event) =>
++              setMethod(event.target.value as 'browser' | 'device')
++            }
++            className="w-full rounded border bg-background p-2"
++          >
++            <option value="browser">On the desktop hosting Wardrowbe</option>
++            <option value="device">On another computer or phone</option>
++          </select>
++          {method === 'browser' ? (
++            <p>
++              Sign in directly on OpenAI's website using this desktop's browser.
++              No device-code setting is needed. OpenAI returns to this desktop
++              to finish sign-in.
++            </p>
++          ) : (
++            <div className="rounded border bg-muted/40 p-3 space-y-2">
++              <p>
++                Remote sign-in uses a device code. Enable device-code sign-in in
++                ChatGPT Settings → Security for your account. A workspace
++                administrator may need to allow it.
++              </p>
++              <p>
++                Only enter the code you start here, on OpenAI's official
++                website. Never share it or enter a code someone sends you.
++                Prefer desktop browser sign-in when possible.
++              </p>
++              <a
++                href="https://chatgpt.com/"
++                target="_blank"
++                rel="noopener noreferrer"
++                className="inline-block underline"
++              >
++                Open ChatGPT
++              </a>
++            </div>
++          )}
++        </div>
++      )}
++      {data?.pending && (
++        <div className="space-y-2 text-sm">
++          {data.pending.method === 'device' ? (
++            <>
++              <p>
++                Open OpenAI sign-in and enter this one-time code. Never share
++                it:
++              </p>
++              <code className="block w-fit rounded bg-muted px-3 py-2 text-lg select-all">
++                {data.pending.userCode}
++              </code>
++              <a
++                href={data.pending.verificationUrl}
++                target="_blank"
++                rel="noopener noreferrer"
++                className="inline-block underline"
++              >
++                Open OpenAI sign-in
++              </a>
++            </>
++          ) : (
++            <>
++              <p>
++                Continue on OpenAI's website in this desktop's browser. Keep
++                this page open.
++              </p>
++              <a
++                href={data.pending.authUrl}
++                target="_blank"
++                rel="noopener noreferrer"
++                className="inline-block underline"
++              >
++                Open OpenAI sign-in
++              </a>
++              <p>
++                If the browser cannot reach localhost after sign-in, you are
++                using another device. Cancel and select the option for another
++                computer or phone.
++              </p>
++            </>
++          )}
++          <p className="text-muted-foreground">
++            This sign-in expires at{' '}
++            {new Date(data.pending.expiresAt * 1000).toLocaleTimeString()}. Keep
++            this page open. The connection updates automatically.
++          </p>
++        </div>
++      )}
++      {data?.pending && (
++        <Button
++          type="button"
++          variant="outline"
++          onClick={() => restart.mutate()}
++          disabled={restart.isPending || disconnect.isPending}
++        >
++          {restart.isPending ? 'Restarting sign-in…' : 'Restart sign-in'}
++        </Button>
++      )}
++      {!data?.connected && !data?.pending && (
++        <Button
++          type="button"
++          onClick={() => login.mutate()}
++          disabled={!data || login.isPending || restart.isPending}
++        >
++          {login.isPending ? 'Starting sign-in…' : 'Connect OpenAI'}
++        </Button>
++      )}
++      {(data?.connected || data?.pending) && (
++        <Button
++          type="button"
++          variant="outline"
++          onClick={() => disconnect.mutate()}
++          disabled={disconnect.isPending || restart.isPending}
++        >
++          {data.pending ? 'Cancel sign-in' : 'Disconnect OpenAI'}
++        </Button>
++      )}
++      {data?.connected && (
++        <div className="space-y-3">
++          {data.models.includes('auto-value') && (
++            <div className="rounded border p-3 space-y-2 text-sm">
++              <p>
++                Automatic value chooses from the models available to your
++                account for each request. New models can become available
++                without changing your saved selection.
++              </p>
++              {data.selection && (
++                <>
++                  <p>
++                    Current outfit model:{' '}
++                    {data.selection.text_model || 'No suitable model available'}
++                  </p>
++                  <p>
++                    Current photo model:{' '}
++                    {data.selection.vision_model ||
++                      'No suitable image model available'}
++                  </p>
++                  <p>{data.selection.reason}</p>
++                  {data.selection.refreshed_at && (
++                    <p className="text-muted-foreground">
++                      Catalog refreshed: {data.selection.refreshed_at}
++                    </p>
++                  )}
++                </>
++              )}
++              <p className="text-muted-foreground">
++                Codex does not expose exact per-request prices. This selection
++                is based on available model metadata, rather than a price quote.
++              </p>
++              <Button
++                type="button"
++                variant="outline"
++                disabled={saving || !data.endpoint}
++                onClick={() => saveModels('auto-value', 'auto-value')}
++              >
++                Use automatic model selection
++              </Button>
++            </div>
++          )}
++          <div className="grid gap-3 sm:grid-cols-2">
++            <div className="space-y-1">
++              <Label htmlFor="openai-vision-model">Photo analysis model</Label>
++              <select
++                id="openai-vision-model"
++                disabled={saving}
++                value={vision}
++                onChange={(event) => {
++                  setVision(event.target.value);
++                  setEditedModels(true);
++                  setSaved(false);
++                }}
++                className="w-full rounded border bg-background p-2"
++              >
++                {vision && !data.models.includes(vision) && (
++                  <option value={vision}>{vision} (no longer allowed)</option>
++                )}
++                {data.models.map((model) => (
++                  <option key={model} value={model}>
++                    {model === 'auto-value' ? 'Automatic value' : model}
++                  </option>
++                ))}
++              </select>
++            </div>
++            <div className="space-y-1">
++              <Label htmlFor="openai-text-model">
++                Outfits and pairings model
++              </Label>
++              <select
++                id="openai-text-model"
++                disabled={saving}
++                value={text}
++                onChange={(event) => {
++                  setText(event.target.value);
++                  setEditedModels(true);
++                  setSaved(false);
++                }}
++                className="w-full rounded border bg-background p-2"
++              >
++                {text && !data.models.includes(text) && (
++                  <option value={text}>{text} (no longer allowed)</option>
++                )}
++                {data.models.map((model) => (
++                  <option key={model} value={model}>
++                    {model === 'auto-value' ? 'Automatic value' : model}
++                  </option>
++                ))}
++              </select>
++            </div>
++          </div>
++          <Button
++            type="button"
++            disabled={
++              saving ||
++              !data.models.includes(vision) ||
++              !data.models.includes(text) ||
++              !data.endpoint
++            }
++            onClick={() => saveModels(vision, text)}
++          >
++            {saving ? 'Saving…' : 'Use OpenAI for my wardrobe'}
++          </Button>
++          {saved && (
++            <p role="status" className="text-sm">
++              Saved. New AI requests use your selected OpenAI models first.
++            </p>
++          )}
++          <p className="text-sm text-muted-foreground">
++            Clothing photos are sent to OpenAI for tagging. Outfit requests send
++            clothing details, style preferences and weather context. Your other
++            enabled endpoints and the server default remain fallbacks. Model
++            access depends on your account. Disconnecting keeps your saved model
++            selection.
++          </p>
++        </div>
++      )}
++      <p className="text-sm text-muted-foreground">
++        AI analyzes uploaded clothing photos, suggests outfits and clothing
++        pairings, and generates scheduled outfit suggestions. Background removal
++        uses a separate local image model. Clothing inventory, outfit calendars
++        and wear tracking work without OpenAI.
++      </p>
++    </section>
++  );
++}
+diff --git a/tests/openai-settings.test.tsx b/tests/openai-settings.test.tsx
+new file mode 100644
+index 000000000000..f8aed939857c
+--- /dev/null
++++ b/tests/openai-settings.test.tsx
+@@ -0,0 +1,289 @@
++import React from 'react';
++import {
++  render,
++  screen,
++  waitFor,
++  fireEvent,
++  cleanup,
++} from '@testing-library/react';
++import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { OpenAISettings } from '@/components/openai-settings';
++import { api } from '@/lib/api';
++
++vi.mock('next-auth/react', () => ({
++  useSession: () => ({
++    status: 'authenticated',
++    data: { accessToken: 'public-fixture' },
++  }),
++}));
++vi.mock('@/lib/api', () => ({
++  api: { get: vi.fn(), post: vi.fn() },
++  setAccessToken: vi.fn(),
++}));
++afterEach(cleanup);
++beforeEach(() => vi.clearAllMocks());
++
++const endpoint = 'http://127.0.0.1:18182/v1';
++const saved = {
++  name: 'OpenAI account',
++  url: endpoint,
++  vision_model: 'vision-selected',
++  text_model: 'text-selected',
++  enabled: true,
++};
++function mount(
++  endpoints = [saved],
++  onSelect = vi.fn().mockResolvedValue(undefined),
++) {
++  const client = new QueryClient({
++    defaultOptions: { queries: { retry: false, gcTime: 0 } },
++  });
++  const tree = (values: typeof endpoints) => (
++    <QueryClientProvider client={client}>
++      <OpenAISettings endpoints={values} onSelect={onSelect} />
++    </QueryClientProvider>
++  );
++  return { ...render(tree(endpoints)), tree, onSelect, client };
++}
++
++describe('OpenAI Settings', () => {
++  it('restores saved models after preferences arrive, and saves the chosen models', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: true,
++      models: ['first-model', 'vision-selected', 'text-selected'],
++      endpoint,
++    });
++    const view = mount([]);
++    await screen.findByText('Connected to OpenAI');
++    view.rerender(view.tree([saved]));
++    await waitFor(() => {
++      expect(
++        (screen.getByLabelText('Photo analysis model') as HTMLSelectElement)
++          .value,
++      ).toBe('vision-selected');
++      expect(
++        (
++          screen.getByLabelText(
++            'Outfits and pairings model',
++          ) as HTMLSelectElement
++        ).value,
++      ).toBe('text-selected');
++    });
++    fireEvent.click(screen.getByText('Use OpenAI for my wardrobe'));
++    await waitFor(() =>
++      expect(view.onSelect).toHaveBeenCalledWith(
++        endpoint,
++        'vision-selected',
++        'text-selected',
++      ),
++    );
++    await screen.findByText(/Saved. New AI requests/);
++    view.client.clear();
++  });
++
++  it('selects automatic value even when fixed models were previously saved', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: true,
++      models: ['auto-value', 'vision-selected', 'text-selected'],
++      endpoint,
++      selection: {
++        text_model: 'catalog-text-choice',
++        vision_model: 'catalog-image-choice',
++        reason: 'Available account models ranked by metadata',
++        refreshed_at: '2026-01-01T00:00:00Z',
++      },
++    });
++    const view = mount();
++    await screen.findByText('Connected to OpenAI');
++    await waitFor(() =>
++      expect(screen.getByLabelText('Photo analysis model')).toHaveValue(
++        'vision-selected',
++      ),
++    );
++    expect(
++      screen.getByText('Current outfit model: catalog-text-choice'),
++    ).toBeInTheDocument();
++    expect(
++      screen.getByText('Current photo model: catalog-image-choice'),
++    ).toBeInTheDocument();
++    expect(
++      screen.getByText('Available account models ranked by metadata'),
++    ).toBeInTheDocument();
++    fireEvent.click(screen.getByText('Use automatic model selection'));
++    await waitFor(() =>
++      expect(view.onSelect).toHaveBeenCalledWith(
++        endpoint,
++        'auto-value',
++        'auto-value',
++      ),
++    );
++    expect(screen.getByLabelText('Photo analysis model')).toHaveValue(
++      'auto-value',
++    );
++    expect(screen.getByLabelText('Outfits and pairings model')).toHaveValue(
++      'auto-value',
++    );
++    view.client.clear();
++  });
++  it('defaults unsaved choices to automatic and preserves manual selection', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: true,
++      models: ['manual-model', 'auto-value'],
++      endpoint,
++    });
++    const view = mount([]);
++    await screen.findByText('Connected to OpenAI');
++    await waitFor(() =>
++      expect(screen.getByLabelText('Photo analysis model')).toHaveValue(
++        'auto-value',
++      ),
++    );
++    expect(screen.getByLabelText('Outfits and pairings model')).toHaveValue(
++      'auto-value',
++    );
++    fireEvent.change(screen.getByLabelText('Photo analysis model'), {
++      target: { value: 'manual-model' },
++    });
++    fireEvent.change(screen.getByLabelText('Outfits and pairings model'), {
++      target: { value: 'manual-model' },
++    });
++    fireEvent.click(screen.getByText('Use OpenAI for my wardrobe'));
++    await waitFor(() =>
++      expect(view.onSelect).toHaveBeenCalledWith(
++        endpoint,
++        'manual-model',
++        'manual-model',
++      ),
++    );
++    view.client.clear();
++  });
++  it('defaults to ordinary browser OAuth without a device code', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: false,
++      models: ['fixture'],
++      endpoint,
++    });
++    const view = mount();
++    await screen.findByText('Not connected');
++    vi.mocked(api.post).mockResolvedValue({});
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: false,
++      models: ['fixture'],
++      endpoint,
++      pending: {
++        method: 'browser',
++        authUrl: 'https://auth.openai.com/oauth/authorize?state=public-fixture',
++        expiresAt: 2000000000,
++      },
++    });
++    fireEvent.click(screen.getByText('Connect OpenAI'));
++    const link = await screen.findByText('Open OpenAI sign-in');
++    expect(api.post).toHaveBeenCalledWith(
++      '/users/me/preferences/openai/login?method=browser',
++    );
++    expect(link.getAttribute('href')).toBe(
++      'https://auth.openai.com/oauth/authorize?state=public-fixture',
++    );
++    expect(screen.queryByText('TEST-CODE')).toBeNull();
++    fireEvent.click(screen.getByText('Cancel sign-in'));
++    await waitFor(() =>
++      expect(api.post).toHaveBeenCalledWith(
++        '/users/me/preferences/openai/disconnect',
++      ),
++    );
++    view.client.clear();
++  });
++
++  it('requires an explicit remote choice for device-code login', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: false,
++      models: ['fixture'],
++      endpoint,
++    });
++    vi.mocked(api.post).mockResolvedValue({});
++    const view = mount();
++    await screen.findByText('Not connected');
++    expect(
++      (screen.getByLabelText('Where are you signing in?') as HTMLSelectElement)
++        .value,
++    ).toBe('browser');
++    expect(screen.queryByText('Open ChatGPT')).toBeNull();
++    fireEvent.change(screen.getByLabelText('Where are you signing in?'), {
++      target: { value: 'device' },
++    });
++    expect(screen.getByText(/Never share/)).toBeTruthy();
++    fireEvent.click(screen.getByText('Connect OpenAI'));
++    await waitFor(() =>
++      expect(api.post).toHaveBeenCalledWith(
++        '/users/me/preferences/openai/login?method=device',
++      ),
++    );
++    view.client.clear();
++  });
++
++  it('preserves unavailable saved models and prevents saving them', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: true,
++      models: ['first-model'],
++      endpoint,
++    });
++    const view = mount();
++    await screen.findByText('Connected to OpenAI');
++    await waitFor(() =>
++      expect(
++        (screen.getByLabelText('Photo analysis model') as HTMLSelectElement)
++          .value,
++      ).toBe('vision-selected'),
++    );
++    expect(
++      (screen.getByText('Use OpenAI for my wardrobe') as HTMLButtonElement)
++        .disabled,
++    ).toBe(true);
++    view.client.clear();
++  });
++  it('explains disabled device login and restarts with cancellation before a fresh code', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: false,
++      models: ['fixture'],
++      endpoint,
++      pending: {
++        method: 'device',
++        verificationUrl: 'https://auth.openai.com/codex/device',
++        userCode: 'OLD-CODE',
++        expiresAt: 2000000000,
++      },
++    });
++    vi.mocked(api.post).mockResolvedValue({});
++    const view = mount();
++    await screen.findByText('OLD-CODE');
++    expect(screen.getByText(/Never share it/)).toBeTruthy();
++    vi.mocked(api.get).mockResolvedValue({
++      enabled: true,
++      connected: false,
++      models: ['fixture'],
++      endpoint,
++      pending: {
++        method: 'device',
++        verificationUrl: 'https://auth.openai.com/codex/device',
++        userCode: 'NEW-CODE',
++        expiresAt: 2000000000,
++      },
++    });
++    fireEvent.click(screen.getByText('Restart sign-in'));
++    await screen.findByText('NEW-CODE');
++    expect(vi.mocked(api.post).mock.calls.map((call) => call[0])).toEqual([
++      '/users/me/preferences/openai/disconnect',
++      '/users/me/preferences/openai/login?method=device',
++    ]);
++    view.client.clear();
++  });
++});

@@ -10,14 +10,7 @@ import unittest
 from pathlib import Path
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "build-with-fetch-retry.sh"
-FAKE_BUILD = """
-import pathlib, sys
-counter = pathlib.Path(sys.argv[1])
-attempt = int(counter.read_text()) + 1 if counter.exists() else 1
-counter.write_text(str(attempt))
-print(sys.argv[2])
-sys.exit(23 if attempt <= int(sys.argv[3]) else 0)
-"""
+FAKE_BUILD = Path(__file__).with_name("fixtures") / "build.py"
 NETWORK_FAILURE = (
     "curl: (6) Could not resolve host: github.com\n"
     "error: cannot download source from any mirror\n"
@@ -38,8 +31,7 @@ class BuildFetchRetryTests(unittest.TestCase):
                     "bash",
                     str(SCRIPT),
                     sys.executable,
-                    "-c",
-                    FAKE_BUILD,
+                    str(FAKE_BUILD),
                     str(counter),
                     message,
                     str(failures),

@@ -17,6 +17,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from update_support import HTTPS_CONTEXT
+from update_transaction import commit_files
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -206,9 +207,7 @@ def _render_source(version: str, appdmg_url: str, appdmg_hash: str) -> str:
 
 
 def _write_atomic(path: Path, content: str) -> None:
-    temp_path = path.with_name(f"{path.name}.tmp")
-    temp_path.write_text(content, encoding="utf-8", newline="\n")
-    temp_path.replace(path)
+    commit_files({path: content})
 
 
 def _build_diff(old: str, new: str, path: Path) -> str:

@@ -1,0 +1,24 @@
+--- a/crates/native/src/login.rs
++++ b/crates/native/src/login.rs
+@@ -85,10 +85,7 @@
+         if !on {
+             return remove(&path);
+         }
+-        let exe = program()?.display().to_string().replace('"', "\\\"");
+-        let entry = format!(
+-            "[Desktop Entry]\nType=Application\nName=ArtCraft Launcher\nComment=Install and update the Craft App Suite\nExec=\"{exe}\" {HIDDEN_FLAG}\nIcon={ID}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
+-        );
++        let entry = autostart_entry(&program()?)?;
+         crate::paths::write_atomic(&path, entry.as_bytes())
+     }
+ }
+@@ -111,3 +108,9 @@
+         Err(e) => Err(format!("couldn't remove {} ({e})", path.display())),
+     }
+ }
++
++#[cfg(not(any(target_os = "macos", windows)))]
++fn autostart_entry(program: &std::path::Path) -> Result<String, String> {
++    let quoted = crate::desktop_entry::exec_quote(program).ok_or("this executable cannot be represented in a desktop entry")?;
++    Ok(format!("[Desktop Entry]\nType=Application\nName=ArtCraft Launcher\nComment=Install and update the Craft App Suite\nExec={quoted} {HIDDEN_FLAG}\nIcon={ID}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"))
++}

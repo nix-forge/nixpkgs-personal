@@ -1,5 +1,5 @@
 {
-  description = "Ian Holloway's personal Nix packages";
+  description = "Personal Nix packages maintained by IanHollow";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -18,14 +18,17 @@
       packagesFor =
         system:
         let
-          pkgs = import nixpkgs {
-            inherit system;
+          hostSystem = if builtins.isAttrs system then system.hostSystem else system;
+          native = import nixpkgs {
+            system = hostSystem;
             config.allowUnfree = true;
           };
+          pkgs = import nixpkgs ((import ./flake/platform-args.nix system) // { config.allowUnfree = true; });
+          supported = native.lib.filterAttrs (
+            _: package: native.lib.meta.availableOn native.stdenv.hostPlatform package
+          ) (import ./pkgs { pkgs = native; });
         in
-        pkgs.lib.filterAttrs (_: package: pkgs.lib.meta.availableOn pkgs.stdenv.hostPlatform package) (
-          import ./pkgs { inherit pkgs; }
-        );
+        builtins.intersectAttrs supported (import ./pkgs { inherit pkgs; });
       # Discover supported names outside the overlay fixed point. Filtering the
       # prev-based package values would force dependencies before the set exists.
       # Unsupported overrides must leave upstream packages (e.g. Linux Steam) intact.
@@ -43,19 +46,24 @@
       _module.args.packageOverlay = personalOverlay;
 
       imports = [
+        ./flake/build-platform.nix
         ./flake/partitions.nix
         ./flake/ci.nix
       ];
 
       flake = {
+        homeManagerModules.rift = import ./modules/home/rift.nix;
+        lib.packagesFor = packagesFor;
         overlays.default = personalOverlay;
         legacyPackages = nixpkgs.lib.genAttrs supportedSystems (
           system:
-          import nixpkgs {
-            inherit system;
-            config.allowUnfree = true;
-            overlays = [ personalOverlay ];
-          }
+          import nixpkgs (
+            (import ./flake/platform-args.nix system)
+            // {
+              config.allowUnfree = true;
+              overlays = [ personalOverlay ];
+            }
+          )
         );
       };
 
@@ -67,7 +75,12 @@
             name = "update-packages";
             runtimeInputs = [
               pkgs.git
-              pkgs.python3
+              pkgs.nix
+              pkgs.prefetch-npm-deps
+              (pkgs.python3.withPackages (pythonPackages: [
+                pythonPackages.pyyaml
+                pythonPackages.packaging
+              ]))
             ];
             text = builtins.readFile ./scripts/update-packages.sh;
           };

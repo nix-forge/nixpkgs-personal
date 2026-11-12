@@ -1,0 +1,11 @@
+--- a/apps/artcraft-launcher/Cargo.toml
++++ b/apps/artcraft-launcher/Cargo.toml
+@@ -37,7 +37,7 @@
+ # The tray (menu bar) icon. On Linux and the BSDs the StatusNotifierItem backend talks D-Bus
+ # directly, so no GTK or libappindicator is needed.
+ [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+-tray-icon = "0.25"
++tray-icon = { version = "0.25", default-features = false }
+ 
+ # macOS only: which desktop (Space) the window shows on (spaces.rs) and the "Reduce motion"
+ # setting (motion.rs). Safe AppKit calls only, and already in Cargo.lock through winit and

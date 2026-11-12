@@ -4,10 +4,8 @@
 from __future__ import annotations
 
 import argparse
-import contextlib
 import difflib
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -22,6 +20,7 @@ from urllib.request import Request, urlopen
 
 from font_manifest import extract, manifest
 from update_support import HTTPS_CONTEXT
+from update_transaction import commit_files, preview
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -263,14 +262,7 @@ def _update_expression(content: str, upstream: _UpstreamState) -> str:
 
 
 def _write_atomic(path: Path, content: str) -> None:
-    fd, temp_path = tempfile.mkstemp(prefix=f"{path.name}.", dir=path.parent)
-    try:
-        os.close(fd)
-        Path(temp_path).write_text(content, encoding="utf-8", newline="\n")
-        Path(temp_path).replace(path)
-    finally:
-        with contextlib.suppress(OSError):
-            Path(temp_path).unlink(missing_ok=True)
+    commit_files({path: content})
 
 
 def _build_diff(old: str, new: str, path: Path) -> str:
@@ -334,9 +326,6 @@ def _main(argv: Sequence[str] | None = None) -> int:
         _stderr(f"{package_file}: update required")
         return 1
 
-    if args.dry_run:
-        return 0
-
     # Verify the new payload before updating either pin. Both files are reviewed
     # together; an interrupted update fails the package version/inventory check.
     fetched = subprocess.run(
@@ -357,10 +346,14 @@ def _main(argv: Sequence[str] | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="windows-font-update-") as directory:
         payload = extract(iso, Path(directory))
         inventory = manifest(payload, upstream.version)
-    _write_atomic(
-        package_file.with_name("manifest.json"), json.dumps(inventory, indent=2) + "\n"
-    )
-    _write_atomic(package_file, updated)
+    changes = {
+        package_file.with_name("manifest.json"): json.dumps(inventory, indent=2) + "\n",
+        package_file: updated,
+    }
+    preview(changes)
+    if args.dry_run:
+        return 0
+    commit_files(changes)
     _stdout(f"{package_file}: updated")
     return 0
 

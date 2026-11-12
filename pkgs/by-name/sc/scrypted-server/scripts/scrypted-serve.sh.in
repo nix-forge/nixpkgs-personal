@@ -1,0 +1,2 @@
+#!/bin/sh
+exec @nodejs_24@/bin/node --expose-gc "@runtimeOutput@/lib/node_modules/@scrypted/server/dist/scrypted-main.js" "$@"

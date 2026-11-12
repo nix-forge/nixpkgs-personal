@@ -3,29 +3,26 @@
     { config, pkgs, ... }:
     let
       inherit (config.pre-commit.settings) enabledPackages package shellHook;
+      checkPython = import ./quality-python.nix { pkgs = pkgs.buildPackages; };
     in
     {
       devShells = {
-        default = pkgs.mkShellNoCC {
+        default = pkgs.buildPackages.mkShellNoCC {
           inherit shellHook;
-          LIBRARY_PATH = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "${pkgs.libiconv}/lib";
-          NIX_LDFLAGS = lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "-L${pkgs.libiconv}/lib";
-          RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+          LIBRARY_PATH = lib.optionalString pkgs.buildPackages.stdenv.hostPlatform.isDarwin "${pkgs.buildPackages.libiconv}/lib";
+          NIX_LDFLAGS = lib.optionalString pkgs.buildPackages.stdenv.hostPlatform.isDarwin "-L${pkgs.buildPackages.libiconv}/lib";
+          RUST_SRC_PATH = "${pkgs.buildPackages.rustPlatform.rustLibSrc}";
           packages =
             enabledPackages
-            ++ [ package ]
-            ++ (with pkgs; [
+            ++ [
+              package
+              (import ./javascript-tools.nix { pkgs = pkgs.buildPackages; })
+            ]
+            ++ (with pkgs.buildPackages; [
               actionlint
               _7zz
               fontconfig
-              (python3.withPackages (p: [
-                p.fonttools
-                p.lxml
-                p.pillow
-                p.pytest
-                p.pyyaml
-                p.uharfbuzz
-              ]))
+              checkPython
               cargo
               cargo-deny
               cargo-machete
@@ -41,9 +38,10 @@
               nixd
               nixf-diagnose
               nixfmt
+              nodejs_24
               prek
               pinact
-              prettier
+              prefetch-npm-deps
               rumdl
               rust-analyzer
               rustc
@@ -58,7 +56,7 @@
               yamllint
               zizmor
             ])
-            ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.libiconv ];
+            ++ lib.optionals pkgs.buildPackages.stdenv.hostPlatform.isDarwin [ pkgs.buildPackages.libiconv ];
         };
       };
     };

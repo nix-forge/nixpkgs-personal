@@ -1,0 +1,224 @@
+[
+  {
+    "pname": "Microsoft.ApplicationInsights",
+    "version": "2.23.0",
+    "hash": "sha256-5sf3bg7CZZjHseK+F3foOchEhmVeioePxMZVvS6Rjb0=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.applicationinsights/2.23.0/microsoft.applicationinsights.2.23.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.CSharp",
+    "version": "4.7.0",
+    "hash": "sha256-Enknv2RsFF68lEPdrf5M+BpV1kHoLTVRApKUwuk/pj0=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.csharp/4.7.0/microsoft.csharp.4.7.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.Management.Infrastructure",
+    "version": "3.0.0",
+    "hash": "sha256-vVpri69Zhd5h8B7wP9skDsgX5V7TsKI39yLXjWXqsnI=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.management.infrastructure/3.0.0/microsoft.management.infrastructure.3.0.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.Management.Infrastructure.Runtime.Unix",
+    "version": "3.0.0",
+    "hash": "sha256-tPlZutCN+abmgMMyAPXO/nwbgiKibrE00zjeC1ZUJas=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.management.infrastructure.runtime.unix/3.0.0/microsoft.management.infrastructure.runtime.unix.3.0.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.Management.Infrastructure.Runtime.Win",
+    "version": "3.0.0",
+    "hash": "sha256-cgbo8wyCQGb7NKl3lbqI5HM6aVjp4I+6dG4DXvYHXzQ=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.management.infrastructure.runtime.win/3.0.0/microsoft.management.infrastructure.runtime.win.3.0.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.NETCore.Platforms",
+    "version": "1.1.0",
+    "hash": "sha256-FeM40ktcObQJk4nMYShB61H/E8B7tIKfl9ObJ0IOcCM=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.netcore.platforms/1.1.0/microsoft.netcore.platforms.1.1.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.NETCore.Platforms",
+    "version": "5.0.0",
+    "hash": "sha256-LIcg1StDcQLPOABp4JRXIs837d7z0ia6+++3SF3jl1c=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.netcore.platforms/5.0.0/microsoft.netcore.platforms.5.0.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.PowerShell.CoreCLR.Eventing",
+    "version": "7.4.14",
+    "hash": "sha256-cCc2frdKsYOIMuOY+DMuAPVM9WnG2/dyCWJon9huunQ=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.powershell.coreclr.eventing/7.4.14/microsoft.powershell.coreclr.eventing.7.4.14.nupkg"
+  },
+  {
+    "pname": "Microsoft.PowerShell.Native",
+    "version": "7.4.0",
+    "hash": "sha256-XOkDRXtqwKhWXhORbZu8/9SdMfwC3Rn7uGjxfl5i4kk=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.powershell.native/7.4.0/microsoft.powershell.native.7.4.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.Security.Extensions",
+    "version": "1.4.0",
+    "hash": "sha256-YzND/cliT88tJQ94acS7WQv0xSubfMFOYTzFlWJmGrI=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.security.extensions/1.4.0/microsoft.security.extensions.1.4.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.Win32.Registry",
+    "version": "5.0.0",
+    "hash": "sha256-9kylPGfKZc58yFqNKa77stomcoNnMeERXozWJzDcUIA=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.win32.registry/5.0.0/microsoft.win32.registry.5.0.0.nupkg"
+  },
+  {
+    "pname": "Microsoft.Win32.Registry.AccessControl",
+    "version": "8.0.0",
+    "hash": "sha256-F2/VVsc5c3RpsraXAx63P8OdZA61Hh1HbirYI3U1FT4=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/microsoft.win32.registry.accesscontrol/8.0.0/microsoft.win32.registry.accesscontrol.8.0.0.nupkg"
+  },
+  {
+    "pname": "NETStandard.Library",
+    "version": "2.0.3",
+    "hash": "sha256-Prh2RPebz/s8AzHb2sPHg3Jl8s31inv9k+Qxd293ybo=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/netstandard.library/2.0.3/netstandard.library.2.0.3.nupkg"
+  },
+  {
+    "pname": "Newtonsoft.Json",
+    "version": "13.0.4",
+    "hash": "sha256-8JCB1FdAW681qXP6DFDWvycu1oPyVoxaYgpJ2pUvZSk=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/newtonsoft.json/13.0.4/newtonsoft.json.13.0.4.nupkg"
+  },
+  {
+    "pname": "Pluralize.NET",
+    "version": "1.0.2",
+    "hash": "sha256-u/WHYDpSvGs6SkgPREm1RID4po6h8/fj2QgJal1TBwU=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/pluralize.net/1.0.2/pluralize.net.1.0.2.nupkg"
+  },
+  {
+    "pname": "PowerShellStandard.Library",
+    "version": "5.1.1",
+    "hash": "sha256-WkUZREiYoMpAVgj5jmbDbkohdnZSjHfw9iLfKyApqCo=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/powershellstandard.library/5.1.1/powershellstandard.library.5.1.1.nupkg"
+  },
+  {
+    "pname": "System.Buffers",
+    "version": "4.5.1",
+    "hash": "sha256-wws90sfi9M7kuCPWkv1CEYMJtCqx9QB/kj0ymlsNaxI=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.buffers/4.5.1/system.buffers.4.5.1.nupkg"
+  },
+  {
+    "pname": "System.CodeDom",
+    "version": "8.0.0",
+    "hash": "sha256-uwVhi3xcvX7eiOGQi7dRETk3Qx1EfHsUfchZsEto338=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.codedom/8.0.0/system.codedom.8.0.0.nupkg"
+  },
+  {
+    "pname": "System.Configuration.ConfigurationManager",
+    "version": "8.0.1",
+    "hash": "sha256-2vgU/BBFDOO2506UX6mtuBQ9c2bCShLLhoy67l7418E=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.configuration.configurationmanager/8.0.1/system.configuration.configurationmanager.8.0.1.nupkg"
+  },
+  {
+    "pname": "System.Diagnostics.DiagnosticSource",
+    "version": "8.0.1",
+    "hash": "sha256-zmwHjcJgKcbkkwepH038QhcnsWMJcHys+PEbFGC0Jgo=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.diagnostics.diagnosticsource/8.0.1/system.diagnostics.diagnosticsource.8.0.1.nupkg"
+  },
+  {
+    "pname": "System.Diagnostics.EventLog",
+    "version": "8.0.2",
+    "hash": "sha256-G3X0spws6tgviqJuHFSJAshz4AQ3twWwSDmAfviw9lA=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.diagnostics.eventlog/8.0.2/system.diagnostics.eventlog.8.0.2.nupkg"
+  },
+  {
+    "pname": "System.DirectoryServices",
+    "version": "8.0.0",
+    "hash": "sha256-a6ECGvsDqHPZuaG920zMjcCOBD2Kvg8jWpSacgL4a7A=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.directoryservices/8.0.0/system.directoryservices.8.0.0.nupkg"
+  },
+  {
+    "pname": "System.Formats.Asn1",
+    "version": "8.0.2",
+    "hash": "sha256-TVoJN39csCza2XtzLEJ4zTis9CC5FFN5OqvIwhPkON8=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.formats.asn1/8.0.2/system.formats.asn1.8.0.2.nupkg"
+  },
+  {
+    "pname": "System.Management",
+    "version": "8.0.0",
+    "hash": "sha256-HwpfDb++q7/vxR6q57mGFgl5U0vxy+oRJ6orFKORfP0=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.management/8.0.0/system.management.8.0.0.nupkg"
+  },
+  {
+    "pname": "System.Management.Automation",
+    "version": "7.4.14",
+    "hash": "sha256-EJCdFkmfFdp8gCef07dEZ9XoU4JTrSlPMLVJJaSNqrM=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.management.automation/7.4.14/system.management.automation.7.4.14.nupkg"
+  },
+  {
+    "pname": "System.Memory",
+    "version": "4.5.4",
+    "hash": "sha256-3sCEfzO4gj5CYGctl9ZXQRRhwAraMQfse7yzKoRe65E=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.memory/4.5.4/system.memory.4.5.4.nupkg"
+  },
+  {
+    "pname": "System.Numerics.Vectors",
+    "version": "4.4.0",
+    "hash": "sha256-auXQK2flL/JpnB/rEcAcUm4vYMCYMEMiWOCAlIaqu2U=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.numerics.vectors/4.4.0/system.numerics.vectors.4.4.0.nupkg"
+  },
+  {
+    "pname": "System.Reflection.TypeExtensions",
+    "version": "4.7.0",
+    "hash": "sha256-GEtCGXwtOnkYejSV+Tfl+DqyGq5jTUaVyL9eMupMHBM=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.reflection.typeextensions/4.7.0/system.reflection.typeextensions.4.7.0.nupkg"
+  },
+  {
+    "pname": "System.Runtime.CompilerServices.Unsafe",
+    "version": "4.5.3",
+    "hash": "sha256-lnZMUqRO4RYRUeSO8HSJ9yBHqFHLVbmenwHWkIU20ak=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.runtime.compilerservices.unsafe/4.5.3/system.runtime.compilerservices.unsafe.4.5.3.nupkg"
+  },
+  {
+    "pname": "System.Security.AccessControl",
+    "version": "5.0.0",
+    "hash": "sha256-ueSG+Yn82evxyGBnE49N4D+ngODDXgornlBtQ3Omw54=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.security.accesscontrol/5.0.0/system.security.accesscontrol.5.0.0.nupkg"
+  },
+  {
+    "pname": "System.Security.AccessControl",
+    "version": "6.0.1",
+    "hash": "sha256-Ri4m95ZBfopDUGVahbvUIzuUy9D3FQwcXprP2I6IUUE=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.security.accesscontrol/6.0.1/system.security.accesscontrol.6.0.1.nupkg"
+  },
+  {
+    "pname": "System.Security.Cryptography.Pkcs",
+    "version": "8.0.1",
+    "hash": "sha256-KMNIkJ3yQ/5O6WIhPjyAIarsvIMhkp26A6aby5KkneU=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.security.cryptography.pkcs/8.0.1/system.security.cryptography.pkcs.8.0.1.nupkg"
+  },
+  {
+    "pname": "System.Security.Cryptography.ProtectedData",
+    "version": "8.0.0",
+    "hash": "sha256-fb0pa9sQxN+mr0vnXg1Igbx49CaOqS+GDkTfWNboUvs=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.security.cryptography.protecteddata/8.0.0/system.security.cryptography.protecteddata.8.0.0.nupkg"
+  },
+  {
+    "pname": "System.Security.Permissions",
+    "version": "8.0.0",
+    "hash": "sha256-+YUPY+3HnTmfPLZzr+5qEk0RqalCbFZBgLXee1yCH1M=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.security.permissions/8.0.0/system.security.permissions.8.0.0.nupkg"
+  },
+  {
+    "pname": "System.Security.Principal.Windows",
+    "version": "5.0.0",
+    "hash": "sha256-CBOQwl9veFkrKK2oU8JFFEiKIh/p+aJO+q9Tc2Q/89Y=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.security.principal.windows/5.0.0/system.security.principal.windows.5.0.0.nupkg"
+  },
+  {
+    "pname": "System.Text.Encoding.CodePages",
+    "version": "8.0.0",
+    "hash": "sha256-fjCLQc1PRW0Ix5IZldg0XKv+J1DqPSfu9pjMyNBp7dE=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.text.encoding.codepages/8.0.0/system.text.encoding.codepages.8.0.0.nupkg"
+  },
+  {
+    "pname": "System.Windows.Extensions",
+    "version": "8.0.0",
+    "hash": "sha256-aHkz7LtmUDDRS7swQM0i6dDVUytRCMYeA2CfaeVA2Y0=",
+    "url": "https://pkgs.dev.azure.com/powershell/2972bb5c-f20c-4a60-8bd9-00ffe9987edc/_packaging/e59e749b-417c-4664-9322-c190bb60de7f/nuget/v3/flat2/system.windows.extensions/8.0.0/system.windows.extensions.8.0.0.nupkg"
+  }
+]

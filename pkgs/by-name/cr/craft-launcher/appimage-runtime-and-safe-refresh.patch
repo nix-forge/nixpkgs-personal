@@ -1,0 +1,359 @@
+--- a/crates/native/src/process.rs
++++ b/crates/native/src/process.rs
+@@ -148,11 +148,31 @@
+     std::env::split_paths(&path).map(|d| d.join(name)).find(|p| p.is_file())
+ }
+ 
+-/// Starts an app binary from its own folder.
+-pub fn launch_binary(exe: &Path, args: &[&str]) -> Result<(), String> {
+-    let mut cmd = if in_sandbox() {
++/// The pinned Nix AppImage runtime, present only in native Linux packages.
++pub(crate) fn appimage_runner() -> Option<&'static std::ffi::OsStr> {
++    if !cfg!(target_os = "linux") {
++        return None;
++    }
++    option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN").filter(|p| !p.is_empty()).map(std::ffi::OsStr::new)
++}
++
++/// Starts an app binary from its own folder, using the host when inside Flatpak.
++pub fn launch_binary(app_id: &str, exe: &Path, args: &[&str]) -> Result<(), String> {
++    spawn_detached(binary_command(app_id, exe, args, in_sandbox(), appimage_runner()))
++}
++
++fn binary_command(app_id: &str, exe: &Path, args: &[&str], sandbox: bool, runner: Option<&std::ffi::OsStr>) -> Command {
++    let mut cmd = if sandbox {
+         let mut c = command("flatpak-spawn");
+         c.arg("--host").arg(exe);
++        c
++    } else if let Some(runner) =
++        runner.filter(|r| cfg!(target_os = "linux") && !r.is_empty() && exe.extension().is_some_and(|e| e.eq_ignore_ascii_case("AppImage")))
++    {
++        let mut c = command(runner);
++        c.arg(exe);
++        // AppRun must not overwrite the launcher's runtime-aware desktop entry.
++        c.env(format!("{}_NO_DESKTOP_INTEGRATION", app_id.to_ascii_uppercase()), "1");
+         c
+     } else {
+         command(exe)
+@@ -161,7 +181,7 @@
+     if let Some(dir) = exe.parent() {
+         cmd.current_dir(dir);
+     }
+-    spawn_detached(cmd)
++    cmd
+ }
+ 
+ /// Opens a file, folder or URL with the system's default handler.
+@@ -372,3 +392,45 @@
+         assert!(!command("other-helper").get_envs().any(|(key, _)| key == "LC_ALL"));
+     }
+ }
++
++#[cfg(all(test, target_os = "linux"))]
++mod appimage_runtime_tests {
++    use super::*;
++    use std::ffi::OsStr;
++
++    #[test]
++    fn appimage_runtime_keeps_arguments_directory_and_desktop_opt_out() {
++        let image = Path::new("/home/user/My Apps/figcraft.AppImage");
++        let runner = OsStr::new("/nix/store/runtime/bin/appimage-run");
++        let cmd = binary_command("figcraft", image, &["--control", "7878"], false, Some(runner));
++        assert_eq!(cmd.get_program(), runner);
++        assert_eq!(cmd.get_args().collect::<Vec<_>>(), [image.as_os_str(), OsStr::new("--control"), OsStr::new("7878")]);
++        assert_eq!(cmd.get_current_dir(), image.parent());
++        assert!(cmd.get_envs().any(|(key, value)| key == "FIGCRAFT_NO_DESKTOP_INTEGRATION" && value == Some(OsStr::new("1"))));
++        // Command inherits the parent environment; this adaptation adds only its opt-out.
++        assert!(!cmd.get_envs().any(|(key, _)| key == "WAYLAND_DISPLAY" || key == "DISPLAY" || key == "HOME"));
++    }
++
++    #[test]
++    fn flatpak_host_launch_takes_precedence_over_the_nix_runtime() {
++        let image = Path::new("/home/user/Apps/figcraft.AppImage");
++        let cmd = binary_command("figcraft", image, &["--version"], true, Some(OsStr::new("appimage-run")));
++        assert_eq!(cmd.get_program(), "flatpak-spawn");
++        assert_eq!(cmd.get_args().collect::<Vec<_>>(), [OsStr::new("--host"), image.as_os_str(), OsStr::new("--version")]);
++        assert!(!cmd.get_envs().any(|(key, _)| key == "FIGCRAFT_NO_DESKTOP_INTEGRATION"));
++    }
++
++    #[test]
++    fn native_binaries_and_appimages_without_a_runtime_launch_directly() {
++        for (path, runner) in [
++            ("/usr/bin/figcraft", Some(OsStr::new("appimage-run"))),
++            ("/home/user/figcraft.AppImage", None),
++            ("/home/user/figcraft.AppImage", Some(OsStr::new(""))),
++        ] {
++            let exe = Path::new(path);
++            let cmd = binary_command("figcraft", exe, &["--version"], false, runner);
++            assert_eq!(cmd.get_program(), exe);
++            assert_eq!(cmd.get_args().collect::<Vec<_>>(), [OsStr::new("--version")]);
++        }
++    }
++}
+--- a/crates/native/src/desktop_entry.rs
++++ b/crates/native/src/desktop_entry.rs
+@@ -70,9 +70,25 @@
+ /// The entry for `app` installed as the AppImage `appimage`; `icon` when its icon is installed
+ /// under the app's id. `None` when the path can't be put in an `Exec=` line.
+ pub fn render(app: &CraftApp, appimage: &Path, icon: bool) -> Option<String> {
++    let runner = if crate::process::in_sandbox() { None } else { crate::process::appimage_runner().map(Path::new) };
++    render_with_runner(app, appimage, icon, runner)
++}
++
++/// The declared Nix env executable, with upstream PATH lookup as the unconfigured fallback.
++pub(crate) fn env_program() -> &'static str {
++    option_env!("CRAFT_LAUNCHER_ENV").filter(|p| !p.is_empty()).unwrap_or("env")
++}
++
++pub(crate) fn render_with_runner(app: &CraftApp, appimage: &Path, icon: bool, runner: Option<&Path>) -> Option<String> {
+     let exec = exec_quote(appimage)?;
+-    let exec = match option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN") {
+-        Some(helper) => format!("{} {exec}", exec_quote(Path::new(helper))?),
++    let runner = runner.filter(|p| !p.as_os_str().is_empty());
++    let exec = match runner {
++        Some(helper) => format!(
++            "{} {}_NO_DESKTOP_INTEGRATION=1 {} {exec}",
++            exec_quote(Path::new(env_program()))?,
++            app.id.to_ascii_uppercase(),
++            exec_quote(helper)?
++        ),
+         None => exec,
+     };
+     let (categories, wm_class) = meta(app);
+@@ -80,6 +96,9 @@
+     text.push_str(&format!("Name={}\n", value(app.name)));
+     text.push_str(&format!("Comment={}\n", value(app.tagline)));
+     text.push_str(&format!("Exec={exec} %F\n"));
++    if runner.is_some() {
++        text.push_str(&format!("TryExec={}\n", value(appimage.to_str()?)));
++    }
+     if icon {
+         text.push_str(&format!("Icon={}\n", app.bundle_id()));
+     }
+@@ -99,9 +118,22 @@
+ /// The program an entry's `Exec=` runs: its first argument, unquoted. Reads the launcher's own
+ /// quoting and the plain `Exec="<path>" %F` the apps' AppImages write for themselves.
+ pub fn exec_program(text: &str) -> Option<String> {
++    exec_program_with_env(text, env_program())
++}
++
++fn exec_program_with_env(text: &str, env: &str) -> Option<String> {
+     let line = text.lines().find_map(|l| l.strip_prefix("Exec="))?;
+-    let helper = option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN")
+-        .and_then(|path| exec_quote(Path::new(path))).map(|quoted| format!("{quoted} "));
++    let configured_env = format!("{} ", exec_quote(Path::new(env))?);
++    let line = line
++        .strip_prefix(&configured_env)
++        .or_else(|| line.strip_prefix("env "))
++        .and_then(|rest| {
++            let (assignment, command) = rest.split_once(' ')?;
++            let name = assignment.strip_suffix("_NO_DESKTOP_INTEGRATION=1")?;
++            (!name.is_empty() && name.bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')).then_some(command)
++        })
++        .unwrap_or(line);
++    let helper = option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN").and_then(|path| exec_quote(Path::new(path))).map(|quoted| format!("{quoted} "));
+     let line = helper.as_deref().and_then(|prefix| line.strip_prefix(prefix)).unwrap_or(line);
+     // String-value escapes first, then the quoting rule.
+     let mut unescaped = String::with_capacity(line.len());
+@@ -158,7 +190,16 @@
+             app("photocraft").tagline
+         );
+         let expected = match option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN") {
+-            Some(helper) => expected.replace("Exec=", &format!("Exec={} ", exec_quote(Path::new(helper)).unwrap())),
++            Some(helper) => expected
++                .replace(
++                    "Exec=",
++                    &format!(
++                        "Exec={} PHOTOCRAFT_NO_DESKTOP_INTEGRATION=1 {} ",
++                        exec_quote(Path::new(env_program())).unwrap(),
++                        exec_quote(Path::new(helper)).unwrap()
++                    ),
++                )
++                .replace("Icon=", "TryExec=/home/ana/Applications/photocraft-0.6.0-linux-x86_64.AppImage\nIcon="),
+             None => expected,
+         };
+         assert_eq!(text, expected);
+@@ -174,9 +215,26 @@
+         let Some(helper) = option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN") else { return };
+         let path = Path::new("/home/test/My Apps/100% \"quote\" $HOME `test`.AppImage");
+         let entry = render(app("photocraft"), path, true).unwrap();
+-        let prefix = format!("Exec={} ", exec_quote(Path::new(helper)).unwrap());
++        let prefix = format!(
++            "Exec={} PHOTOCRAFT_NO_DESKTOP_INTEGRATION=1 {} ",
++            exec_quote(Path::new(env_program())).unwrap(),
++            exec_quote(Path::new(helper)).unwrap()
++        );
+         assert!(entry.lines().any(|line| line.starts_with(&prefix)));
+         assert_eq!(exec_program(&entry).map(PathBuf::from), Some(path.to_path_buf()));
++    }
++
++    #[test]
++    fn configured_env_and_legacy_bare_env_preserve_the_appimage_target() {
++        let env = "/nix/store/My Env/bin/env";
++        let image = Path::new(r#"/home/user/My Apps/100% "quote" $HOME.AppImage"#);
++        let helper = option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN").map(|p| format!("{} ", exec_quote(Path::new(p)).unwrap())).unwrap_or_default();
++        for env_exec in [exec_quote(Path::new(env)).unwrap(), "env".to_string()] {
++            let text = format!("[Desktop Entry]\nExec={env_exec} FIGCRAFT_NO_DESKTOP_INTEGRATION=1 {helper}{} %F\n", exec_quote(image).unwrap());
++            assert_eq!(exec_program_with_env(&text, env).map(PathBuf::from), Some(image.to_path_buf()));
++        }
++        let unrelated = "[Desktop Entry]\nExec=env USER_SETTING=1 /home/user/figcraft.AppImage %F\n";
++        assert_eq!(exec_program_with_env(unrelated, env).as_deref(), Some("env"));
+     }
+ 
+     #[test]
+--- a/crates/native/src/install.rs
++++ b/crates/native/src/install.rs
+@@ -315,7 +315,7 @@
+             if !path.exists() {
+                 return Err(format!("{} isn't where it was installed ({})", app.name, path.display()));
+             }
+-            process::launch_binary(path, &[])
++            process::launch_binary(app.id, path, &[])
+         }
+     }
+     .map_err(|e| format!("Couldn't open {}: {e}", app.name))
+@@ -832,6 +832,54 @@
+             Err(e) => log::warn!("{}: couldn't add the menu entry: {e}", app.name),
+         }
+         written
++    }
++
++    /// Refresh only exact canonical entries; user-edited fields and arguments stay untouched.
++    pub fn refresh_menu_entries(manifest: &crate::manifest::Manifest) {
++        if process::in_sandbox() {
++            return;
++        }
++        let (Some(runner), Some(data)) = (process::appimage_runner(), host_data_dir()) else { return };
++        for (id, record) in &manifest.apps {
++            if record.kind == PackageKind::AppImage
++                && let Some(app) = CraftApp::by_id(id)
++            {
++                refresh_owned_menu_entry(&data, app, &record.path, Path::new(runner));
++            }
++        }
++    }
++
++    pub(crate) fn refresh_owned_menu_entry(data: &Path, app: &CraftApp, image: &Path, runner: &Path) {
++        let desktop = desktop_path(data, app);
++        if !image.is_file() || !std::fs::symlink_metadata(&desktop).is_ok_and(|m| m.is_file()) {
++            return;
++        }
++        let Ok(old) = std::fs::read_to_string(&desktop) else { return };
++        if !crate::desktop_entry::is_ours(&old) {
++            return;
++        }
++        let icon = icon_path(data, app).is_file();
++        let Some(text) = crate::desktop_entry::render_with_runner(app, image, icon, Some(runner)) else { return };
++        if text == old {
++            return;
++        }
++        let direct = crate::desktop_entry::render_with_runner(app, image, icon, None);
++        // Our earlier Nix entry used this same pinned helper without an AppRun opt-out.
++        let Some(env) = crate::desktop_entry::exec_quote(Path::new(crate::desktop_entry::env_program())) else { return };
++        let prefix = format!("Exec={env} {}_NO_DESKTOP_INTEGRATION=1 ", app.id.to_ascii_uppercase());
++        let legacy = text
++            .replacen(&prefix, "Exec=", 1)
++            .lines()
++            .filter(|line| !line.starts_with("TryExec="))
++            .map(|line| format!("{line}\n"))
++            .collect::<String>();
++        let bare_env = text.replacen(&format!("Exec={env} "), "Exec=env ", 1);
++        if direct.as_deref() != Some(old.as_str()) && legacy != old && bare_env != old {
++            return; // Includes changed Name/Comment, extra Exec args, and another target.
++        }
++        if let Err(e) = crate::paths::write_atomic(&desktop, text.as_bytes()) {
++            log::warn!("{}: couldn't refresh the menu entry: {e}", app.name);
++        }
+     }
+ 
+     /// Takes away what [`integrate`] added for the removed AppImage `appimage`.
+@@ -1597,7 +1645,8 @@
+         let files = linux::integrate_into(&data, app, &new, &[], None);
+         assert_eq!(files, [icon.clone(), desktop.clone()]);
+         let text = std::fs::read_to_string(&desktop).unwrap();
+-        assert!(text.contains("Exec=\"") && text.contains("My Apps/wordcraft-0.3.0-linux-x86_64.AppImage\" %F\n"), "{text}");
++        assert_eq!(crate::desktop_entry::exec_program(&text).map(PathBuf::from), Some(new.clone()));
++        assert!(text.contains("My Apps/wordcraft-0.3.0-linux-x86_64.AppImage\" %F\n"), "{text}");
+         assert!(text.contains("Icon=ai.storyteller.wordcraft\n"));
+         assert!(std::fs::read(&icon).unwrap().starts_with(b"\x89PNG"));
+         let rec = record("0.3.0", PackageKind::AppImage, new.clone(), files, false);
+@@ -1635,6 +1684,68 @@
+     }
+ 
+     #[cfg(target_os = "linux")]
++    #[test]
++    fn runtime_refresh_preserves_custom_entries_and_only_rewrites_canonical_entries() {
++        use std::os::unix::fs::MetadataExt;
++        let app = CraftApp::by_id("figcraft").unwrap();
++        let dir = tempfile::tempdir().unwrap();
++        let data = dir.path().join("share");
++        let image = dir.path().join("figcraft.AppImage");
++        let runner = dir.path().join("appimage-run");
++        std::fs::write(&image, b"image").unwrap();
++        let desktop = data.join("applications").join(format!("{}.desktop", app.bundle_id()));
++        std::fs::create_dir_all(desktop.parent().unwrap()).unwrap();
++        let icon = data.join("icons/hicolor/128x128/apps").join(format!("{}.png", app.bundle_id()));
++        std::fs::create_dir_all(icon.parent().unwrap()).unwrap();
++        std::fs::write(&icon, b"user's icon").unwrap();
++        let direct = crate::desktop_entry::render_with_runner(app, &image, true, None).unwrap();
++        let rendered = crate::desktop_entry::render_with_runner(app, &image, true, Some(&runner)).unwrap();
++        let env = crate::desktop_entry::exec_quote(Path::new(crate::desktop_entry::env_program())).unwrap();
++        let bare_env = rendered.replacen(&format!("Exec={env} "), "Exec=env ", 1);
++        for edited in [
++            direct.replace("Name=FigCraft", "Name=My custom FigCraft"),
++            direct.replace(" %F", " --custom-argument %F"),
++            direct.replace("Categories=", "X-User-Setting=keep\nCategories="),
++            bare_env.replace("Name=FigCraft", "Name=My custom FigCraft"),
++            bare_env.replace(" %F", " --custom-argument %F"),
++            direct.replace("X-ArtCraft-Launcher=true", "X-ArtCraft-Launcher=false"),
++            crate::desktop_entry::render_with_runner(app, &dir.path().join("other.AppImage"), true, None).unwrap(),
++        ] {
++            std::fs::write(&desktop, &edited).unwrap();
++            linux::refresh_owned_menu_entry(&data, app, &image, &runner);
++            assert_eq!(std::fs::read_to_string(&desktop).unwrap(), edited);
++        }
++        std::fs::write(&desktop, &direct).unwrap();
++        linux::refresh_owned_menu_entry(&data, app, &image, &runner);
++        assert_eq!(std::fs::read_to_string(&desktop).unwrap(), rendered);
++        let inode = std::fs::metadata(&desktop).unwrap().ino();
++        linux::refresh_owned_menu_entry(&data, app, &image, &runner);
++        assert_eq!(std::fs::metadata(&desktop).unwrap().ino(), inode);
++        let prefix = format!("Exec={env} {}_NO_DESKTOP_INTEGRATION=1 ", app.id.to_ascii_uppercase());
++        let legacy = rendered
++            .replacen(&prefix, "Exec=", 1)
++            .lines()
++            .filter(|line| !line.starts_with("TryExec="))
++            .map(|line| format!("{line}\n"))
++            .collect::<String>();
++        for old_entry in [legacy, bare_env] {
++            std::fs::write(&desktop, old_entry).unwrap();
++            linux::refresh_owned_menu_entry(&data, app, &image, &runner);
++            assert_eq!(std::fs::read_to_string(&desktop).unwrap(), rendered);
++        }
++        std::fs::remove_file(&desktop).unwrap();
++        linux::refresh_owned_menu_entry(&data, app, &image, &runner);
++        assert!(!desktop.exists());
++        let target = dir.path().join("custom.desktop");
++        std::fs::write(&target, &direct).unwrap();
++        std::os::unix::fs::symlink(&target, &desktop).unwrap();
++        linux::refresh_owned_menu_entry(&data, app, &image, &runner);
++        assert!(desktop.is_symlink());
++        assert_eq!(std::fs::read_to_string(&target).unwrap(), direct);
++        assert_eq!(std::fs::read(&icon).unwrap(), b"user's icon");
++    }
++
++    #[cfg(target_os = "linux")]
+     fn desktop_entry_is_ours(path: &Path) -> bool {
+         crate::desktop_entry::is_ours(&std::fs::read_to_string(path).unwrap())
+     }
+--- a/crates/native/src/backend.rs
++++ b/crates/native/src/backend.rs
+@@ -184,6 +184,8 @@
+             http::clean_downloads(&paths.downloads(), Duration::from_secs(30 * 86_400), Duration::from_secs(7 * 86_400));
+             let snapshot = crate::detect::Snapshot::take();
+             let manifest = shared.manifest.lock().unwrap_or_else(PoisonError::into_inner).clone();
++            #[cfg(target_os = "linux")]
++            crate::install::linux::refresh_menu_entries(&manifest);
+             for app in &SUITE {
+                 let found = crate::detect::detect(app, &manifest, &snapshot);
+                 {

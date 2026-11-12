@@ -1,6 +1,26 @@
+--- a/src/ui/controls/calendar_view.cpp
++++ b/src/ui/controls/calendar_view.cpp
+@@ -311,7 +311,7 @@
+ 
+       if (!inMonth) {
+         Button::ButtonPalette muted = Button::defaultPalette(ButtonVariant::Ghost);
+-        muted.normal.label = colorSpecFromRole(ColorRole::OnSurfaceVariant, 0.75F);
++        muted.normal.label = colorSpecFromRole(ColorRole::OnSurfaceVariant);
+         button->setCustomPalette(muted);
+       } else if (options.selected == date) {
+         button->setVariant(ButtonVariant::Primary);
+@@ -386,7 +386,7 @@
+                 .text = std::format("{:%V}", firstThursday + std::chrono::days{row * 7}),
+                 .fontSize = Style::fontSizeCaption * options.scale,
+                 .fontFamily = options.fontFamily,
+-                .color = colorSpecFromRole(ColorRole::OnSurfaceVariant, 0.7F),
++                .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
+                 .maxLines = 1,
+             })
+         );
 --- a/src/ui/controls/input.cpp
 +++ b/src/ui/controls/input.cpp
-@@ -52,8 +52,8 @@
+@@ -54,8 +54,8 @@
    constexpr auto kCursorBlinkInterval = std::chrono::milliseconds(530);
    constexpr auto kCursorBlinkResumeDelay = std::chrono::milliseconds(650);
    constexpr float kTextInnerInset = 3.0F;
@@ -22,41 +42,21 @@
  
    Color resolved(ColorRole role, float alpha = 1.0F) { return colorForRole(role, alpha); }
  
---- a/src/ui/controls/calendar_view.cpp
-+++ b/src/ui/controls/calendar_view.cpp
-@@ -282,7 +282,7 @@
- 
-       if (!inMonth) {
-         Button::ButtonPalette muted = Button::defaultPalette(ButtonVariant::Ghost);
--        muted.normal.label = colorSpecFromRole(ColorRole::OnSurfaceVariant, 0.75F);
-+        muted.normal.label = colorSpecFromRole(ColorRole::OnSurfaceVariant);
-         button->setCustomPalette(muted);
-       } else if (options.selected == date) {
-         button->setVariant(ButtonVariant::Primary);
-@@ -357,7 +357,7 @@
-                 .text = std::format("{:%V}", firstThursday + std::chrono::days{row * 7}),
-                 .fontSize = Style::fontSizeCaption * options.scale,
-                 .fontFamily = options.fontFamily,
--                .color = colorSpecFromRole(ColorRole::OnSurfaceVariant, 0.7F),
-+                .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
-                 .maxLines = 1,
-             })
-         );
 --- a/src/ui/controls/slider.cpp
 +++ b/src/ui/controls/slider.cpp
-@@ -290,7 +290,7 @@
-   Color trackColor = resolved(ColorRole::Outline);
+@@ -300,7 +300,7 @@
+   Color trackColor = resolved(ColorRole::OutlineVariant);
    Color fillColor = resolved(ColorRole::Primary);
    Color thumbColor = resolved(ColorRole::OnPrimary);
--  Color thumbBorder = resolved(ColorRole::Outline);
+-  Color thumbBorder = resolved(ColorRole::OutlineVariant);
 +  Color thumbBorder = resolved(ColorRole::OnSurfaceVariant);
  
    m_thumb->setVisible(m_enabled);
  
 --- a/src/ui/palette.h
 +++ b/src/ui/palette.h
-@@ -136,7 +136,7 @@
-   return colorSpecFromRole(ColorRole::Outline, Style::disabledOutlineAlpha);
+@@ -163,7 +163,7 @@
+   return colorSpecFromRole(ColorRole::OutlineVariant, Style::disabledOutlineAlpha);
  }
  [[nodiscard]] inline ColorSpec scrollbarThumbColor() noexcept {
 -  return colorSpecFromRole(ColorRole::OnSurfaceVariant, 0.5F);

@@ -1,0 +1,541 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -56,7 +56,7 @@
+ unicode-bidi = "0.3"
+ unicode-segmentation = "1.13"
+ linesweeper = "0.4"
+-zip = { version = "2", default-features = false, features = ["deflate"] }
++zip = { version = "=9.5.0", default-features = false, features = ["deflate-flate2", "deflate-zopfli"] }
+ # `.fig` import: raw deflate chunks (already built for zip) and zstd chunks (pure Rust, MIT, wasm-safe).
+ flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+ ruzstd = { version = "0.9.1", default-features = false, features = ["std"] }
+@@ -116,3 +116,6 @@
+ debug = false
+ strip = true
+ panic = "abort"
++
++[patch.crates-io]
++zip = { path = "vendor/zip" }
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -231,15 +231,6 @@
+  "anstyle",
+  "once_cell_polyfill",
+  "windows-sys 0.61.2",
+-]
+-
+-[[package]]
+-name = "arbitrary"
+-version = "1.5.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "3bc62ac97cc33321f50863d514c3bc38a453947a8f9e781137e47c7401020aed"
+-dependencies = [
+- "derive_arbitrary",
+ ]
+ 
+ [[package]]
+@@ -789,6 +780,15 @@
+ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
+ 
+ [[package]]
++name = "constant_time_eq"
++version = "0.6.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9eb6feb175df65d0a3ccd3e73484e940d0ac664e8034f0519fd49a93db3071d9"
++dependencies = [
++ "rustversion",
++]
++
++[[package]]
+ name = "core-foundation"
+ version = "0.9.4"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -972,17 +972,6 @@
+ checksum = "10d60334b3b2e7c9d91ef8150abfb6fa4c1c39ebbcf4a81c2e346aad939fee3e"
+ dependencies = [
+  "thiserror 2.0.21",
+-]
+-
+-[[package]]
+-name = "derive_arbitrary"
+-version = "1.5.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1b034bd7d5f032402a2479444dcc6f74e36a03f31854d41680fb240ef682a1ac"
+-dependencies = [
+- "proc-macro2",
+- "quote",
+- "syn 3.0.6",
+ ]
+ 
+ [[package]]
+@@ -1949,9 +1938,11 @@
+ checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
+ dependencies = [
+  "cfg-if",
++ "js-sys",
+  "libc",
+  "r-efi 6.0.0",
+  "rand_core 0.10.1",
++ "wasm-bindgen",
+ ]
+ 
+ [[package]]
+@@ -4592,6 +4583,12 @@
+ dependencies = [
+  "rustc-hash 2.1.3",
+ ]
++
++[[package]]
++name = "typed-path"
++version = "0.13.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9ce898823d8cd0f028662d2f349694b1af0a5cc9be83f1d213a00d3147445e1e"
+ 
+ [[package]]
+ name = "typenum"
+@@ -5988,6 +5985,20 @@
+ version = "1.9.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"
++dependencies = [
++ "zeroize_derive",
++]
++
++[[package]]
++name = "zeroize_derive"
++version = "1.5.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "3c50655cbb0fe3fc43170059e702f1ce5e19b84cec58dc87b037a09935c2f328"
++dependencies = [
++ "proc-macro2",
++ "quote",
++ "syn 2.0.119",
++]
+ 
+ [[package]]
+ name = "zerotrie"
+@@ -6024,18 +6035,19 @@
+ 
+ [[package]]
+ name = "zip"
+-version = "2.4.2"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "fabe6324e908f85a1c52063ce7aa26b68dcb7eb6dbc83a2d148403c9bc3eba50"
+-dependencies = [
+- "arbitrary",
++version = "9.5.0"
++dependencies = [
++ "constant_time_eq",
+  "crc32fast",
+- "crossbeam-utils",
+- "displaydoc",
+  "flate2",
++ "getrandom 0.4.3",
+  "indexmap",
++ "libc",
+  "memchr",
+- "thiserror 2.0.21",
++ "nix",
++ "typed-path",
++ "windows-sys 0.61.2",
++ "zeroize",
+  "zopfli",
+ ]
+ 
+--- a/crates/format/src/lib.rs
++++ b/crates/format/src/lib.rs
+@@ -438,6 +438,13 @@
+     load_bytes_with_versions(bytes).map(|l| (l.doc, l.issues))
+ }
+ 
++/// Validate the complete archive before reading even optional or otherwise ignored parts.
++pub(crate) fn open_archive<R: Read + Seek>(reader: R) -> zip::result::ZipResult<zip::ZipArchive<R>> {
++    let mut archive = zip::ZipArchive::new(reader)?;
++    archive.validate_header_consistency()?;
++    Ok(archive)
++}
++
+ /// Read archive member `name`, refusing members larger than `limit` bytes.
+ pub(crate) fn read_member<R: Read + Seek>(z: &mut zip::ZipArchive<R>, name: &str, limit: u64) -> Result<Vec<u8>, FormatError> {
+     let f = z.by_name(name).map_err(|e| FormatError::Corrupt(format!("{name}: {e}")))?;
+@@ -461,10 +468,16 @@
+         let (doc, issues) = from_json(text)?;
+         return Ok(Loaded { issues, ..Loaded::from(doc) });
+     }
+-    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| FormatError::Corrupt(e.to_string()))?;
++    let mut z = open_archive(std::io::Cursor::new(bytes)).map_err(|e| FormatError::Corrupt(e.to_string()))?;
+     let text = String::from_utf8(read_member(&mut z, "document.json", MAX_MEMBER)?).map_err(|e| FormatError::Corrupt(e.to_string()))?;
+     let (mut doc, mut issues, own_images) = parse_json(&text)?;
+-    let names: Vec<String> = z.file_names().filter(|n| n.starts_with("images/")).map(str::to_string).collect();
++    let mut names = Vec::new();
++    for name in z.file_names() {
++        let name = name.map_err(|e| FormatError::Corrupt(e.to_string()))?;
++        if name.starts_with("images/") {
++            names.push(name.into_owned());
++        }
++    }
+     let mut images = BTreeMap::new();
+     let mut unread = Vec::new();
+     for name in names {
+@@ -719,3 +732,6 @@
+         assert!(add_image(&mut Document::new("x"), b"zzz".to_vec()).is_err());
+     }
+ }
++
++#[cfg(test)]
++mod archive_security_tests;
+--- a/crates/format/src/fig/mod.rs
++++ b/crates/format/src/fig/mod.rs
+@@ -46,7 +46,7 @@
+ }
+ 
+ fn zip_has_canvas(bytes: &[u8]) -> bool {
+-    zip::ZipArchive::new(std::io::Cursor::new(bytes)).is_ok_and(|z| z.file_names().any(|n| n == "canvas.fig"))
++    zip::ZipArchive::new(std::io::Cursor::new(bytes)).is_ok_and(|z| z.index_for_name("canvas.fig").is_some())
+ }
+ 
+ /// Import `bytes` when they are a `.fig` file; `None` when they are something else.
+@@ -107,7 +107,7 @@
+         if bytes.starts_with(b"fig-") {
+             return Ok(Archive { canvas: bytes.to_vec(), file_name: None, zip: None });
+         }
+-        let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| corrupt(e.to_string()))?;
++        let mut z = crate::open_archive(std::io::Cursor::new(bytes)).map_err(|e| corrupt(e.to_string()))?;
+         let canvas = crate::read_member(&mut z, "canvas.fig", MAX_CANVAS)?;
+         let file_name = crate::read_member(&mut z, "meta.json", 1 << 20)
+             .ok()
+--- a/crates/format/src/library.rs
++++ b/crates/format/src/library.rs
+@@ -101,7 +101,7 @@
+ /// Read the published library of a `.figcraft` file (only its library entries are read): `None`
+ /// when the file was never published, an error when it isn't a FigCraft archive or is damaged.
+ pub fn read_library<R: Read + Seek>(r: R) -> Result<Option<PublishedLibrary>, FormatError> {
+-    let mut z = zip::ZipArchive::new(r).map_err(corrupt)?;
++    let mut z = crate::open_archive(r).map_err(corrupt)?;
+     read(&mut z, &BTreeMap::new(), u64::MAX)
+ }
+ 
+@@ -109,7 +109,7 @@
+ /// would unpack to more is refused, or loses the images past it), for libraries from people the
+ /// reader doesn't trust (a server).
+ pub fn read_library_within<R: Read + Seek>(r: R, max_bytes: u64) -> Result<Option<PublishedLibrary>, FormatError> {
+-    let mut z = zip::ZipArchive::new(r).map_err(corrupt)?;
++    let mut z = crate::open_archive(r).map_err(corrupt)?;
+     read(&mut z, &BTreeMap::new(), max_bytes)
+ }
+ 
+--- a/crates/format/src/thumbnail.rs
++++ b/crates/format/src/thumbnail.rs
+@@ -29,7 +29,7 @@
+ /// The bytes of `thumbnail.png` in a zip archive (`.figcraft`, `.fig`); `None` when it isn't a zip,
+ /// has no thumbnail, or the thumbnail is larger than [`MAX_THUMBNAIL_BYTES`].
+ pub fn thumbnail_png<R: Read + Seek>(archive: R) -> Option<Vec<u8>> {
+-    let mut z = zip::ZipArchive::new(archive).ok()?;
++    let mut z = crate::open_archive(archive).ok()?;
+     crate::read_member(&mut z, "thumbnail.png", MAX_THUMBNAIL_BYTES).ok()
+ }
+ 
+@@ -127,9 +127,9 @@
+ /// The [`Preview`] of a `.figcraft` or `.fig` archive: `thumbnail.png`, and the first page's colour
+ /// from `document.json` (`.figcraft`) or `meta.json` (`.fig`).
+ pub fn archive_preview<R: Read + Seek>(archive: R, fit: u32) -> Preview {
+-    let Ok(mut z) = zip::ZipArchive::new(archive) else { return Preview::default() };
++    let Ok(mut z) = crate::open_archive(archive) else { return Preview::default() };
+     let picture = crate::read_member(&mut z, "thumbnail.png", MAX_THUMBNAIL_BYTES).ok().and_then(|png| decode_thumbnail(&png, fit));
+-    let page = if z.file_names().any(|n| n == "document.json") {
++    let page = if z.index_for_name("document.json").is_some() {
+         crate::read_member(&mut z, "document.json", MAX_DOCUMENT_BYTES).ok().and_then(|json| figcraft_page(&json))
+     } else {
+         crate::read_member(&mut z, "meta.json", MAX_META_BYTES).ok().and_then(|json| fig_page(&json))
+--- a/crates/format/src/library_tests.rs
++++ b/crates/format/src/library_tests.rs
+@@ -71,7 +71,7 @@
+     let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+     for i in 0..src.len() {
+         let mut f = src.by_index(i).unwrap();
+-        let n = f.name().to_string();
++        let n = f.name().expect("fixture entry name").into_owned();
+         let mut data = Vec::new();
+         f.read_to_end(&mut data).unwrap();
+         let data = if n == name { bytes.map(<[u8]>::to_vec) } else { Some(data) };
+--- a/crates/format/src/fig/interop_tests.rs
++++ b/crates/format/src/fig/interop_tests.rs
+@@ -364,7 +364,7 @@
+ fn the_archive_lists_its_members_and_describes_the_file() {
+     let (bytes, _) = export(&sample(), Some(&super::tests::png())).unwrap();
+     let mut z = zip::ZipArchive::new(std::io::Cursor::new(&bytes[..])).unwrap();
+-    let names: Vec<String> = (0..z.len()).map(|i| z.by_index(i).unwrap().name().to_string()).collect();
++    let names: Vec<String> = (0..z.len()).map(|i| z.by_index(i).unwrap().name().expect("fixture entry name").into_owned()).collect();
+     assert_eq!(names, ["canvas.fig", "thumbnail.png", "meta.json"]);
+     let meta: serde_json::Value = serde_json::from_slice(&crate::read_member(&mut z, "meta.json", 1 << 20).unwrap()).unwrap();
+     assert_eq!(meta["file_name"], "Interop");
+--- a/crates/format/src/image_tests.rs
++++ b/crates/format/src/image_tests.rs
+@@ -25,7 +25,7 @@
+ /// The archive of `d` rebuilt with `edit` applied to each member (None drops it).
+ fn rebuild(bytes: &[u8], edit: impl Fn(&str, Vec<u8>) -> Option<Vec<u8>>) -> Vec<u8> {
+     let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+-    let names: Vec<String> = z.file_names().map(str::to_string).collect();
++    let names: Vec<String> = z.file_names().map(|name| name.expect("fixture entry name").into_owned()).collect();
+     let mut buf = std::io::Cursor::new(Vec::new());
+     let mut w = zip::ZipWriter::new(&mut buf);
+     for n in names {
+--- /dev/null
++++ b/crates/format/src/archive_security_tests.rs
+@@ -0,0 +1,223 @@
++//! Original synthetic archives exercising every public consuming boundary.
++use std::io::{Cursor, Read, Write};
++
++use figcraft_doc::Document;
++
++fn png() -> Vec<u8> {
++    let image = image::RgbaImage::from_pixel(1, 1, image::Rgba([10, 20, 30, 255]));
++    let mut bytes = Cursor::new(Vec::new());
++    image.write_to(&mut bytes, image::ImageFormat::Png).expect("synthetic PNG");
++    bytes.into_inner()
++}
++
++fn native() -> Vec<u8> {
++    crate::save_bytes(&Document::new("Archive fixture"), Some(&png())).expect("native fixture")
++}
++
++fn fig() -> Vec<u8> {
++    crate::fig::export(&Document::new("Archive fixture"), Some(&png())).expect("FIG fixture").0
++}
++
++fn header(bytes: &[u8], name: &str) -> usize {
++    zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive").by_name(name).expect("fixture part").header_start() as usize
++}
++
++fn unicode_path(name: &str, crc: u32) -> Vec<u8> {
++    let mut field = 0x7075_u16.to_le_bytes().to_vec();
++    field.extend_from_slice(&((name.len() + 5) as u16).to_le_bytes());
++    field.push(1);
++    field.extend_from_slice(&crc.to_le_bytes());
++    field.extend_from_slice(name.as_bytes());
++    field
++}
++
++/// Append an empty stored member with independently specified original names and Unicode fields.
++#[allow(clippy::too_many_arguments)]
++fn append(mut bytes: Vec<u8>, local: &[u8], central: &[u8], local_extra: &[u8], central_extra: &[u8], descriptor: bool, utf8: bool) -> Vec<u8> {
++    let end = bytes.len() - 22;
++    assert_eq!(&bytes[end..end + 4], b"PK\x05\x06");
++    let count = u16::from_le_bytes(bytes[end + 10..end + 12].try_into().expect("count"));
++    let size = u32::from_le_bytes(bytes[end + 12..end + 16].try_into().expect("directory size"));
++    let start = u32::from_le_bytes(bytes[end + 16..end + 20].try_into().expect("directory start"));
++    let flags = if descriptor { 8_u16 } else { 0 } | if utf8 { 0x800 } else { 0 };
++    let mut entry = b"PK\x03\x04".to_vec();
++    for word in [20_u16, flags, 0, 0, 0] {
++        entry.extend_from_slice(&word.to_le_bytes());
++    }
++    entry.extend_from_slice(&[0; 12]);
++    entry.extend_from_slice(&(local.len() as u16).to_le_bytes());
++    entry.extend_from_slice(&(local_extra.len() as u16).to_le_bytes());
++    entry.extend_from_slice(local);
++    entry.extend_from_slice(local_extra);
++    if descriptor {
++        entry.extend_from_slice(b"PK\x07\x08");
++        entry.extend_from_slice(&[0; 12]);
++    }
++    let mut directory = b"PK\x01\x02".to_vec();
++    for word in [20_u16, 20, flags, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&[0; 12]);
++    for word in [central.len() as u16, central_extra.len() as u16, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&0_u32.to_le_bytes());
++    directory.extend_from_slice(&start.to_le_bytes());
++    directory.extend_from_slice(central);
++    directory.extend_from_slice(central_extra);
++    let mut eocd = bytes.split_off(end);
++    let old_directory = bytes.split_off(start as usize);
++    bytes.extend_from_slice(&entry);
++    bytes.extend_from_slice(&old_directory);
++    bytes.extend_from_slice(&directory);
++    for offset in [8, 10] {
++        eocd[offset..offset + 2].copy_from_slice(&(count + 1).to_le_bytes());
++    }
++    eocd[12..16].copy_from_slice(&(size + directory.len() as u32).to_le_bytes());
++    eocd[16..20].copy_from_slice(&(start + entry.len() as u32).to_le_bytes());
++    bytes.extend_from_slice(&eocd);
++    bytes
++}
++
++fn unlisted(mut bytes: Vec<u8>) -> Vec<u8> {
++    let end = bytes.len() - 22;
++    let start = u32::from_le_bytes(bytes[end + 16..end + 20].try_into().expect("directory start"));
++    let name = b"orphan";
++    let mut local = b"PK\x03\x04".to_vec();
++    local.extend_from_slice(&20_u16.to_le_bytes());
++    local.extend_from_slice(&[0; 20]);
++    local.extend_from_slice(&(name.len() as u16).to_le_bytes());
++    local.extend_from_slice(&[0; 2]);
++    local.extend_from_slice(name);
++    let mut eocd = bytes.split_off(end);
++    let directory = bytes.split_off(start as usize);
++    bytes.extend_from_slice(&local);
++    bytes.extend_from_slice(&directory);
++    eocd[16..20].copy_from_slice(&(start + local.len() as u32).to_le_bytes());
++    bytes.extend_from_slice(&eocd);
++    bytes
++}
++
++fn zip64(bytes: &[u8]) -> Vec<u8> {
++    let mut input = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
++    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
++    for i in 0..input.len() {
++        let mut file = input.by_index(i).expect("fixture part");
++        let name = std::str::from_utf8(file.name_raw()).expect("ASCII fixture name").to_owned();
++        let options = zip::write::SimpleFileOptions::default().compression_method(file.compression()).large_file(true);
++        writer.start_file(name, options).expect("fixture writer");
++        let mut data = Vec::new();
++        file.read_to_end(&mut data).expect("fixture contents");
++        writer.write_all(&data).expect("fixture output");
++    }
++    writer.finish().expect("fixture finish").into_inner()
++}
++
++fn verify(bytes: &[u8], part: &str, accepts: impl Fn(&[u8]) -> bool) {
++    assert!(accepts(bytes), "ordinary control");
++    for (label, offset) in [("local filename", 30), ("local compression", 8), ("local CRC", 14)] {
++        let mut bad = bytes.to_vec();
++        bad[header(bytes, part) + offset] ^= 1;
++        assert!(!accepts(&bad), "{label}");
++    }
++    for name in ["unused", "文"] {
++        let field = unicode_path(name, 0x4ddb0c25);
++        let bad = append(bytes.to_vec(), b"plumless", b"buckeroo", &field, &field, false, false);
++        assert!(!accepts(&bad), "ignored UnicodePath CRC collision");
++    }
++    let unicode = unicode_path("café.txt", 0xa0976e8f);
++    for (local, central) in [(&unicode[..], &[][..]), (&[][..], &unicode[..])] {
++        let bad = append(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", local, central, false, false);
++        assert!(!accepts(&bad), "one-sided UnicodePath metadata");
++    }
++    let first = append(bytes.to_vec(), b"spare", b"spare", &[], &[], false, false);
++    assert!(!accepts(&append(first, b"spare", b"spare", &[], &[], false, false)), "duplicate raw names");
++    let cp437 = append(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", &[], &[], false, false);
++    let duplicate = append(cp437, "café.txt".as_bytes(), "café.txt".as_bytes(), &[], &[], false, true);
++    assert!(!accepts(&duplicate), "duplicate decoded names");
++    assert!(!accepts(&unlisted(bytes.to_vec())), "unlisted ignored local header");
++
++    assert!(accepts(&append(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", &unicode, &unicode, false, false)), "valid CP437 UnicodePath");
++    assert!(accepts(&append(bytes.to_vec(), b"\xc3\xa9", b"\xc3\xa9", &[], &[], false, false)), "unflagged CP437");
++    assert!(accepts(&append(bytes.to_vec(), "é".as_bytes(), "é".as_bytes(), &[], &[], false, true)), "flagged UTF-8");
++    assert!(accepts(&append(bytes.to_vec(), b"notes", b"notes", &[], &[], true, false)), "streaming descriptor");
++    assert!(accepts(&append(bytes.to_vec(), b"extras/", b"extras/", &[], &[], false, false)), "directory");
++    assert!(accepts(&zip64(bytes)), "ZIP64 parts");
++}
++
++#[test]
++fn zip_archive_native() {
++    verify(&native(), "document.json", |bytes| crate::load_bytes(bytes).is_ok());
++}
++
++#[test]
++fn zip_archive_fig() {
++    verify(&fig(), "canvas.fig", |bytes| crate::fig::import(bytes, "Synthetic.fig").is_ok());
++}
++
++#[test]
++fn zip_archive_library() {
++    verify(&native(), "document.json", |bytes| crate::read_library(Cursor::new(bytes)).is_ok());
++}
++
++#[test]
++fn zip_archive_library_within() {
++    verify(&native(), "document.json", |bytes| crate::read_library_within(Cursor::new(bytes), 1 << 20).is_ok());
++}
++
++#[test]
++fn zip_archive_thumbnail() {
++    verify(&native(), "document.json", |bytes| crate::thumbnail::thumbnail_png(Cursor::new(bytes)).is_some());
++}
++
++#[test]
++fn zip_archive_preview() {
++    verify(&native(), "document.json", |bytes| crate::thumbnail::archive_preview(Cursor::new(bytes), 8).picture.is_some());
++}
++
++#[test]
++fn zip_archive_recognized_fig_keeps_error_classification() {
++    let mut bytes = fig();
++    let offset = header(&bytes, "canvas.fig") + 30;
++    bytes[offset] ^= 1;
++    assert!(crate::fig::is_fig(&bytes), "metadata still recognizes the FIG container");
++    let Some(Err(crate::FormatError::Corrupt(error))) = crate::fig::try_import(&bytes, "Synthetic.fig") else {
++        panic!("recognized malformed FIG");
++    };
++    assert!(error.starts_with(".fig file: "), "preserve FIG error context: {error}");
++}
++
++fn encoding_flags(bytes: Vec<u8>, name: &[u8], local_utf8: bool, central_utf8: bool) -> Vec<u8> {
++    let mut bytes = append(bytes, name, name, &[], &[], false, false);
++    let (local, central) = {
++        let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).expect("fixture archive");
++        let index = archive.len() - 1;
++        let entry = archive.by_index(index).expect("last fixture entry");
++        (entry.header_start() as usize, entry.central_header_start() as usize)
++    };
++    if local_utf8 {
++        bytes[local + 7] |= 8;
++    }
++    if central_utf8 {
++        bytes[central + 9] |= 8;
++    }
++    bytes
++}
++
++#[test]
++fn zip_archive_encoding_flags() {
++    for (local, central) in [(true, false), (false, true)] {
++        let bad = encoding_flags(native(), b"caf\xc3\xa9", local, central);
++        assert!(crate::load_bytes(&bad).is_err(), "filename encoding mismatch");
++        assert!(crate::read_library(Cursor::new(&bad)).is_err());
++        assert!(crate::read_library_within(Cursor::new(&bad), 1 << 20).is_err());
++        assert!(crate::thumbnail::thumbnail_png(Cursor::new(&bad)).is_none());
++        assert_eq!(crate::thumbnail::archive_preview(Cursor::new(&bad), 8), crate::thumbnail::Preview::default());
++        let bad = encoding_flags(fig(), b"caf\xc3\xa9", local, central);
++        assert!(matches!(crate::fig::try_import(&bad, "Synthetic.fig"), Some(Err(_))));
++
++        // Different flags are harmless when the effective names are ASCII in both headers.
++        let ascii = encoding_flags(native(), b"spare", local, central);
++        assert!(crate::load_bytes(&ascii).is_ok(), "ASCII-compatible flag difference");
++    }
++}
+--- a/apps/figcraft-server/src/hardening_tests.rs
++++ b/apps/figcraft-server/src/hardening_tests.rs
+@@ -59,7 +59,7 @@
+     let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+     for i in 0..src.len() {
+         let f = src.by_index_raw(i).unwrap();
+-        if bomb > 0 && f.name() == "library/document.json" {
++        if bomb > 0 && f.name().expect("fixture entry name") == "library/document.json" {
+             continue;
+         }
+         out.raw_copy_file(f).unwrap();
+@@ -800,3 +800,21 @@
+     assert!(server.blocks_remembered() <= 2, "{} blocks remembered", server.blocks_remembered());
+     server.stop();
+ }
++
++#[test]
++fn library_publication_rejects_conflicting_archive_headers() {
++    let dir = TempDir::new("archive-identity");
++    let c = config(dir.path());
++    let mut store = Store::open(dir.path(), c.store()).unwrap();
++    let (keyed, ..) = store.publish("Library", &snapshot("Library")).unwrap();
++    let valid = archive(0, 0);
++    let local = {
++        let mut zip = zip::ZipArchive::new(Cursor::new(&valid)).unwrap();
++        let start = zip.by_name("library/document.json").unwrap().header_start();
++        start as usize
++    };
++    let mut bad = valid.clone();
++    bad[local + 30] ^= 1;
++    assert!(store.publish_library(&keyed.id, &bad).is_err(), "do not retain or redistribute an ambiguous archive");
++    assert_eq!(store.publish_library(&keyed.id, &valid).unwrap(), 1, "a valid library remains publishable");
++}

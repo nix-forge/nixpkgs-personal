@@ -1,0 +1,31 @@
+--- a/src/shell/control_center/tabs/audio_tab.cpp
++++ b/src/shell/control_center/tabs/audio_tab.cpp
+@@ -446,6 +446,20 @@
+   DesktopEntryMatch lookupDesktopEntryForProgramStream(const AudioNode& node, std::string_view resolvedBeforeDesktop) {
+     DesktopEntryMatch out;
+     const bool waydroidStream = isWaydroidProgramStream(node);
++    const std::string appId = lowerIdentifier(StringUtils::trim(node.applicationId));
++    // A stream can be rendered by a helper executable while identifying the
++    // application that owns it. Trust an exact desktop ID before matching the
++    // helper's executable name; retain the existing fallback for unknown IDs.
++    if (!appId.empty() && !isGenericAudioLabel(appId)) {
++      for (const auto& entry : desktopEntries()) {
++        if (lowerIdentifier(entry.id) == appId) {
++          out.entry = &entry;
++          out.matchedVia = "application_id";
++          out.normalizedTerm = appId;
++          return out;
++        }
++      }
++    }
+     const std::string binary = lowerIdentifier(StringUtils::trim(node.applicationBinary));
+     // Wine/Proton streams report wine64-preloader etc.; matching desktop entries by that binary (or
+     // the shared Icon=wine) incorrectly picks unrelated apps (e.g. Protontricks) before app/node name.
+@@ -457,7 +471,6 @@
+         return out;
+       }
+     }
+-    const std::string appId = lowerIdentifier(StringUtils::trim(node.applicationId));
+     if (!appId.empty()) {
+       if (const DesktopEntry* entry = findDesktopEntryByTerm(appId)) {
+         out.entry = entry;

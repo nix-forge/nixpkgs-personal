@@ -4,23 +4,23 @@
 from __future__ import annotations
 
 import argparse
-import contextlib
 import difflib
 import json
 import os
 import re
 import shutil
 import ssl
-import stat
 import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, NoReturn
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
+
+from update_nix import nix_string, package_scope
+from update_transaction import commit_files
 
 GITHUB_API: Final = "https://api.github.com/repos/NeptuneHub/AudioMuse-AI"
 GITHUB_HOST: Final = "api.github.com"
@@ -623,8 +623,10 @@ def _nixpkgs_python_version(package: str) -> str:
     if nix is None:
         _fail("nix executable not found in PATH")
 
-    repository_root = Path(__file__).resolve().parents[3]
-    attribute = f".#legacyPackages.x86_64-linux.python313Packages.{package}.version"
+    expression = (
+        f"let pkgs = {package_scope(system='x86_64-linux')}; in "
+        f"pkgs.python313Packages.{nix_string(package)}.version"
+    )
     completed = subprocess.run(
         [
             nix,
@@ -633,11 +635,12 @@ def _nixpkgs_python_version(package: str) -> str:
             "--option",
             "allow-import-from-derivation",
             "false",
-            attribute,
+            "--impure",
+            "--expr",
+            expression,
         ],
         capture_output=True,
         check=False,
-        cwd=repository_root,
         text=True,
     )
     if completed.returncode != 0:
@@ -859,20 +862,7 @@ def _prefetch_source_hash(
 
 
 def _write_atomic(path: Path, content: str) -> None:
-    mode = stat.S_IMODE(path.stat().st_mode)
-    file_descriptor, temporary_path = tempfile.mkstemp(
-        prefix=f"{path.name}.", dir=path.parent
-    )
-    try:
-        Path(temporary_path).chmod(mode)
-        with os.fdopen(file_descriptor, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        Path(temporary_path).replace(path)
-    finally:
-        with contextlib.suppress(OSError):
-            Path(temporary_path).unlink(missing_ok=True)
+    commit_files({path: content})
 
 
 def _diff(old: str, new: str, path: Path) -> str:

@@ -1,0 +1,2064 @@
+diff --git a/app/dashboard/planning/page.tsx b/app/dashboard/planning/page.tsx
+new file mode 100644
+index 000000000000..e7b8fcca6c4b
+--- /dev/null
++++ b/app/dashboard/planning/page.tsx
+@@ -0,0 +1,164 @@
++'use client';
++import { useState, useEffect } from 'react';
++import { useQuery } from '@tanstack/react-query';
++import { planning } from '@/lib/planning';
++import { GarmentChooser } from '@/components/planning-chooser';
++import { GarmentReview } from '@/components/planning-review';
++import {
++  PlanningCollection,
++  CoverageRows,
++  Coverage,
++} from '@/components/planning-collection';
++import { Button } from '@/components/ui/button';
++type Finding = {
++  item_id: string;
++  name: string;
++  reasons: string[];
++  wear_count?: number;
++  coverage_gaps?: string[];
++  review?: { priority?: string };
++};
++type Audit = {
++  coverage: Coverage[];
++  unreviewed: Finding[];
++  repairs: Finding[];
++  fit_problems: Finding[];
++  replacements: Finding[];
++};
++export default function PlanningPage() {
++  const [tab, setTab] = useState('review');
++  const [item, setItem] = useState('');
++  useEffect(() => {
++    const id = new URLSearchParams(window.location.search).get('item');
++    if (id && /^[0-9a-f-]{36}$/i.test(id)) setItem(id);
++  }, []);
++  const audit = useQuery({
++    queryKey: ['planning', 'audit'],
++    queryFn: () => planning.get<Audit>('audit'),
++    enabled: tab === 'audit',
++  });
++  return (
++    <div className="space-y-6 max-w-5xl mx-auto">
++      <header>
++        <h1 className="text-2xl font-bold">Wardrobe planning</h1>
++        <p className="text-muted-foreground">
++          Review individual garments, plan repairs and replacements, and compare
++          purchases against your actual needs.
++        </p>
++      </header>
++      <nav aria-label="Planning sections" className="flex flex-wrap gap-2">
++        {[
++          ['review', 'Garment reviews'],
++          ['audit', 'Wardrobe audit'],
++          ['requirements', 'Lifestyle needs'],
++          ['candidates', 'Shopping candidates'],
++        ].map(([key, label]) => (
++          <Button
++            key={key}
++            variant={tab === key ? 'default' : 'outline'}
++            aria-current={tab === key ? 'page' : undefined}
++            onClick={() => setTab(key)}
++          >
++            {label}
++          </Button>
++        ))}
++      </nav>
++      {tab === 'review' && (
++        <section className="space-y-4">
++          <h2 className="text-xl font-semibold">Select a garment to inspect</h2>
++          <GarmentChooser value={item} onChange={setItem} />
++          {item ? (
++            <GarmentReview key={item} itemId={item} />
++          ) : (
++            <p>
++              Select a garment to record condition, fit, evidence and your
++              decision.
++            </p>
++          )}
++        </section>
++      )}
++      {(tab === 'requirements' || tab === 'candidates') && (
++        <PlanningCollection key={tab} kind={tab} />
++      )}
++      {tab === 'audit' && (
++        <section className="space-y-4">
++          <h2 className="text-xl font-semibold">Your wardrobe audit</h2>
++          <p className="text-muted-foreground">
++            Results follow your declared needs and confirmed evidence.
++            Unreviewed garments require inspection.
++          </p>
++          <Button
++            variant="outline"
++            disabled={audit.isFetching}
++            onClick={() => audit.refetch()}
++          >
++            Refresh audit
++          </Button>
++          {audit.isPending ? (
++            <p role="status">Analyzing wardrobe…</p>
++          ) : audit.isError ? (
++            <p role="alert">Unable to load audit. Try refreshing.</p>
++          ) : (
++            <>
++              <h3 className="font-semibold">Coverage of your needs</h3>
++              {audit.data.coverage.length ? (
++                <CoverageRows rows={audit.data.coverage} />
++              ) : (
++                <p>Add lifestyle needs to calculate coverage.</p>
++              )}
++              {(
++                [
++                  ['unreviewed', 'Needs inspection'],
++                  ['repairs', 'Repair or alteration'],
++                  ['fit_problems', 'Fit and comfort problems'],
++                  ['replacements', 'Replacement priorities'],
++                ] as const
++              ).map(([key, label]) => (
++                <section key={key}>
++                  <h3 className="font-semibold my-2">{label}</h3>
++                  {audit.data[key].length ? (
++                    <ul className="space-y-2">
++                      {audit.data[key].map((row) => (
++                        <li key={row.item_id} className="border rounded p-3">
++                          <Button
++                            variant="link"
++                            onClick={() => {
++                              setItem(row.item_id);
++                              setTab('review');
++                            }}
++                          >
++                            {row.name || 'Review garment'}
++                          </Button>
++                          <p className="text-sm">
++                            Priority: {row.review?.priority || 'normal'}
++                            {row.wear_count !== undefined
++                              ? ` · Worn ${row.wear_count} times`
++                              : ''}
++                          </p>
++                          {!!row.coverage_gaps?.length && (
++                            <p className="text-sm">
++                              Related gaps: {row.coverage_gaps.join(', ')}
++                            </p>
++                          )}
++                          <ul className="list-disc pl-5">
++                            {row.reasons.map((reason, i) => (
++                              <li key={i}>{reason}</li>
++                            ))}
++                          </ul>
++                        </li>
++                      ))}
++                    </ul>
++                  ) : (
++                    <p className="text-sm text-muted-foreground">
++                      No garments in this group.
++                    </p>
++                  )}
++                </section>
++              ))}
++            </>
++          )}
++        </section>
++      )}
++    </div>
++  );
++}
+diff --git a/components/item-detail-dialog.tsx b/components/item-detail-dialog.tsx
+index 8a41e4f08e58..eef2e7c1d095 100644
+--- a/components/item-detail-dialog.tsx
++++ b/components/item-detail-dialog.tsx
+@@ -2,6 +2,7 @@
+ 
+ import { useState, useEffect, useRef } from 'react';
+ import Image from 'next/image';
++import Link from 'next/link';
+ import { useRouter } from 'next/navigation';
+ import {
+   Heart,
+@@ -281,6 +282,7 @@ export function ItemDetailDialog({ item, open, onOpenChange }: ItemDetailDialogP
+                 actions row and pushed edit and replace-image out of view. */}
+             <DialogTitle className="text-xl min-w-0 truncate max-w-[45%] sm:max-w-none sm:flex-1">
+               {item.name || (typeInfo ? typeInfo.label : item.type)}
++              <Link className="block text-sm font-normal text-primary underline" href={`/dashboard/planning?item=${item.id}`} onClick={() => onOpenChange(false)}>Review condition and replacement plan</Link>
+             </DialogTitle>
+             {/* The action row scrolls sideways once it stops fitting, because
+                 the dialog clips its own overflow: without this the buttons
+diff --git a/components/mobile-sidebar.tsx b/components/mobile-sidebar.tsx
+index 8b312c6a4312..7f682510e654 100644
+--- a/components/mobile-sidebar.tsx
++++ b/components/mobile-sidebar.tsx
+@@ -24,6 +24,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
+     { name: t('pairings'), href: '/dashboard/pairings', icon: Layers },
+     { name: t('history'), href: '/dashboard/history', icon: History },
+     { name: t('familyFeed'), href: '/dashboard/family/feed', icon: HeartHandshake },
++    { name: t('planning'), href: '/dashboard/planning', icon: Shirt },
+     { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
+     { name: t('aiLearning'), href: '/dashboard/learning', icon: Brain },
+   ];
+diff --git a/components/planning-chooser.tsx b/components/planning-chooser.tsx
+new file mode 100644
+index 000000000000..d6efa8bc8796
+--- /dev/null
++++ b/components/planning-chooser.tsx
+@@ -0,0 +1,102 @@
++'use client';
++import { useState, useEffect } from 'react';
++import { useItems } from '@/lib/hooks/use-items';
++import { Button } from './ui/button';
++export function GarmentChooser({
++  value,
++  onChange,
++  exclude,
++}: {
++  value: string;
++  onChange: (id: string) => void;
++  exclude?: string;
++}) {
++  const [search, setSearch] = useState('');
++  const [debounced, setDebounced] = useState('');
++  useEffect(() => {
++    const timer = setTimeout(() => {
++      setDebounced(search);
++      setPage(1);
++    }, 300);
++    return () => clearTimeout(timer);
++  }, [search]);
++  const [page, setPage] = useState(1);
++  const query = useItems({ search: debounced || undefined }, page, 12);
++  return (
++    <div className="space-y-2">
++      <label className="block">
++        Search your garments
++        <input
++          type="search"
++          className="block w-full rounded border bg-background p-2"
++          value={search}
++          onChange={(e) => {
++            setSearch(e.target.value);
++            setPage(1);
++          }}
++        />
++      </label>
++      {query.isPending ? (
++        <p role="status">Loading garments…</p>
++      ) : query.isError ? (
++        <p role="alert">
++          Unable to load garments.{' '}
++          <Button onClick={() => query.refetch()}>Retry</Button>
++        </p>
++      ) : (
++        <>
++          <div className="grid gap-2 sm:grid-cols-2">
++            {query.data?.items
++              .filter((item) => item.id !== exclude)
++              .map((item) => (
++                <button
++                  type="button"
++                  key={item.id}
++                  aria-pressed={value === item.id}
++                  className={`rounded border p-3 text-left ${value === item.id ? 'border-primary bg-accent' : ''}`}
++                  onClick={() => onChange(item.id)}
++                >
++                  {(item.thumbnail_url || item.image_url) && (
++                    <img
++                      src={item.thumbnail_url || item.image_url}
++                      alt=""
++                      className="h-16 w-16 object-contain rounded mb-2"
++                    />
++                  )}
++                  {item.name || item.type}
++                  {item.brand ? ` · ${item.brand}` : ''}
++                </button>
++              ))}
++          </div>
++          {query.data?.items.length === 0 && (
++            <p>No garments match this search.</p>
++          )}
++          <div className="flex gap-2">
++            <Button
++              type="button"
++              variant="outline"
++              disabled={page === 1 || query.isFetching}
++              onClick={() => setPage(page - 1)}
++            >
++              Previous
++            </Button>
++            <span className="self-center">Page {page}</span>
++            <Button
++              type="button"
++              variant="outline"
++              disabled={!query.data?.has_more || query.isFetching}
++              onClick={() => setPage(page + 1)}
++            >
++              Next
++            </Button>
++          </div>
++        </>
++      )}
++      {value && (
++        <Button type="button" variant="ghost" onClick={() => onChange('')}>
++          Clear selected garment
++        </Button>
++      )}
++    </div>
++  );
++}
+diff --git a/components/planning-collection.tsx b/components/planning-collection.tsx
+new file mode 100644
+index 000000000000..01f86c226c1a
+--- /dev/null
++++ b/components/planning-collection.tsx
+@@ -0,0 +1,495 @@
++'use client';
++import { useState } from 'react';
++import { useQuery, useQueryClient } from '@tanstack/react-query';
++import { api } from '@/lib/api';
++import { planning, RecordData, planningError } from '@/lib/planning';
++import { PlanningForm, Field } from './planning-form';
++import { GarmentChooser } from './planning-chooser';
++import { Button } from './ui/button';
++const common: Field[] = [
++  { key: 'name', label: 'Name', required: true },
++  {
++    key: 'item_type',
++    label: 'Garment type',
++    required: true,
++    hint: 'Use the same type as your inventory, for example shirt, t-shirt, pants or jeans.',
++  },
++  {
++    key: 'colors',
++    label: 'Colors',
++    kind: 'list',
++    hint: 'Comma-separated; leave blank for any.',
++  },
++  { key: 'styles', label: 'Styles', kind: 'list' },
++  { key: 'currency', label: 'Currency code', required: true },
++];
++const needs: Field[] = [
++  ...common,
++  { key: 'occasion', label: 'Activity or occasion' },
++  { key: 'season', label: 'Season' },
++  {
++    key: 'climate',
++    label: 'Climate',
++    hint: 'Match your confirmed garment suitability, for example cold or warm.',
++  },
++  {
++    key: 'target_quantity',
++    label: 'Minimum garments wanted',
++    kind: 'number',
++    max: 1000,
++  },
++  { key: 'weekly_uses', label: 'Uses per week', kind: 'number', max: 100 },
++  {
++    key: 'laundry_days',
++    label: 'Days between laundry',
++    kind: 'number',
++    min: 1,
++    max: 90,
++  },
++  {
++    key: 'wears_between_washes',
++    label: 'Wears between washes',
++    kind: 'number',
++    min: 1,
++    max: 100,
++  },
++  { key: 'budget', label: 'Purchase budget', kind: 'money' },
++];
++const products: Field[] = [
++  ...common,
++  { key: 'suitable_occasions', label: 'Suitable activities', kind: 'list' },
++  { key: 'suitable_climates', label: 'Suitable climates', kind: 'list' },
++  { key: 'url', label: 'Exact product URL', kind: 'url' },
++  { key: 'size', label: 'Size' },
++  { key: 'composition', label: 'Listed composition' },
++  {
++    key: 'construction',
++    label: 'Product construction evidence',
++    kind: 'textarea',
++  },
++  { key: 'care', label: 'Product care instructions', kind: 'textarea' },
++  { key: 'measurements', label: 'Measurements with units' },
++  { key: 'return_policy', label: 'Return policy', kind: 'textarea' },
++  { key: 'seasons', label: 'Seasons', kind: 'list' },
++  { key: 'formality', label: 'Formality' },
++  { key: 'price', label: 'Price', kind: 'money' },
++  { key: 'notes', label: 'Product evidence and notes', kind: 'textarea' },
++];
++export type Coverage = {
++  requirement_id: string;
++  name: string;
++  required: number;
++  available: number;
++  missing: number;
++  unknowns: string[];
++  possible_item_ids?: string[];
++};
++export function CoverageRows({ rows }: { rows: Coverage[] }) {
++  return (
++    <ul className="space-y-2">
++      {rows.map((row) => (
++        <li key={row.requirement_id} className="rounded border p-3">
++          <strong>{row.name}</strong>
++          <p>
++            {row.available} available / {row.required} needed. {row.missing}{' '}
++            missing.
++          </p>
++          {!!row.possible_item_ids?.length && (
++            <p>
++              {row.possible_item_ids.length} additional garment(s) need
++              suitability confirmation.
++            </p>
++          )}
++          {row.unknowns.map((v, i) => (
++            <p className="text-sm text-muted-foreground" key={i}>
++              Unknown: {v}
++            </p>
++          ))}
++        </li>
++      ))}
++    </ul>
++  );
++}
++type Comparison = {
++  reasons: string[];
++  unknowns: string[];
++  duplicates: { item_id: string; name: string }[];
++  compatible_items: { item_id: string; name: string }[];
++  coverage: Coverage[];
++  meets_budget: boolean | null;
++  coverage_gain?: number;
++  coverage_before?: Coverage;
++  coverage_after?: Coverage;
++};
++function CandidateComparison({ id }: { id: string }) {
++  const q = useQuery({
++    queryKey: ['planning', 'comparison', id],
++    queryFn: () => planning.get<Comparison>(`candidates/${id}/comparison`),
++  });
++  if (q.isPending) return <p role="status">Comparing candidate…</p>;
++  if (q.isError)
++    return (
++      <p role="alert">
++        Unable to compare. <Button onClick={() => q.refetch()}>Retry</Button>
++      </p>
++    );
++  return (
++    <div className="space-y-3 border rounded p-4">
++      <h3 className="font-semibold">Purchase comparison</h3>
++      <p>
++        Budget:{' '}
++        {q.data.meets_budget === null
++          ? 'unknown or currencies differ'
++          : q.data.meets_budget
++            ? 'within budget'
++            : 'over budget'}
++      </p>
++      <ul className="list-disc pl-5">
++        {q.data.reasons.map((v, i) => (
++          <li key={i}>{v}</li>
++        ))}
++      </ul>
++      <h4 className="font-medium">Evidence still needed</h4>
++      {q.data.unknowns.length ? (
++        <ul className="list-disc pl-5">
++          {q.data.unknowns.map((v, i) => (
++            <li key={i}>{v}</li>
++          ))}
++        </ul>
++      ) : (
++        <p>No additional unknowns reported.</p>
++      )}
++      <h4 className="font-medium">Similar owned garments</h4>
++      <p>{q.data.duplicates.map((v) => v.name).join(', ') || 'None found.'}</p>
++      <h4 className="font-medium">Compatible owned garments</h4>
++      <p>
++        {q.data.compatible_items.map((v) => v.name).join(', ') || 'None found.'}
++      </p>
++      <CoverageRows rows={q.data.coverage} />
++      {q.data.coverage_gain !== undefined && (
++        <p>
++          Additional coverage from this purchase: {q.data.coverage_gain}{' '}
++          garment(s).
++        </p>
++      )}
++      {q.data.coverage_before && (
++        <div>
++          <h4>Before purchase</h4>
++          <CoverageRows rows={[q.data.coverage_before]} />
++        </div>
++      )}
++      {q.data.coverage_after && (
++        <div>
++          <h4>After purchase</h4>
++          <CoverageRows rows={[q.data.coverage_after]} />
++        </div>
++      )}
++      <p className="text-sm text-muted-foreground">
++        Attribute matches are suggestions. Confirm fit, construction and comfort
++        before buying. Product links are not fetched by the server.
++      </p>
++    </div>
++  );
++}
++export function PlanningCollection({
++  kind,
++}: {
++  kind: 'requirements' | 'candidates';
++}) {
++  const client = useQueryClient();
++  const [offset, setOffset] = useState(0);
++  const [needOffset, setNeedOffset] = useState(0);
++  const [editing, setEditing] = useState<RecordData | null>(null);
++  const [comparison, setComparison] = useState('');
++  const [error, setError] = useState('');
++  const [busy, setBusy] = useState(false);
++  const q = useQuery({
++    queryKey: ['planning', kind, offset],
++    queryFn: () =>
++      planning.get<{ items: RecordData[]; total: number }>(
++        `${kind}?limit=20&offset=${offset}`,
++      ),
++  });
++  const requirements = useQuery({
++    queryKey: ['planning', 'requirement-options', needOffset],
++    queryFn: () =>
++      planning.get<{ items: RecordData[]; total: number }>(
++        `requirements?limit=100&offset=${needOffset}`,
++      ),
++    enabled: kind === 'candidates',
++  });
++  async function remove(row: RecordData) {
++    if (!window.confirm(`Delete ${row.name}?`)) return;
++    setBusy(true);
++    setError('');
++    try {
++      await api.delete(`/planning/${kind}/${row.id}?version=${row.version}`);
++      await client.invalidateQueries({ queryKey: ['planning'] });
++      if (editing?.id === row.id) setEditing(null);
++    } catch (e) {
++      setError(planningError(e));
++    } finally {
++      setBusy(false);
++    }
++  }
++  const defaults =
++    kind === 'requirements'
++      ? {
++          name: '',
++          item_type: '',
++          occasion: '',
++          season: '',
++          climate: '',
++          colors: [],
++          styles: [],
++          target_quantity: 1,
++          weekly_uses: 1,
++          laundry_days: 7,
++          wears_between_washes: 1,
++          budget: null,
++          currency: 'USD',
++        }
++      : {
++          suitable_occasions: [],
++          suitable_climates: [],
++          name: '',
++          item_type: '',
++          url: '',
++          size: '',
++          composition: '',
++          construction: '',
++          care: '',
++          measurements: '',
++          return_policy: '',
++          colors: [],
++          styles: [],
++          seasons: [],
++          formality: '',
++          price: null,
++          currency: 'USD',
++          requirement_id: null,
++          replaces_item_id: null,
++          notes: '',
++        };
++  return (
++    <section className="space-y-4">
++      <h2 className="text-xl font-semibold">
++        {kind === 'requirements'
++          ? 'Lifestyle and laundry needs'
++          : 'Exact shopping candidates'}
++      </h2>
++      <p className="text-sm text-muted-foreground">
++        {kind === 'requirements'
++          ? 'Set your own minimums and laundry routine. Coverage counts usable garments and reports missing evidence.'
++          : 'Record a specific product, size and evidence. Compare it with your needs and existing clothes before buying.'}
++      </p>
++      <Button disabled={busy} onClick={() => setEditing(defaults)}>
++        Add {kind === 'requirements' ? 'need' : 'candidate'}
++      </Button>
++      {q.isPending ? (
++        <p role="status">Loading…</p>
++      ) : q.isError ? (
++        <p role="alert">
++          Unable to load records.{' '}
++          <Button onClick={() => q.refetch()}>Retry</Button>
++        </p>
++      ) : (
++        <>
++          <ul className="space-y-2">
++            {q.data.items.map((row) => (
++              <li
++                className="flex flex-wrap gap-2 items-center border rounded p-3"
++                key={String(row.id)}
++              >
++                <span className="flex-1 min-w-32">
++                  {String(row.name)}
++                  {typeof row.url === 'string' &&
++                    /^https?:\/\//i.test(row.url) && (
++                      <a
++                        className="block text-primary underline text-sm"
++                        href={row.url}
++                        target="_blank"
++                        rel="noreferrer noopener"
++                      >
++                        View exact product
++                      </a>
++                    )}
++                </span>
++                <Button variant="outline" onClick={() => setEditing(row)}>
++                  Edit {String(row.name)}
++                </Button>
++                {kind === 'candidates' && (
++                  <Button
++                    variant="outline"
++                    onClick={() => setComparison(String(row.id))}
++                  >
++                    Compare
++                  </Button>
++                )}
++                <Button
++                  variant="destructive"
++                  disabled={busy}
++                  onClick={() => remove(row)}
++                >
++                  Delete
++                </Button>
++              </li>
++            ))}
++          </ul>
++          {q.data.total === 0 && <p>No records yet.</p>}
++          <div className="flex gap-2">
++            <Button
++              disabled={offset === 0}
++              onClick={() => setOffset(offset - 20)}
++            >
++              Previous
++            </Button>
++            <span>
++              {offset + 1}–{Math.min(offset + 20, q.data.total)} of{' '}
++              {q.data.total}
++            </span>
++            <Button
++              disabled={offset + 20 >= q.data.total}
++              onClick={() => setOffset(offset + 20)}
++            >
++              Next
++            </Button>
++          </div>
++        </>
++      )}
++      {error && (
++        <p role="alert" className="text-destructive">
++          {error}
++        </p>
++      )}
++      {editing && (
++        <>
++          <PlanningForm
++            key={`${editing.id || 'new'}-${editing.version || 0}`}
++            initial={{ ...defaults, ...editing }}
++            extraValues={
++              kind === 'candidates'
++                ? {
++                    requirement_id: editing.requirement_id,
++                    replaces_item_id: editing.replaces_item_id,
++                  }
++                : undefined
++            }
++            title={editing.id ? 'Edit record' : 'New record'}
++            fields={kind === 'requirements' ? needs : products}
++            onSave={async (data) => {
++              await planning.save(kind, data);
++              await client.invalidateQueries({ queryKey: ['planning'] });
++              setEditing(null);
++            }}
++          >
++            {kind === 'candidates' && (
++              <div className="space-y-3">
++                <label className="block">
++                  Related wardrobe need
++                  <select
++                    className="block border rounded bg-background p-2 w-full"
++                    value={String(editing.requirement_id || '')}
++                    onChange={(e) =>
++                      setEditing({
++                        ...editing,
++                        requirement_id: e.target.value || null,
++                      })
++                    }
++                  >
++                    <option value="">None</option>
++                    {Boolean(editing.requirement_id) &&
++                      !requirements.data?.items.some(
++                        (r) => r.id === editing.requirement_id,
++                      ) && (
++                        <option value={String(editing.requirement_id)}>
++                          Previously selected need
++                        </option>
++                      )}
++                    {requirements.data?.items.map((r) => (
++                      <option key={String(r.id)} value={String(r.id)}>
++                        {String(r.name)}
++                      </option>
++                    ))}
++                  </select>
++                </label>
++                <div className="flex gap-2">
++                  <Button
++                    type="button"
++                    variant="outline"
++                    disabled={needOffset === 0 || requirements.isFetching}
++                    onClick={() => setNeedOffset(needOffset - 100)}
++                  >
++                    Previous needs
++                  </Button>
++                  <Button
++                    type="button"
++                    variant="outline"
++                    disabled={
++                      !requirements.data ||
++                      needOffset + 100 >= requirements.data.total ||
++                      requirements.isFetching
++                    }
++                    onClick={() => setNeedOffset(needOffset + 100)}
++                  >
++                    More needs
++                  </Button>
++                </div>
++                {requirements.isError && (
++                  <p role="alert">
++                    Unable to load needs.{' '}
++                    <Button
++                      type="button"
++                      onClick={() => requirements.refetch()}
++                    >
++                      Retry
++                    </Button>
++                  </p>
++                )}
++                <p>Garment this product would replace</p>
++                <GarmentChooser
++                  value={String(editing.replaces_item_id || '')}
++                  onChange={(id) =>
++                    setEditing({ ...editing, replaces_item_id: id || null })
++                  }
++                />
++              </div>
++            )}
++          </PlanningForm>
++          <div className="flex gap-2">
++            <Button variant="outline" onClick={() => setEditing(null)}>
++              Cancel edit
++            </Button>
++            {editing.id && (
++              <Button
++                variant="outline"
++                onClick={async () => {
++                  if (
++                    !window.confirm(
++                      'Reloading discards unsaved edits. Continue?',
++                    )
++                  )
++                    return;
++                  try {
++                    const latest = await q.refetch();
++                    const record = latest.data?.items.find(
++                      (r) => r.id === editing.id,
++                    );
++                    if (record) setEditing(record);
++                    else
++                      setError('Record unavailable. It may have been deleted.');
++                  } catch (e) {
++                    setError(planningError(e));
++                  }
++                }}
++              >
++                Reload latest record
++              </Button>
++            )}
++          </div>
++        </>
++      )}
++      {comparison && <CandidateComparison id={comparison} />}
++    </section>
++  );
++}
+diff --git a/components/planning-form.tsx b/components/planning-form.tsx
+new file mode 100644
+index 000000000000..f4f61494b659
+--- /dev/null
++++ b/components/planning-form.tsx
+@@ -0,0 +1,194 @@
++'use client';
++import { useState, useEffect } from 'react';
++import { Button } from '@/components/ui/button';
++import { RecordData, listValue, planningError } from '@/lib/planning';
++export type Field = {
++  key: string;
++  label: string;
++  kind?: 'number' | 'money' | 'list' | 'checkbox' | 'textarea' | 'url';
++  options?: string[];
++  min?: number;
++  max?: number;
++  maxLength?: number;
++  required?: boolean;
++  hint?: string;
++};
++export function PlanningForm({
++  initial,
++  fields,
++  onSave,
++  title,
++  children,
++  extraValues,
++  appendNotes,
++  onDirtyChange,
++  onPendingChange,
++  onNotesChange,
++  externalDisabled = false,
++}: {
++  initial: RecordData;
++  fields: Field[];
++  onSave: (data: RecordData) => Promise<unknown>;
++  title: string;
++  children?: React.ReactNode;
++  extraValues?: RecordData;
++  appendNotes?: { text: string; sequence: number };
++  onDirtyChange?: (dirty: boolean) => void;
++  onPendingChange?: (pending: boolean) => void;
++  onNotesChange?: (notes: string) => void;
++  externalDisabled?: boolean;
++}) {
++  const [values, setValues] = useState(initial);
++  useEffect(() => {
++    if (appendNotes)
++      setValues((current) => ({
++        ...current,
++        notes: [current.notes, appendNotes.text].filter(Boolean).join('\n\n'),
++      }));
++  }, [appendNotes]);
++  useEffect(() => {
++    onNotesChange?.(String(values.notes || ''));
++  }, [values.notes, onNotesChange]);
++  const [pending, setPending] = useState(false);
++  useEffect(() => {
++    onDirtyChange?.(JSON.stringify(values) !== JSON.stringify(initial));
++  }, [values, initial, onDirtyChange]);
++  useEffect(() => {
++    onPendingChange?.(pending);
++  }, [pending, onPendingChange]);
++  const [error, setError] = useState('');
++  const [saved, setSaved] = useState(false);
++  async function submit(event: React.FormEvent) {
++    event.preventDefault();
++    if (pending || externalDisabled) return;
++    setPending(true);
++    setError('');
++    setSaved(false);
++    try {
++      const payload: RecordData = Object.fromEntries(
++        fields.map((f) => [
++          f.key,
++          f.kind === 'list'
++            ? listValue(values[f.key])
++                .split(',')
++                .map((v) => v.trim())
++                .filter(Boolean)
++            : values[f.key],
++        ]),
++      );
++      if (payload.url === '') payload.url = null;
++      if (values.id) payload.id = values.id;
++      if (values.version !== undefined) payload.version = values.version;
++      await onSave({ ...payload, ...extraValues });
++      setSaved(true);
++    } catch (e) {
++      setError(planningError(e));
++    } finally {
++      setPending(false);
++    }
++  }
++  return (
++    <form onSubmit={submit} className="space-y-4 rounded-lg border p-4">
++      <h3 className="font-semibold text-lg">{title}</h3>
++      <fieldset
++        disabled={pending || externalDisabled}
++        className="grid gap-4 sm:grid-cols-2"
++      >
++        {fields.map((field) => (
++          <label
++            key={field.key}
++            className={`flex flex-col gap-1 text-sm ${field.kind === 'textarea' ? 'sm:col-span-2' : ''}`}
++          >
++            <span>
++              {field.label}
++              {field.required ? ' *' : ''}
++            </span>
++            {field.options ? (
++              <select
++                className="rounded-md border bg-background p-2"
++                value={String(values[field.key] ?? '')}
++                onChange={(e) =>
++                  setValues({ ...values, [field.key]: e.target.value })
++                }
++              >
++                {field.options.map((v) => (
++                  <option key={v} value={v}>
++                    {v}
++                  </option>
++                ))}
++              </select>
++            ) : field.kind === 'checkbox' ? (
++              <input
++                type="checkbox"
++                checked={Boolean(values[field.key])}
++                onChange={(e) =>
++                  setValues({ ...values, [field.key]: e.target.checked })
++                }
++              />
++            ) : field.kind === 'textarea' ? (
++              <textarea
++                className="rounded-md border bg-background p-2"
++                rows={3}
++                maxLength={2000}
++                value={listValue(values[field.key])}
++                onChange={(e) =>
++                  setValues({ ...values, [field.key]: e.target.value })
++                }
++              />
++            ) : (
++              <input
++                className="rounded-md border bg-background p-2"
++                type={
++                  field.kind === 'number' || field.kind === 'money'
++                    ? 'number'
++                    : field.kind === 'url'
++                      ? 'url'
++                      : 'text'
++                }
++                min={field.min ?? 0}
++                max={field.max}
++                step={
++                  field.kind === 'money'
++                    ? '0.01'
++                    : field.kind === 'number'
++                      ? '1'
++                      : undefined
++                }
++                required={field.required}
++                maxLength={
++                  field.maxLength ??
++                  (field.kind === 'url' || field.kind === 'list' ? 2000 : 100)
++                }
++                value={listValue(values[field.key])}
++                onChange={(e) =>
++                  setValues({
++                    ...values,
++                    [field.key]:
++                      field.kind === 'number'
++                        ? Number(e.target.value)
++                        : field.kind === 'money'
++                          ? e.target.value || null
++                          : e.target.value,
++                  })
++                }
++              />
++            )}
++            {field.hint && (
++              <span className="text-muted-foreground">{field.hint}</span>
++            )}
++          </label>
++        ))}
++      </fieldset>
++      <fieldset disabled={pending || externalDisabled}>{children}</fieldset>
++      {error && (
++        <p role="alert" className="text-destructive">
++          {error}
++        </p>
++      )}
++      {saved && <p role="status">Saved.</p>}
++      <Button type="submit" disabled={pending || externalDisabled}>
++        {pending ? 'Saving…' : 'Save'}
++      </Button>
++    </form>
++  );
++}
+diff --git a/components/planning-review.tsx b/components/planning-review.tsx
+new file mode 100644
+index 000000000000..dd625978d89a
+--- /dev/null
++++ b/components/planning-review.tsx
+@@ -0,0 +1,454 @@
++'use client';
++import { useState, useEffect } from 'react';
++import { useQuery, useQueryClient } from '@tanstack/react-query';
++import { api } from '@/lib/api';
++import { RecordData, planning, planningError } from '@/lib/planning';
++import { PlanningForm, Field } from './planning-form';
++import { Button } from './ui/button';
++import { GarmentChooser } from './planning-chooser';
++const defaults = {
++  condition: 'unknown',
++  fit: 'unknown',
++  comfort: 'unknown',
++  decision: 'keep',
++  available: true,
++  composition: '',
++  construction: '',
++  defects: '',
++  care: '',
++  measurements: '',
++  notes: '',
++  repair_cost: null,
++  currency: 'USD',
++  priority: 'normal',
++  suitable_occasions: [],
++  suitable_climates: [],
++};
++const fields: Field[] = [
++  {
++    key: 'condition',
++    label: 'Observed condition',
++    options: ['unknown', 'good', 'worn', 'damaged', 'unusable'],
++  },
++  {
++    key: 'fit',
++    label: 'Fit',
++    options: ['unknown', 'good', 'tight', 'loose', 'uncomfortable'],
++  },
++  { key: 'comfort', label: 'Comfort', options: ['unknown', 'good', 'poor'] },
++  {
++    key: 'decision',
++    label: 'Your decision',
++    options: ['keep', 'repair', 'alter', 'replace', 'retire'],
++  },
++  {
++    key: 'priority',
++    label: 'Replacement priority',
++    options: ['low', 'normal', 'high'],
++  },
++  {
++    key: 'suitable_occasions',
++    label: 'Confirmed suitable activities',
++    kind: 'list',
++    hint: 'Comma-separated, such as work, hiking.',
++  },
++  {
++    key: 'suitable_climates',
++    label: 'Confirmed suitable climates',
++    kind: 'list',
++    hint: 'Comma-separated, such as cold, warm.',
++  },
++  {
++    key: 'available',
++    label: 'Available for outfit recommendations',
++    kind: 'checkbox',
++  },
++  { key: 'composition', label: 'Fabric composition from label' },
++  { key: 'measurements', label: 'Measurements with units' },
++  {
++    key: 'construction',
++    label: 'Construction evidence',
++    kind: 'textarea',
++    hint: 'Inspect seams, fabric opacity, buttons and shape after washing.',
++  },
++  { key: 'defects', label: 'Damage or defects', kind: 'textarea' },
++  { key: 'care', label: 'Care instructions' },
++  { key: 'repair_cost', label: 'Estimated repair cost', kind: 'money' },
++  { key: 'currency', label: 'Currency code', required: true },
++  { key: 'notes', label: 'Your confirmed observations', kind: 'textarea' },
++];
++type ReviewData = {
++  version: number;
++  current: RecordData | null;
++  history: RecordData[];
++  history_total?: number;
++  has_more?: boolean;
++};
++export function GarmentReview({ itemId }: { itemId: string }) {
++  const client = useQueryClient();
++  const path = `items/${itemId}/review`;
++  const review = useQuery({
++    queryKey: ['planning', path],
++    queryFn: () => planning.get<ReviewData>(path),
++  });
++  const [snapshot, setSnapshot] = useState<ReviewData | null>(null);
++  const [resetId, setResetId] = useState(0);
++  const [notes, setNotes] = useState('');
++  const [dirty, setDirty] = useState(false);
++  const [formSaving, setFormSaving] = useState(false);
++  const [historyOffset, setHistoryOffset] = useState(0);
++  const historyPage = useQuery({
++    queryKey: ['planning', path, 'history', historyOffset],
++    queryFn: () =>
++      planning.get<ReviewData>(`${path}?limit=50&offset=${historyOffset}`),
++    enabled: historyOffset > 0,
++  });
++  useEffect(() => {
++    if (!snapshot && review.data) setSnapshot(review.data);
++  }, [review.data, snapshot]);
++  const [observations, setObservations] = useState('');
++  const [draft, setDraft] = useState<{
++    observations: string;
++    unknowns: string[];
++    model?: string;
++    observed_at?: string;
++    review_version?: number;
++    scope?: string;
++  } | null>(null);
++  const [successor, setSuccessor] = useState('');
++  const [pending, setPending] = useState(false);
++  const [error, setError] = useState('');
++  const [appendNotes, setAppendNotes] = useState<{
++    text: string;
++    sequence: number;
++  }>();
++  async function action(fn: () => Promise<unknown>) {
++    setPending(true);
++    setError('');
++    try {
++      await fn();
++    } catch (e) {
++      setError(planningError(e));
++    } finally {
++      setPending(false);
++    }
++  }
++  if (review.isPending && !snapshot)
++    return <p role="status">Loading garment review…</p>;
++  if (review.isError && !snapshot)
++    return (
++      <div role="alert">
++        Unable to load review.{' '}
++        <Button
++          disabled={formSaving || pending}
++          onClick={async () => {
++            if (
++              dirty &&
++              !window.confirm(
++                'Reloading discards unsaved review edits. Continue?',
++              )
++            )
++              return;
++            const latest = await review.refetch();
++            if (latest.data) {
++              setSnapshot(latest.data);
++              setResetId((value) => value + 1);
++              setAppendNotes(undefined);
++              setDirty(false);
++            }
++          }}
++        >
++          Retry
++        </Button>
++      </div>
++    );
++  if (!snapshot || !review.data)
++    return <p role="status">Loading garment review…</p>;
++  return (
++    <section className="space-y-4">
++      <p className="text-sm text-muted-foreground">
++        Record what you can verify. Age and a photo alone do not establish
++        quality. Unknown evidence stays unknown.
++      </p>
++      <PlanningForm
++        externalDisabled={pending}
++        key={`${itemId}-${snapshot.version}-${resetId}`}
++        onNotesChange={setNotes}
++        onDirtyChange={setDirty}
++        onPendingChange={setFormSaving}
++        appendNotes={appendNotes}
++        title="Confirmed garment review"
++        initial={{
++          ...defaults,
++          ...snapshot.current,
++          version: snapshot.version,
++        }}
++        fields={fields}
++        onSave={async (data) => {
++          const saved = await api.put<ReviewData>(
++            `/planning/${path}`,
++            Object.fromEntries(
++              Object.entries(data).filter(([key]) => key !== 'id'),
++            ),
++          );
++          setSnapshot(
++            saved?.version !== undefined
++              ? saved
++              : (await review.refetch()).data || snapshot,
++          );
++          setDirty(false);
++          setAppendNotes(undefined);
++          await client.invalidateQueries({ queryKey: ['planning'] });
++        }}
++      />
++      {Boolean(review.data.current?.successor_id) && (
++        <p className="text-sm">
++          This garment has an owned replacement linked. Its past reviews remain
++          available below.
++        </p>
++      )}
++      <details className="rounded-lg border p-4">
++        <summary className="cursor-pointer font-semibold">
++          Optional AI observations
++        </summary>
++        <p className="mt-3 text-sm">
++          AI uses only the text you enter here. It does not inspect your garment
++          photos. Confirm physical evidence yourself.
++        </p>
++        <label className="block my-3">
++          Evidence for AI to consider
++          <textarea
++            className="block w-full border rounded bg-background p-2"
++            rows={3}
++            maxLength={2000}
++            value={observations}
++            onChange={(e) => setObservations(e.target.value)}
++          />
++        </label>
++        <Button
++          disabled={pending || formSaving || !observations.trim()}
++          onClick={() =>
++            action(async () => {
++              const result = await api.post<{
++                draft: { observations: string; unknowns: string[] };
++                model?: string;
++                observed_at?: string;
++                review_version?: number;
++                scope?: string;
++              }>(`/planning/items/${itemId}/draft`, { observations });
++              setDraft({
++                ...result.draft,
++                model: result.model,
++                observed_at: result.observed_at,
++                review_version: result.review_version,
++                scope: result.scope,
++              });
++            })
++          }
++        >
++          Request unconfirmed draft
++        </Button>
++        {draft && (
++          <div className="mt-3 space-y-2">
++            <p className="text-sm">
++              Model: {draft.model || 'Configured provider'}
++              {draft.observed_at ? ` · Generated ${draft.observed_at}` : ''}
++            </p>
++            <label className="block">
++              Editable unconfirmed draft
++              <textarea
++                className="block w-full border rounded bg-background p-2"
++                rows={6}
++                maxLength={8000}
++                value={draft.observations}
++                onChange={(event) =>
++                  setDraft({ ...draft, observations: event.target.value })
++                }
++              />
++            </label>
++            <p className="text-sm">
++              Remaining confirmed-note capacity:{' '}
++              {Math.max(0, 2000 - notes.length - (notes.length ? 2 : 0))}{' '}
++              characters.
++            </p>
++            {draft.review_version !== undefined &&
++              draft.review_version !== snapshot.version && (
++                <p role="alert">
++                  This draft was generated for a different review version.
++                  Reload your review and regenerate the draft before appending.
++                </p>
++              )}
++            {notes.length + (notes.length ? 2 : 0) + draft.observations.length >
++              2000 && (
++              <p role="alert">
++                The draft will not fit into your notes. Shorten the editable
++                draft before appending. The full draft is preserved.
++              </p>
++            )}
++            <ul className="list-disc pl-5">
++              {draft.unknowns.map((v, i) => (
++                <li key={i}>Unknown: {v}</li>
++              ))}
++            </ul>
++            <Button
++              disabled={
++                pending ||
++                formSaving ||
++                notes.length +
++                  (notes.length ? 2 : 0) +
++                  draft.observations.length >
++                  2000 ||
++                (draft.review_version !== undefined &&
++                  draft.review_version !== snapshot.version)
++              }
++              onClick={() =>
++                setAppendNotes({
++                  text: draft.observations,
++                  sequence: Date.now(),
++                })
++              }
++            >
++              Append draft to review for my confirmation
++            </Button>
++            <p className="text-sm">
++              Review the appended notes and select Save to confirm them.
++            </p>
++          </div>
++        )}
++      </details>
++      <details className="rounded-lg border p-4">
++        <summary className="cursor-pointer font-semibold">
++          Link an owned replacement
++        </summary>
++        <p className="my-3 text-sm">
++          Add your purchased garment to the wardrobe first. Linking it preserves
++          the old review and retires the old garment.
++        </p>
++        <GarmentChooser
++          value={successor}
++          onChange={setSuccessor}
++          exclude={itemId}
++        />
++        <Button
++          className="mt-3"
++          disabled={pending || formSaving || !successor}
++          onClick={() =>
++            action(async () => {
++              if (
++                dirty &&
++                !window.confirm(
++                  'Retiring this garment will discard your unsaved review edits. Save your review first or confirm discarding them.',
++                )
++              )
++                return;
++              const updated = await api.post<ReviewData>(
++                `/planning/items/${itemId}/replace`,
++                { successor_id: successor, version: snapshot.version },
++              );
++              setSnapshot(updated);
++              setResetId((value) => value + 1);
++              setDirty(false);
++              setAppendNotes(undefined);
++              await client.invalidateQueries({ queryKey: ['planning'] });
++            })
++          }
++        >
++          Confirm replacement and retire old garment
++        </Button>
++      </details>
++      {error && (
++        <p role="alert" className="text-destructive">
++          {error}
++        </p>
++      )}
++      <details className="rounded-lg border p-4">
++        <summary className="cursor-pointer font-semibold">
++          Review history (
++          {review.data.history_total ?? review.data.history.length})
++        </summary>
++        {(historyOffset ? historyPage.data?.history : review.data.history)
++          ?.length === 0 ? (
++          <p>No confirmed reviews yet.</p>
++        ) : (
++          (historyOffset
++            ? historyPage.data?.history || []
++            : review.data.history
++          ).map((entry, i) => (
++            <article className="border-t mt-3 pt-3" key={i}>
++              <p>
++                {String(entry.created_at)} · {String(entry.decision)} ·{' '}
++                {String(entry.condition)}
++              </p>
++              <dl>
++                {fields
++                  .filter(
++                    (f) =>
++                      entry[f.key] !== undefined &&
++                      entry[f.key] !== null &&
++                      entry[f.key] !== '',
++                  )
++                  .map((f) => (
++                    <div key={f.key} className="text-sm">
++                      <dt className="font-medium inline">{f.label}: </dt>
++                      <dd className="inline whitespace-pre-wrap">
++                        {String(entry[f.key])}
++                      </dd>
++                    </div>
++                  ))}
++              </dl>
++            </article>
++          ))
++        )}
++        {historyPage.isFetching && <p role="status">Loading review history…</p>}
++        {historyPage.isError && (
++          <p role="alert">
++            Unable to load history.{' '}
++            <Button onClick={() => historyPage.refetch()}>Retry</Button>
++          </p>
++        )}
++        <div className="flex gap-2">
++          <Button
++            variant="outline"
++            disabled={historyOffset === 0}
++            onClick={() => setHistoryOffset(historyOffset - 50)}
++          >
++            Newer reviews
++          </Button>
++          <Button
++            variant="outline"
++            disabled={
++              !(historyOffset
++                ? historyPage.data?.has_more
++                : review.data.has_more)
++            }
++            onClick={() => setHistoryOffset(historyOffset + 50)}
++          >
++            Older reviews
++          </Button>
++        </div>
++      </details>
++      <Button
++        variant="outline"
++        disabled={formSaving || pending}
++        onClick={async () => {
++          if (
++            dirty &&
++            !window.confirm(
++              'Reloading discards unsaved review edits. Continue?',
++            )
++          )
++            return;
++          const latest = await review.refetch();
++          if (latest.data) {
++            setSnapshot(latest.data);
++            setResetId((value) => value + 1);
++            setAppendNotes(undefined);
++            setDirty(false);
++          }
++        }}
++      >
++        Reload latest review
++      </Button>
++    </section>
++  );
++}
+diff --git a/components/sidebar.tsx b/components/sidebar.tsx
+index 90faf663093a..d3d82b5ec176 100644
+--- a/components/sidebar.tsx
++++ b/components/sidebar.tsx
+@@ -31,6 +31,7 @@ export function Sidebar() {
+     { name: t('pairings'), href: '/dashboard/pairings', icon: Layers },
+     { name: t('history'), href: '/dashboard/history', icon: History },
+     { name: t('familyFeed'), href: '/dashboard/family/feed', icon: HeartHandshake },
++    { name: t('planning'), href: '/dashboard/planning', icon: Shirt },
+     { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
+     { name: t('aiLearning'), href: '/dashboard/learning', icon: Brain },
+   ];
+diff --git a/lib/api.ts b/lib/api.ts
+index 47eb94bae797..7204d7ad0a30 100644
+--- a/lib/api.ts
++++ b/lib/api.ts
+@@ -91,6 +91,9 @@ export const api = {
+       body: data ? JSON.stringify(data) : undefined,
+     }),
+ 
++  put: <T>(endpoint: string, data?: unknown, options?: FetchOptions) =>
++    fetchApi<T>(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
++
+   patch: <T>(endpoint: string, data?: unknown, options?: FetchOptions) =>
+     fetchApi<T>(endpoint, {
+       ...options,
+diff --git a/lib/planning.ts b/lib/planning.ts
+new file mode 100644
+index 000000000000..34e9f9e60d47
+--- /dev/null
++++ b/lib/planning.ts
+@@ -0,0 +1,54 @@
++import { api } from '@/lib/api';
++export type RecordData = {
++  id?: string;
++  version?: number;
++  [key: string]: unknown;
++};
++export const planning = {
++  get: <T>(path: string) => api.get<T>(`/planning/${path}`),
++  save: <T>(path: string, data: RecordData) =>
++    data.id
++      ? api.put<T>(
++          `/planning/${path}/${data.id}`,
++          Object.fromEntries(
++            Object.entries(data).filter(([key]) => key !== 'id'),
++          ),
++        )
++      : api.post<T>(`/planning/${path}`, data),
++};
++export function planningError(error: unknown): string {
++  if (
++    error &&
++    typeof error === 'object' &&
++    'status' in error &&
++    error.status === 409 &&
++    'data' in error
++  ) {
++    const detail = (error.data as { detail?: unknown })?.detail;
++    if (typeof detail === 'string' && !/changed|reload/i.test(detail))
++      return detail;
++  }
++  if (
++    error &&
++    typeof error === 'object' &&
++    'status' in error &&
++    error.status === 409
++  )
++    return 'This record changed in another session. Your input is preserved. Reload the latest record before saving again.';
++  if (error && typeof error === 'object' && 'data' in error) {
++    const data = error.data as { detail?: { loc?: string[]; msg?: string }[] };
++    if (Array.isArray(data?.detail))
++      return data.detail
++        .map(
++          (issue) =>
++            `${issue.loc?.slice(1).join('.') || 'Input'}: ${issue.msg || 'invalid value'}`,
++        )
++        .join('; ');
++  }
++  return error instanceof Error
++    ? error.message
++    : 'Unable to save. Your input is preserved.';
++}
++export function listValue(value: unknown): string {
++  return Array.isArray(value) ? value.join(', ') : String(value ?? '');
++}
+diff --git a/messages/de/nav.json b/messages/de/nav.json
+index 25f262a0fa18..9025a935e332 100644
+--- a/messages/de/nav.json
++++ b/messages/de/nav.json
+@@ -20,5 +20,6 @@
+   "suggestOutfit": "Outfit vorschlagen",
+   "toggleTheme": "Design wechseln",
+   "userFallback": "Benutzer",
+-  "wardrobe": "Kleiderschrank"
++  "wardrobe": "Kleiderschrank",
++  "planning": "Wardrobe planning"
+ }
+diff --git a/messages/en/nav.json b/messages/en/nav.json
+index b782fb593a1f..a0cb33b6c399 100644
+--- a/messages/en/nav.json
++++ b/messages/en/nav.json
+@@ -20,5 +20,6 @@
+   "suggestOutfit": "Suggest Outfit",
+   "toggleTheme": "Toggle theme",
+   "userFallback": "User",
+-  "wardrobe": "Wardrobe"
++  "wardrobe": "Wardrobe",
++  "planning": "Wardrobe planning"
+ }
+diff --git a/messages/fr/nav.json b/messages/fr/nav.json
+index 77e6eed891f4..b3878e132563 100644
+--- a/messages/fr/nav.json
++++ b/messages/fr/nav.json
+@@ -20,5 +20,6 @@
+   "suggestOutfit": "Suggérer une tenue",
+   "toggleTheme": "Changer de thème",
+   "userFallback": "Utilisateur",
+-  "wardrobe": "Garde-robe"
++  "wardrobe": "Garde-robe",
++  "planning": "Wardrobe planning"
+ }
+diff --git a/messages/it/nav.json b/messages/it/nav.json
+index 5d36a064b3ad..3744f254e832 100644
+--- a/messages/it/nav.json
++++ b/messages/it/nav.json
+@@ -20,5 +20,6 @@
+   "suggestOutfit": "Suggerisci Outfit",
+   "toggleTheme": "Cambia tema",
+   "userFallback": "Utente",
+-  "wardrobe": "Guardaroba"
++  "wardrobe": "Guardaroba",
++  "planning": "Wardrobe planning"
+ }
+diff --git a/messages/ja/nav.json b/messages/ja/nav.json
+index 2d43369ba406..3b123cfce29b 100644
+--- a/messages/ja/nav.json
++++ b/messages/ja/nav.json
+@@ -20,5 +20,6 @@
+   "suggestOutfit": "コーディネート提案",
+   "toggleTheme": "テーマ切替",
+   "userFallback": "ユーザー",
+-  "wardrobe": "ワードローブ"
++  "wardrobe": "ワードローブ",
++  "planning": "Wardrobe planning"
+ }
+diff --git a/messages/ko/nav.json b/messages/ko/nav.json
+index 9da105e9607c..f64fd756f6e6 100644
+--- a/messages/ko/nav.json
++++ b/messages/ko/nav.json
+@@ -20,5 +20,6 @@
+   "suggestOutfit": "코디 추천",
+   "toggleTheme": "테마 전환",
+   "userFallback": "사용자",
+-  "wardrobe": "옷장"
++  "wardrobe": "옷장",
++  "planning": "Wardrobe planning"
+ }
+diff --git a/messages/zh-CN/nav.json b/messages/zh-CN/nav.json
+index a4260ff655a8..d2b2291d7e64 100644
+--- a/messages/zh-CN/nav.json
++++ b/messages/zh-CN/nav.json
+@@ -20,5 +20,6 @@
+   "suggestOutfit": "推荐搭配",
+   "toggleTheme": "切换主题",
+   "userFallback": "用户",
+-  "wardrobe": "衣橱"
++  "wardrobe": "衣橱",
++  "planning": "Wardrobe planning"
+ }
+diff --git a/messages/zh-TW/nav.json b/messages/zh-TW/nav.json
+index 52bd9bf5eba8..ef6fdb718d00 100644
+--- a/messages/zh-TW/nav.json
++++ b/messages/zh-TW/nav.json
+@@ -20,5 +20,6 @@
+   "suggestOutfit": "建議穿搭",
+   "toggleTheme": "切換主題",
+   "userFallback": "使用者",
+-  "wardrobe": "衣櫥"
++  "wardrobe": "衣櫥",
++  "planning": "Wardrobe planning"
+ }
+diff --git a/tests/planning.test.tsx b/tests/planning.test.tsx
+new file mode 100644
+index 000000000000..ff9a48e7bf93
+--- /dev/null
++++ b/tests/planning.test.tsx
+@@ -0,0 +1,405 @@
++import React from 'react';
++import {
++  render,
++  screen,
++  fireEvent,
++  act,
++  waitFor,
++  cleanup,
++} from '@testing-library/react';
++import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { PlanningForm } from '@/components/planning-form';
++import { GarmentReview } from '@/components/planning-review';
++import { PlanningCollection } from '@/components/planning-collection';
++import PlanningPage from '@/app/dashboard/planning/page';
++import { api } from '@/lib/api';
++vi.mock('@/lib/api', () => ({
++  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
++}));
++vi.mock('@/components/planning-chooser', () => ({
++  GarmentChooser: ({ onChange }: { onChange: (id: string) => void }) => (
++    <button type="button" onClick={() => onChange('successor-fixture')}>
++      Select fixture garment
++    </button>
++  ),
++}));
++afterEach(cleanup);
++beforeEach(() => vi.resetAllMocks());
++function mount(node: React.ReactNode) {
++  const client = new QueryClient({
++    defaultOptions: { queries: { retry: false, gcTime: 0 } },
++  });
++  const rendered = render(
++    <QueryClientProvider client={client}>{node}</QueryClientProvider>,
++  );
++  return { ...rendered, client };
++}
++describe('Wardrobe planning', () => {
++  it('preserves input after stale rejection and sends confirmed evidence without server metadata', async () => {
++    const save = vi.fn().mockRejectedValue({ status: 409 });
++    mount(
++      <PlanningForm
++        title="Review"
++        initial={{ version: 2, notes: 'original', created_at: 'server' }}
++        fields={[{ key: 'notes', label: 'Evidence' }]}
++        onSave={save}
++      />,
++    );
++    fireEvent.change(screen.getByLabelText('Evidence'), {
++      target: { value: 'stretched collar' },
++    });
++    fireEvent.click(screen.getByText('Save'));
++    await screen.findByRole('alert');
++    expect(screen.getByLabelText('Evidence')).toHaveValue('stretched collar');
++    expect(save).toHaveBeenCalledWith({
++      version: 2,
++      notes: 'stretched collar',
++    });
++    expect(screen.queryByText('Saved.')).toBeNull();
++  });
++  it('keeps AI drafts separate until the user copies and saves them', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      version: 0,
++      current: {
++        id: 'review-record',
++        created_at: 'server-date',
++        notes: '',
++        condition: 'good',
++        version: 0,
++      },
++      history: [],
++    });
++    vi.mocked(api.post).mockResolvedValue({
++      draft: { observations: 'Inspect loose seam', unknowns: ['composition'] },
++    });
++    vi.mocked(api.put).mockResolvedValue({});
++    mount(<GarmentReview itemId="garment-fixture" />);
++    await screen.findByText('Confirmed garment review');
++    fireEvent.change(screen.getByLabelText('Fabric composition from label'), {
++      target: { value: '100% cotton' },
++    });
++    fireEvent.change(screen.getByLabelText('Your confirmed observations'), {
++      target: { value: 'My original notes' },
++    });
++    fireEvent.change(screen.getByLabelText('Evidence for AI to consider'), {
++      target: { value: 'loose seam' },
++    });
++    fireEvent.click(screen.getByText('Request unconfirmed draft'));
++    await screen.findByDisplayValue('Inspect loose seam');
++    expect(api.put).not.toHaveBeenCalled();
++    fireEvent.click(
++      screen.getByText('Append draft to review for my confirmation'),
++    );
++    expect(screen.getByLabelText('Your confirmed observations')).toHaveValue(
++      'My original notes\n\nInspect loose seam',
++    );
++    expect(screen.getByLabelText('Fabric composition from label')).toHaveValue(
++      '100% cotton',
++    );
++    fireEvent.click(screen.getByText('Save'));
++    await waitFor(() =>
++      expect(api.put).toHaveBeenCalledWith(
++        '/planning/items/garment-fixture/review',
++        expect.objectContaining({
++          notes: 'My original notes\n\nInspect loose seam',
++          composition: '100% cotton',
++          version: 0,
++        }),
++      ),
++    );
++    expect(vi.mocked(api.put).mock.calls[0][1]).not.toHaveProperty('id');
++    expect(vi.mocked(api.put).mock.calls[0][1]).not.toHaveProperty(
++      'created_at',
++    );
++  });
++  it('preserves dirty edits and original version after a background update', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      version: 1,
++      current: { id: 'review', notes: 'original' },
++      history: [],
++    });
++    vi.mocked(api.put).mockRejectedValue({ status: 409 });
++    const view = mount(<GarmentReview itemId="fixture" />);
++    await screen.findByText('Confirmed garment review');
++    fireEvent.change(screen.getByLabelText('Your confirmed observations'), {
++      target: { value: 'my unsaved observation' },
++    });
++    await act(async () => {
++      view.client.setQueryData(['planning', 'items/fixture/review'], {
++        version: 2,
++        current: { notes: 'other session' },
++        history: [],
++      });
++    });
++    expect(screen.getByLabelText('Your confirmed observations')).toHaveValue(
++      'my unsaved observation',
++    );
++    fireEvent.click(screen.getByText('Save'));
++    await screen.findByRole('alert');
++    expect(api.put).toHaveBeenCalledWith(
++      '/planning/items/fixture/review',
++      expect.objectContaining({ version: 1, notes: 'my unsaved observation' }),
++    );
++  });
++  it('requires explicit discard before retiring a dirty garment', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      version: 1,
++      current: null,
++      history: [],
++    });
++    const confirmation = vi.spyOn(window, 'confirm').mockReturnValue(false);
++    mount(<GarmentReview itemId="fixture" />);
++    await screen.findByText('Confirmed garment review');
++    fireEvent.change(screen.getByLabelText('Your confirmed observations'), {
++      target: { value: 'keep this observation' },
++    });
++    fireEvent.click(screen.getByText('Select fixture garment'));
++    fireEvent.click(
++      screen.getByText('Confirm replacement and retire old garment'),
++    );
++    await waitFor(() => expect(confirmation).toHaveBeenCalled());
++    expect(api.post).not.toHaveBeenCalled();
++    expect(screen.getByLabelText('Your confirmed observations')).toHaveValue(
++      'keep this observation',
++    );
++    confirmation.mockRestore();
++  });
++  it('disables review edits and saves throughout a pending replacement', async () => {
++    const original = {
++      version: 1,
++      current: {
++        notes: 'confirmed evidence',
++        decision: 'keep',
++        available: true,
++      },
++      history: [],
++    };
++    vi.mocked(api.get).mockResolvedValue(original);
++    let finishReplacement!: (value: unknown) => void;
++    vi.mocked(api.post).mockImplementation(
++      () =>
++        new Promise((resolve) => {
++          finishReplacement = resolve;
++        }),
++    );
++    mount(<GarmentReview itemId="fixture" />);
++    await screen.findByText('Confirmed garment review');
++    fireEvent.click(screen.getByText('Select fixture garment'));
++    fireEvent.click(
++      screen.getByText('Confirm replacement and retire old garment'),
++    );
++    await waitFor(() => expect(api.post).toHaveBeenCalled());
++    expect(screen.getByLabelText('Your confirmed observations')).toBeDisabled();
++    expect(screen.getByText('Save')).toBeDisabled();
++    fireEvent.submit(screen.getByText('Save').closest('form')!);
++    expect(api.put).not.toHaveBeenCalled();
++    await act(async () => {
++      finishReplacement({
++        version: 2,
++        current: {
++          notes: 'confirmed evidence',
++          decision: 'retire',
++          available: false,
++          successor_id: 'successor-fixture',
++        },
++        history: [],
++      });
++    });
++    await waitFor(() => expect(screen.getByText('Save')).not.toBeDisabled());
++    expect(screen.getByLabelText('Your confirmed observations')).toHaveValue(
++      'confirmed evidence',
++    );
++    expect(screen.getByLabelText('Your decision')).toHaveValue('retire');
++    expect(
++      screen.getByLabelText('Available for outfit recommendations'),
++    ).not.toBeChecked();
++  });
++  it('shows draft provenance and blocks appending an oversized draft', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      version: 1,
++      current: null,
++      history: [],
++    });
++    vi.mocked(api.post).mockResolvedValue({
++      draft: { observations: 'x'.repeat(2100), unknowns: [] },
++      model: 'test-model',
++      observed_at: '2026-01-01',
++      review_version: 1,
++    });
++    mount(<GarmentReview itemId="fixture" />);
++    await screen.findByText('Confirmed garment review');
++    fireEvent.change(screen.getByLabelText('Evidence for AI to consider'), {
++      target: { value: 'observed seam' },
++    });
++    fireEvent.click(screen.getByText('Request unconfirmed draft'));
++    await screen.findByText(/Model: test-model/);
++    expect(
++      screen.getByText('Append draft to review for my confirmation'),
++    ).toBeDisabled();
++    expect(screen.getByLabelText('Editable unconfirmed draft')).toHaveValue(
++      'x'.repeat(2100),
++    );
++    fireEvent.change(screen.getByLabelText('Editable unconfirmed draft'), {
++      target: { value: 'inspect seam' },
++    });
++    expect(
++      screen.getByText('Append draft to review for my confirmation'),
++    ).not.toBeDisabled();
++  });
++  it('saves candidate linkage alongside exact product fields', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      items: [{ id: 'need', name: 'Office shirts', version: 1 }],
++      total: 1,
++    });
++    vi.mocked(api.post).mockResolvedValue({});
++    mount(<PlanningCollection kind="candidates" />);
++    await screen.findByText('Office shirts');
++    fireEvent.click(screen.getByText('Add candidate'));
++    fireEvent.change(screen.getByLabelText('Name *'), {
++      target: { value: 'Oxford size M' },
++    });
++    fireEvent.change(screen.getByLabelText(/Garment type/), {
++      target: { value: 'shirt' },
++    });
++    fireEvent.change(screen.getByLabelText('Product construction evidence'), {
++      target: { value: 'reinforced seams reported' },
++    });
++    fireEvent.change(screen.getByLabelText('Product care instructions'), {
++      target: { value: 'machine wash cold' },
++    });
++    fireEvent.change(screen.getByLabelText('Related wardrobe need'), {
++      target: { value: 'need' },
++    });
++    fireEvent.click(screen.getByText('Select fixture garment'));
++    fireEvent.click(screen.getByText('Save'));
++    await waitFor(() =>
++      expect(api.post).toHaveBeenCalledWith(
++        '/planning/candidates',
++        expect.objectContaining({
++          name: 'Oxford size M',
++          requirement_id: 'need',
++          replaces_item_id: 'successor-fixture',
++          url: null,
++          construction: 'reinforced seams reported',
++          care: 'machine wash cold',
++        }),
++      ),
++    );
++  });
++  it('defaults newly supported product evidence fields on older candidates', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      items: [
++        {
++          id: 'candidate',
++          version: 1,
++          name: 'Older product',
++          item_type: 'shirt',
++          currency: 'USD',
++        },
++      ],
++      total: 1,
++    });
++    vi.mocked(api.put).mockResolvedValue({});
++    mount(<PlanningCollection kind="candidates" />);
++    await screen.findByText('Older product');
++    fireEvent.click(screen.getByText('Edit Older product'));
++    expect(screen.getByLabelText('Product construction evidence')).toHaveValue(
++      '',
++    );
++    expect(screen.getByLabelText('Product care instructions')).toHaveValue('');
++    fireEvent.click(screen.getByText('Save'));
++    await waitFor(() =>
++      expect(api.put).toHaveBeenCalledWith(
++        '/planning/candidates/candidate',
++        expect.objectContaining({ construction: '', care: '', version: 1 }),
++      ),
++    );
++  });
++  it('edits saved needs using version while removing server metadata', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      items: [
++        {
++          id: 'need',
++          version: 3,
++          created_at: 'server-date',
++          name: 'Office shirts',
++          item_type: 'shirt',
++          currency: 'USD',
++          target_quantity: 2,
++          weekly_uses: 4,
++          laundry_days: 7,
++          wears_between_washes: 1,
++          colors: [],
++          styles: [],
++          occasion: '',
++          climate: '',
++          season: '',
++          budget: null,
++        },
++      ],
++      total: 1,
++    });
++    vi.mocked(api.put).mockResolvedValue({});
++    mount(<PlanningCollection kind="requirements" />);
++    await screen.findByText('Office shirts');
++    fireEvent.click(screen.getByText('Edit Office shirts'));
++    fireEvent.change(screen.getByLabelText('Minimum garments wanted'), {
++      target: { value: '3' },
++    });
++    fireEvent.click(screen.getByText('Save'));
++    await waitFor(() => expect(api.put).toHaveBeenCalled());
++    const [path, payload] = vi.mocked(api.put).mock.calls[0];
++    expect(path).toBe('/planning/requirements/need');
++    expect(payload).toMatchObject({ version: 3, target_quantity: 3 });
++    expect(payload).not.toHaveProperty('id');
++    expect(payload).not.toHaveProperty('created_at');
++  });
++  it('allows typing comma-separated tags and omits blank tags on save', async () => {
++    const save = vi.fn().mockResolvedValue({});
++    mount(
++      <PlanningForm
++        title="Tags"
++        initial={{ colors: [] }}
++        fields={[{ key: 'colors', label: 'Colors', kind: 'list' }]}
++        onSave={save}
++      />,
++    );
++    fireEvent.change(screen.getByLabelText('Colors'), {
++      target: { value: 'white, blue, ' },
++    });
++    expect(screen.getByLabelText('Colors')).toHaveValue('white, blue, ');
++    fireEvent.click(screen.getByText('Save'));
++    await waitFor(() =>
++      expect(save).toHaveBeenCalledWith({ colors: ['white', 'blue'] }),
++    );
++  });
++  it('makes all four workflows discoverable and shows personalized coverage', async () => {
++    vi.mocked(api.get).mockResolvedValue({
++      coverage: [
++        {
++          requirement_id: 'need',
++          name: 'Office shirts',
++          available: 1,
++          required: 3,
++          missing: 2,
++          unknowns: ['fit'],
++        },
++      ],
++      unreviewed: [],
++      repairs: [],
++      fit_problems: [],
++      replacements: [],
++    });
++    mount(<PlanningPage />);
++    expect(
++      screen.getByRole('navigation', { name: 'Planning sections' }),
++    ).toBeInTheDocument();
++    fireEvent.click(screen.getByText('Wardrobe audit'));
++    await screen.findByText('Office shirts');
++    expect(
++      screen.getByText('1 available / 3 needed. 2 missing.'),
++    ).toBeInTheDocument();
++    expect(screen.getByText('Unknown: fit')).toBeInTheDocument();
++  });
++});

@@ -1,4 +1,6 @@
 {
+  callPackage,
+  replaceVars,
   lib,
   stdenvNoCC,
   fetchFromGitHub,
@@ -24,48 +26,26 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
   dontBuild = true;
 
   installPhase = ''
-    runHook preInstall
-
-    skill_root="$out/share/agent-skills"
-    mkdir -p "$skill_root"
-    install -Dm644 "$src/LICENSE" "$out/share/doc/${pname}/LICENSE"
-    while IFS= read -r -d "" skill_file; do
-      source_skill="''${skill_file%/SKILL.md}"
-      skill_name="$(basename "$source_skill")"
-      target_name="mattpocock-$skill_name"
-      target_skill="$TMPDIR/$target_name"
-      cp -R --no-preserve=ownership "$source_skill" "$target_skill"
-      chmod -R u+w "$target_skill"
-      sed -i "0,/^name: .*$/s//name: $target_name/" "$target_skill/SKILL.md"
-      cp -R --no-preserve=ownership "$target_skill" "$skill_root/$target_name"
-    done < <(find "$src"/skills -mindepth 3 -maxdepth 3 -type f -name SKILL.md -print0 | sort -z)
-
-    runHook postInstall
+    source ${replaceVars ./scripts/install-phase.sh { inherit pname; }}
   '';
 
   doInstallCheck = true;
   installCheckPhase = ''
-    runHook preInstallCheck
-
-    cmp "$src/LICENSE" "$out/share/doc/${pname}/LICENSE"
-
-    installed_skill_count="$(find "$out/share/agent-skills" -mindepth 1 -maxdepth 1 -type d | wc -l)"
-    test "$installed_skill_count" -gt 0
-    test "$installed_skill_count" -eq "$(find "$out/share/agent-skills" -mindepth 2 -maxdepth 2 -name SKILL.md -type f | wc -l)"
-    while IFS= read -r skill_file; do
-      grep -q '^---$' "$skill_file"
-      grep -Eq '^name: mattpocock-[a-z0-9-]+$' "$skill_file"
-    done < <(find "$out/share/agent-skills" -mindepth 2 -maxdepth 2 -name SKILL.md -type f | sort)
-
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        inherit pname;
+      }
+    }
   '';
 
   passthru.updateScript = [
-    "python3"
-    "pkgs/by-name/ma/mattpocock-skills/update.py"
+    (lib.getExe (callPackage ./update.nix { }))
+    "--source-directory"
+    (builtins.unsafeDiscardStringContext (toString ./.))
   ];
 
   meta = {
+    sourceProvenance = [ lib.sourceTypes.fromSource ];
     description = "Matt Pocock's Agent Skills catalog";
     homepage = "https://github.com/mattpocock/skills";
     license = lib.licenses.mit;

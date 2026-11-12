@@ -1,4 +1,5 @@
 {
+  replaceVars,
   lib,
   stdenvNoCC,
   fetchFromGitHub,
@@ -32,57 +33,34 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   dontDropIconThemeCache = true;
 
   installPhase = ''
-    runHook preInstall
-
-    icons="$out/share/icons/${iconThemeName}"
-    docs="$out/share/doc/${finalAttrs.pname}"
-    mkdir -p "$icons/scalable/apps" "$docs"
-    install -m644 ${./index.theme} "$icons/index.theme"
-
-    cp ${papirus-icon-theme}/share/icons/Papirus/64x64/apps/zen-browser.svg "$icons/scalable/apps/zen-browser.svg"
-    substituteInPlace "$icons/scalable/apps/zen-browser.svg" \
-      --replace-fail '#e3e1d4' '#25272d'
-    cp src/apps/scalable/chat-gpt.svg "$icons/scalable/apps/chatgpt.svg"
-    substituteInPlace "$icons/scalable/apps/chatgpt.svg" \
-      --replace-fail '#74aa9c' '#25272d' \
-      --replace-fail '#96c0b3' '#3a3d45'
-    cp src/apps/scalable/visual-studio-code.svg "$icons/scalable/apps/visual-studio-code.svg"
-    # Nixpkgs' VS Code desktop entry uses Icon=vscode, while other builds use code.
-    ln -s visual-studio-code.svg "$icons/scalable/apps/code.svg"
-    ln -s visual-studio-code.svg "$icons/scalable/apps/vscode.svg"
-
-    install -m644 LICENSE "$docs/SEVI-LICENSE"
-    install -m644 AUTHORS "$docs/SEVI-AUTHORS"
-    install -m644 ${papirus-icon-theme.src}/LICENSE "$docs/PAPIRUS-LICENSE"
-    install -m644 ${./README.md} "$docs/README.md"
-    gtk-update-icon-cache --force "$icons"
-
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        inherit iconThemeName;
+        inherit (finalAttrs) pname;
+        index_theme = "${./index.theme}";
+        papirus_icon_theme = papirus-icon-theme;
+        zoom_symbolic_svg = "${./zoom-symbolic.svg}";
+        sunshine_symbolic_svg = "${./sunshine-symbolic.svg}";
+        papirus_icon_theme_src = papirus-icon-theme.src;
+        readme = "${./README.md}";
+      }
+    }
   '';
 
   doInstallCheck = true;
   nativeInstallCheckInputs = [ librsvg ];
   installCheckPhase = ''
-    runHook preInstallCheck
-    icons="$out/share/icons/${iconThemeName}"
-    gtk-update-icon-cache --validate "$icons"
-    cmp "$icons/scalable/apps/code.svg" "$icons/scalable/apps/visual-studio-code.svg"
-    cmp "$icons/scalable/apps/vscode.svg" "$icons/scalable/apps/visual-studio-code.svg"
-    for icon in chatgpt zen-browser vscode; do
-      for size in 16 24 32 42 84; do
-        rsvg-convert --width "$size" --height "$size" \
-          --output "$TMPDIR/$icon-$size.png" "$icons/scalable/apps/$icon.svg"
-      done
-    done
-    ${
-      lib.getExe (
-        writers.writePython3Bin "check-installed-assets" {
-          libraries = [ python3.pkgs.pillow ];
-          flakeIgnore = [ "E501" ];
-        } ./check-installed.py
-      )
-    } "$TMPDIR" "$icons"
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        inherit iconThemeName;
+        assetsCheck = lib.getExe (
+          writers.writePython3Bin "check-installed-assets" {
+            libraries = [ python3.pkgs.pillow ];
+            flakeIgnore = [ "E501" ];
+          } ./check_installed.py
+        );
+      }
+    }
   '';
 
   # This is a locally versioned composition, not a Sevi release. Source and
@@ -93,7 +71,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   };
 
   meta = {
-    description = "Dark application icon variants for ChatGPT, Zen and Visual Studio Code";
+    sourceProvenance = [ lib.sourceTypes.fromSource ];
+    description = "Dark application icons and symbolic Zoom and Sunshine tray logos";
     homepage = "https://github.com/nix-forge/nixpkgs-personal";
     license = with lib.licenses; [
       cc-by-sa-40

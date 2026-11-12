@@ -1,0 +1,94 @@
+--- a/dist/commonjs/read-entry.js
++++ b/dist/commonjs/read-entry.js
+@@ -94,11 +94,15 @@
+         /* c8 ignore stop */
+         this.uname = header.uname;
+         this.gname = header.gname;
+-        if (ex) {
+-            this.#slurp(ex);
+-        }
+-        if (gex) {
+-            this.#slurp(gex, true);
++        // PAX fields describe filesystem entries, never intermediary metadata.
++        // Keep size/remain consistent while consuming GNU/PAX extension bodies.
++        if (!this.meta && !this.ignore) {
++            if (ex) {
++                this.#slurp(ex);
++            }
++            if (gex) {
++                this.#slurp(gex, true);
++            }
+         }
+     }
+     write(data) {
+@@ -133,4 +137,3 @@
+     }
+ }
+ exports.ReadEntry = ReadEntry;
+-//# sourceMappingURL=read-entry.js.map
+\ No newline at end of file
+--- a/dist/esm/read-entry.js
++++ b/dist/esm/read-entry.js
+@@ -91,11 +91,15 @@
+         /* c8 ignore stop */
+         this.uname = header.uname;
+         this.gname = header.gname;
+-        if (ex) {
+-            this.#slurp(ex);
+-        }
+-        if (gex) {
+-            this.#slurp(gex, true);
++        // PAX fields describe filesystem entries, never intermediary metadata.
++        // Keep size/remain consistent while consuming GNU/PAX extension bodies.
++        if (!this.meta && !this.ignore) {
++            if (ex) {
++                this.#slurp(ex);
++            }
++            if (gex) {
++                this.#slurp(gex, true);
++            }
+         }
+     }
+     write(data) {
+@@ -129,4 +133,3 @@
+         })));
+     }
+ }
+-//# sourceMappingURL=read-entry.js.map
+\ No newline at end of file
+--- a/dist/commonjs/parse.js
++++ b/dist/commonjs/parse.js
+@@ -357,13 +357,13 @@
+             case 'OldGnuLongPath': {
+                 const ex = this[EX] ?? Object.create(null);
+                 this[EX] = ex;
+-                ex.path = this[META].replace(/\0.*/, '');
++                ex.path = this[META].split('\0', 1)[0];
+                 break;
+             }
+             case 'NextFileHasLongLinkpath': {
+                 const ex = this[EX] || Object.create(null);
+                 this[EX] = ex;
+-                ex.linkpath = this[META].replace(/\0.*/, '');
++                ex.linkpath = this[META].split('\0', 1)[0];
+                 break;
+             }
+             /* c8 ignore start */
+--- a/dist/esm/parse.js
++++ b/dist/esm/parse.js
+@@ -354,13 +354,13 @@
+             case 'OldGnuLongPath': {
+                 const ex = this[EX] ?? Object.create(null);
+                 this[EX] = ex;
+-                ex.path = this[META].replace(/\0.*/, '');
++                ex.path = this[META].split('\0', 1)[0];
+                 break;
+             }
+             case 'NextFileHasLongLinkpath': {
+                 const ex = this[EX] || Object.create(null);
+                 this[EX] = ex;
+-                ex.linkpath = this[META].replace(/\0.*/, '');
++                ex.linkpath = this[META].split('\0', 1)[0];
+                 break;
+             }
+             /* c8 ignore start */

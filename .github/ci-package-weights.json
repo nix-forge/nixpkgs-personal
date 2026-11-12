@@ -1,6 +1,12 @@
 {
   "default": 1,
   "weights": {
-    "maintainerr": 100
+    "craft-launcher": 25,
+    "designcraft": 25,
+    "effectcraft": 25,
+    "figcraft": 25,
+    "filmcraft": 25,
+    "maintainerr": 100,
+    "rea": 100
   }
 }

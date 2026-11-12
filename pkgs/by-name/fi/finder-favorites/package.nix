@@ -1,4 +1,5 @@
 {
+  replaceVars,
   coreutils,
   file,
   findutils,
@@ -6,11 +7,12 @@
   lib,
   fetchFromGitHub,
   rcodesign,
-  swiftPackages,
+  stdenv,
+  swift,
+  swiftpm,
 }:
 
 let
-  inherit (swiftPackages) stdenv swift;
   version = "0.1.0";
   minimumMacOS = "14.0";
 in
@@ -33,116 +35,82 @@ stdenv.mkDerivation {
     gnugrep
     rcodesign
     swift
-    swiftPackages.swiftpm
+    swiftpm
   ];
   strictDeps = true;
   MACOSX_DEPLOYMENT_TARGET = minimumMacOS;
+  # SwiftPM must compile with the caller-selected Swift, including overrides.
+  SWIFT_EXEC = "${swift}/bin/swiftc";
   NIX_CC_WRAPPER_SUPPRESS_TARGET_WARNING = 1;
 
   dontConfigure = true;
-
-  buildPhase = ''
-    runHook preBuild
-
-    # Nix's SwiftPM 5.10 evaluates manifests with its macOS 12 host triple,
-    # while the packaged Swift runtime targets macOS 14. Quiet mode hides that
-    # toolchain-only linker noise. All project diagnostics remain errors below.
-    swift package --quiet \
-      --cache-path "$TMPDIR/swift-cache" \
-      --config-path "$TMPDIR/swift-config" \
-      --security-path "$TMPDIR/swift-security" \
-      dump-package >/dev/null
-
-    swift build \
-      --quiet \
-      --disable-sandbox \
-      --cache-path "$TMPDIR/swift-cache" \
-      --config-path "$TMPDIR/swift-config" \
-      --security-path "$TMPDIR/swift-security" \
-      --scratch-path "$TMPDIR/swift-build" \
-      -c release \
-      --explicit-target-dependency-import-check error \
-      -Xcc -Wall \
-      -Xcc -Wextra \
-      -Xcc -Wpedantic \
-      -Xcc -Wconversion \
-      -Xcc -Wsign-conversion \
-      -Xcc -Wcast-qual \
-      -Xcc -Wformat=2 \
-      -Xcc -Wnull-dereference \
-      -Xcc -Wshadow \
-      -Xcc -Wstrict-prototypes \
-      -Xcc -Wmissing-prototypes \
-      -Xcc -Wnullability-completeness \
-      -Xcc -Werror \
-      -Xcc -Wno-newline-eof \
-      -Xcc -Wno-nullability-extension \
-      -Xswiftc -swift-version \
-      -Xswiftc 5 \
-      -Xswiftc -strict-concurrency=complete \
-      -Xswiftc -warnings-as-errors
-
-    runHook postBuild
-  '';
+  # Nix exports list attributes as scalar strings; the hook splits this string
+  # into flags, while swiftpmFlagsArray requires a shell array.
+  swiftpmFlags = lib.concatStringsSep " " [
+    "--explicit-target-dependency-import-check"
+    "error"
+    "-Xcc"
+    "-Wall"
+    "-Xcc"
+    "-Wextra"
+    "-Xcc"
+    "-Wpedantic"
+    "-Xcc"
+    "-Wconversion"
+    "-Xcc"
+    "-Wsign-conversion"
+    "-Xcc"
+    "-Wcast-qual"
+    "-Xcc"
+    "-Wformat=2"
+    "-Xcc"
+    "-Wnull-dereference"
+    "-Xcc"
+    "-Wshadow"
+    "-Xcc"
+    "-Wstrict-prototypes"
+    "-Xcc"
+    "-Wmissing-prototypes"
+    "-Xcc"
+    "-Wnullability-completeness"
+    "-Xcc"
+    "-Werror"
+    "-Xcc"
+    "-Wno-newline-eof"
+    "-Xcc"
+    "-Wno-nullability-extension"
+    "-Xswiftc"
+    "-swift-version"
+    "-Xswiftc"
+    "5"
+    "-Xswiftc"
+    "-strict-concurrency=complete"
+    "-Xswiftc"
+    "-warnings-as-errors"
+  ];
 
   doCheck = true;
-  checkPhase = ''
-    runHook preCheck
+  checkPhase = builtins.readFile ./scripts/check-phase.sh;
 
-    # Nix's Darwin Swift distribution omits XCTest. This release-built harness
-    # exercises the same in-memory backend without touching the live sidebar.
-    "$TMPDIR/swift-build/release/finder-favorites-selftest" \
-      | grep -Fxq 'finder-favorites self-test passed'
-
-    runHook postCheck
-  '';
-
-  installPhase = ''
-    runHook preInstall
-
-    install -Dm755 "$TMPDIR/swift-build/release/finder-favorites" \
-      "$out/bin/finder-favorites"
-    install -Dm644 README.md "$out/share/doc/finder-favorites/README.md"
-    install -Dm644 LICENSE "$out/share/doc/finder-favorites/LICENSE"
-
-    runHook postInstall
-  '';
+  installPhase = builtins.readFile ./scripts/install-phase.sh;
 
   postFixup = ''
-    ${lib.getExe rcodesign} sign \
-      --code-signature-flags runtime \
-      "$out/bin/finder-favorites"
+    source ${
+      replaceVars ./scripts/post-fixup.sh {
+        rcodesign = lib.getExe rcodesign;
+      }
+    }
   '';
 
   doInstallCheck = true;
   installCheckPhase = ''
-    runHook preInstallCheck
-
-    executable="$out/bin/finder-favorites"
-    test -x "$executable"
-    file "$executable" | grep -Fq 'Mach-O 64-bit arm64 executable'
-    otool -l "$executable" \
-      | grep -A4 -F 'cmd LC_BUILD_VERSION' \
-      | grep -Fq 'minos ${minimumMacOS}'
-    "$executable" version | grep -Fxq 'finder-favorites ${version}'
-    "$executable" help | grep -Fq 'finder-favorites apply --config FILE'
-    "$executable" doctor --json | grep -Fq '"backend" : "LSSharedFileList"'
-
-    while read -r dependency _; do
-      case "$dependency" in
-        /System/* | /usr/lib/*) ;;
-        *)
-          printf 'error: unexpected dynamic dependency: %s\n' "$dependency" >&2
-          exit 1
-          ;;
-      esac
-    done < <(otool -L "$executable" | tail -n +2)
-
-    signatureInfo="$(${lib.getExe rcodesign} print-signature-info "$executable")"
-    printf '%s\n' "$signatureInfo" \
-      | grep -Fq 'flags: CodeSignatureFlags(ADHOC | RUNTIME)'
-
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        inherit minimumMacOS;
+        inherit version;
+        rcodesign = lib.getExe rcodesign;
+      }
+    }
   '';
 
   meta = {

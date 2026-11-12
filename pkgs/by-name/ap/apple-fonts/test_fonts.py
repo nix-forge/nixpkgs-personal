@@ -20,9 +20,9 @@ import zlib
 from pathlib import Path
 from unittest.mock import patch
 
-from export import export
+from export_font_archive import export
 from font_support import install, inventory, safe_path, sha256
-from unpack import read_xar_toc, unpack, unpack_xar
+from unpack_font_distribution import read_xar_toc, unpack, unpack_xar
 from update import (
     developer_entries,
     inspect_source,

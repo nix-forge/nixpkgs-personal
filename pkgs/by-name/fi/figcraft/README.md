@@ -1,0 +1,17 @@
+# FigCraft
+
+Source build of [FigCraft v0.6.0](https://github.com/storytold/figcraft/releases/tag/v0.6.0), revision `833f0d2c27f0acbae5394848930ae531fc89c724`. Installs `figcraft`, `figcraft-cli`, and the headless `figcraft-server` collaboration service. Retains the released editor, CLI automation/MCP, imports/exports, plugins, accessibility, clipboard, and native rendering features. The upstream project is alpha; installation does not establish complete Figma compatibility.
+
+The release deliberately selects craft-fonts `43913056ce82a3fdad0ef69f6b88d1dc922a8104`, which provides both required Latin and common manifests. All 57 licensed fonts are embedded, including the source-supported CJK option. Input hashes and complete installed notices are checked against both manifests. Linux also discovers configured Nix/system fonts through fontconfig; `FIGCRAFT_NO_SYSTEM_FONTS=1` retains deterministic embedded-only rendering.
+
+The stable release includes ruzstd 0.9.1 for [RUSTSEC-2026-0344](https://github.com/RustSec/advisory-db/blob/main/crates/ruzstd/RUSTSEC-2026-0344.md). The redundant dependency backport has been removed. Native window identifiers match the Linux desktop file. Restricted corporate assets are omitted from the installed notice collection; the original application icon is explicitly MIT OR Apache-2.0 and retained with its notice.
+
+Linux includes Wayland/X11 and Vulkan/OpenGL runtime libraries, desktop icons, MIME declarations and AppStream metadata. macOS includes the upstream document and `figcraft://` invitation declarations, a source-derived icon and an ad-hoc signature applied after fixup. The command-line binaries remain separately accessible. Browser/WASM deployments and developer xtask are separate upstream targets.
+
+Native builds run workspace library tests, including server tests, with required embedded fonts and bounded Darwin localhost permission. Package checks cover full font notices, synthetic multilingual document creation/rendering/SVG/PDF exports and JSON/native round trip, plus a temporary loopback server's announced readiness, health endpoint and graceful shutdown. Cross builds compile without executing target binaries; GUI/compositor, GPU and native-host evidence require separate coordinated validation. No server starts during package installation. Its default listener is `127.0.0.1:47900`, and its data directory is explicitly chosen by the user; see [upstream server documentation](https://github.com/storytold/figcraft/blob/833f0d2c27f0acbae5394848930ae531fc89c724/docs/server.md).
+
+The independent recipe supports x86_64/aarch64 Linux and Darwin with Rust 1.95 or newer. Intel Darwin needs a compatible Nixpkgs instance, such as 26.05, because 26.11 dropped that target. Non-NixOS graphics may require [nixGL](https://github.com/nix-community/nixGL) selected from the same Nixpkgs revision.
+
+Updates are manual: review the next stable source, font manifests and asset terms; update `source.nix`, source/font hashes and exact local Cargo.lock; port or remove source patches; then run strict sandbox source, installed metadata/notice, CLI/server and native GUI checks. No unattended updater is supplied for this rapidly changing alpha application.
+
+See the [patch-retirement record](../../../../docs/research/artcraft-patch-retirement-research.md) for this source update. Earlier completed build receipts apply only to their recorded revisions.

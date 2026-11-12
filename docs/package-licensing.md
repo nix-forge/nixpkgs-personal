@@ -50,7 +50,8 @@ activities, not legal conclusions about local use or recipe publication.
 Ordinary proprietary application installation recipes are not excluded merely
 because they are unfree. The Anthropic default contains reviewed examples; custom
 restricted skill selections are outside the default CI build set. OpenAI's
-default catalog remains tested as an integration-resource packaging workflow.
+default contains only reviewed free skills; Figma resources require an explicit
+restricted selection and review of the applicable grant.
 Neither workflow logs into or exercises the vendors' services.
 
 The workflows set `cache: 'false'`, and the pinned setup action only enables its

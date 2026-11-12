@@ -203,7 +203,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    pwField->setOnSubmit([this](const std::string&) { tryAuthenticate(); });
    m_passwordField = pwField.get();
    m_passwordField->setZIndex(6);
-@@ -555,6 +574,44 @@
+@@ -555,6 +574,54 @@
    m_configErrorLabel->setZIndex(10);
    m_root.addChild(std::move(configError));
  
@@ -243,12 +243,22 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
 +    return result;
 +  };
 +  m_powerCancel = confirmationButton("Cancel", ButtonVariant::Outline, [this]() { cancelPowerAction(); });
++  m_powerCancel->setCustomPalette(
++      Button::ButtonPalette{
++          .borderWidth = Style::borderWidth(),
++          .normal = makePaletteState(ColorRole::Surface, ColorRole::Outline, ColorRole::OnSurface),
++          .hover = makePaletteState(ColorRole::Surface, ColorRole::Outline, ColorRole::OnSurface),
++          .pressed = makePaletteState(ColorRole::SurfaceVariant, ColorRole::Primary, ColorRole::OnSurface),
++          .disabled = makePaletteState(ColorRole::Surface, ColorRole::Outline, ColorRole::OnSurface, 0.55f),
++          .selected = std::nullopt,
++      }
++  );
 +  m_powerConfirm = confirmationButton("Confirm", ButtonVariant::Destructive, [this]() { confirmPowerAction(); });
 +
    m_canRebootToFirmware = power::canRebootToFirmwareSetup();
  
    const auto makePowerButton =
-@@ -571,13 +628,18 @@
+@@ -571,13 +638,18 @@
      return ptr;
    };
  
@@ -271,7 +281,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
      m_firmwareButton->setTooltip("Restart to UEFI firmware setup");
    }
  
-@@ -732,6 +794,14 @@
+@@ -732,6 +804,14 @@
  }
  
  void GreeterSurface::reconcileKeyboardFocus() {
@@ -286,7 +296,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    InputArea* focused = InputArea::getFocused();
    if (focused != nullptr && ownsInputArea(focused)) {
      syncFocusIndexFromFocused();
-@@ -1038,20 +1108,28 @@
+@@ -1038,20 +1118,28 @@
      m_headerUserGlyph->setGlyphSize(Style::scaled(kHeaderUserIconBase));
    }
    m_formSubtitleLabel->setFontSize(Style::fontSizeTitle());
@@ -323,7 +333,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
  }
  
  void GreeterSurface::enterPasswordStep(std::size_t userIndex) {
-@@ -1063,8 +1141,7 @@
+@@ -1063,8 +1151,7 @@
    m_userMenuOpen = false;
    m_userMenuSearchQuery.clear();
    m_passwordVisible = true;
@@ -333,10 +343,21 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    if (m_passwordField->inputArea() != nullptr) {
      m_inputDispatcher.setFocus(m_passwordField->inputArea());
    }
-@@ -1133,7 +1210,10 @@
-     }
+@@ -1122,18 +1209,10 @@
+     m_backdrop->setVisible(true);
    }
  
+-  if (m_bottomBrandLogo != nullptr) {
+-    const bool hasBrandLogo = m_brandLogoTexture.id != 0 && !m_hideLogo;
+-    m_bottomBrandLogo->setVisible(hasBrandLogo);
+-    if (hasBrandLogo) {
+-      const float logoSize = Style::scaled(64.0f);
+-      m_bottomBrandLogo->setSize(logoSize, logoSize);
+-      m_bottomBrandLogo->setPosition(ox + std::round((sw - logoSize) * 0.5f), oy + sh - logoSize - Style::spaceLg());
+-      m_bottomBrandLogo->setTint(rgba(1.0f, 1.0f, 1.0f, 1.0f));
+-    }
+-  }
+-
 -  const float panelWidth = std::clamp(sw * 0.32f, Style::scaled(440.0f), Style::scaled(540.0f));
 +  const float panelWidth = std::min(
 +      std::max(300.0f, sw - 32.0f),
@@ -345,7 +366,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    const float rowHeight = Style::controlHeightLg();
    const float rowGap = Style::spaceSm();
    const float panelPadding = Style::spaceLg();
-@@ -1151,9 +1231,11 @@
+@@ -1151,9 +1230,11 @@
    if (m_formSubtitleLabel->visible()) {
      m_formSubtitleLabel->measure(*renderer);
    }
@@ -358,7 +379,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    const float headerTopPadding = Style::spaceSm();
    const float headerGlyphBlock = headerGlyphSize + Style::spaceMd();
    const float headerToContentGap = Style::spaceLg();
-@@ -1164,19 +1246,20 @@
+@@ -1164,19 +1245,20 @@
  
    const float userBlockHeight = showsUserDropdown() ? rowHeight : 0.0f;
    const float userPickerContentHeight = userBlockHeight + sessionRowGap + sessionRowH;
@@ -382,7 +403,26 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    const float panelTopPadding = panelPadding;
    const float panelBottomPadding = panelPadding;
    const float panelInnerHeight = headerBlockHeight + contentBlockHeight + statusBlockHeight;
-@@ -1246,7 +1329,8 @@
+@@ -1186,6 +1268,18 @@
+       std::clamp(panelInnerHeight + panelTopPadding + panelBottomPadding, minPanelHeight, maxPanelHeight);
+   const float panelX = ox + std::round((sw - panelWidth) * 0.5f);
+   const float panelY = oy + std::round((sh - panelHeight) * 0.5f);
++  if (m_bottomBrandLogo != nullptr) {
++    const float logoSize = Style::scaled(64.0f);
++    const float logoY = oy + sh - logoSize - Style::spaceLg();
++    const bool hasRoom = logoY >= panelY + panelHeight + Style::spaceSm();
++    const bool showLogo = m_brandLogoTexture.id != 0 && !m_hideLogo && hasRoom;
++    m_bottomBrandLogo->setVisible(showLogo);
++    if (showLogo) {
++      m_bottomBrandLogo->setSize(logoSize, logoSize);
++      m_bottomBrandLogo->setPosition(ox + std::round((sw - logoSize) * 0.5f), logoY);
++      m_bottomBrandLogo->setTint(rgba(1.0f, 1.0f, 1.0f, 1.0f));
++    }
++  }
+   const float contentLeft = panelX + panelPadding;
+   const float contentWidth = panelWidth - panelPadding * 2.0f;
+ 
+@@ -1246,7 +1340,8 @@
  
    if (m_formSubtitleLabel->visible()) {
      m_formSubtitleLabel->setPosition(
@@ -392,7 +432,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
      );
      headerY += subtitleGap;
    }
-@@ -1264,11 +1348,11 @@
+@@ -1264,11 +1359,11 @@
            .fillMode = FillMode::Solid,
            .radius = Style::scaledRadiusXl(),
            .softness = 1.0f,
@@ -406,7 +446,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    const float gap = Style::spaceSm();
    const float inputWidth = std::max(120.0f, contentWidth - buttonWidth - gap);
  
-@@ -1356,7 +1440,7 @@
+@@ -1356,7 +1451,7 @@
      m_passwordField->setPosition((contentLeft), (contentTop));
      m_passwordField->layout(*renderer);
  
@@ -415,7 +455,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
      m_loginButton->setPosition((contentLeft + inputWidth + gap), (contentTop));
      m_loginButton->layout(*renderer);
      if (Glyph* loginGlyph = m_loginButton->glyph()) {
-@@ -1364,7 +1448,7 @@
+@@ -1364,7 +1459,7 @@
        const auto glyphMetrics = renderer->measureGlyph(loginGlyph->codepoint(), loginGlyph->fontSize());
        const float glyphW = glyphMetrics.right - glyphMetrics.left;
        const float glyphH = glyphMetrics.bottom - glyphMetrics.top;
@@ -424,7 +464,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
        loginGlyph->setPosition(std::round(buttonWidth * 0.5f - (glyphMetrics.left + glyphMetrics.right) * 0.5f), glyphY);
        loginGlyph->setSize(std::max(glyphW, 1.0f), std::max(glyphH, 1.0f));
      }
-@@ -1372,17 +1456,30 @@
+@@ -1372,17 +1467,30 @@
      m_backButton->setVisible(false);
    }
  
@@ -458,7 +498,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
  
    rebuildUserMenu();
    rebuildSessionMenu();
-@@ -1393,6 +1490,20 @@
+@@ -1393,6 +1501,20 @@
  
    if (!m_isKeyboardOwner) {
      return;
@@ -479,7 +519,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    }
  
    // Keyboard focus is applied once interactive targets have valid layout.
-@@ -1445,6 +1556,7 @@
+@@ -1445,6 +1567,7 @@
      // Arm the typed input (possibly empty) to answer the first secret prompt.
      m_pendingResponse = m_password;
      m_hasPendingResponse = true;
@@ -487,7 +527,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
      m_authenticating = true;
      kLog.info("greetd: create_session for '{}'", m_username);
      if (!m_greetdClient->requestCreateSession(m_username)) {
-@@ -1455,6 +1567,7 @@
+@@ -1455,6 +1578,7 @@
      }
      m_authSessionStarted = true;
      m_pendingReplies.push_back(AuthRequest::CreateSession);
@@ -495,7 +535,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
      syncAuthInteractivity();
      commitImmediateFrame(false);
    } else if (m_secretPromptWaiting) {
-@@ -1584,6 +1697,7 @@
+@@ -1584,6 +1708,7 @@
    clearPasswordInput();
    m_secretPromptWaiting = false;
    m_pendingReplies.push_back(AuthRequest::PostAuthData);
@@ -503,7 +543,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    syncAuthInteractivity();
    commitImmediateFrame(false);
  }
-@@ -1594,7 +1708,7 @@
+@@ -1594,7 +1719,7 @@
      m_passwordField->setEnabled(!busy);
    }
    if (m_loginButton != nullptr) {
@@ -512,7 +552,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    }
  }
  
-@@ -1708,7 +1822,9 @@
+@@ -1708,7 +1833,9 @@
    m_password.clear();
    if (m_passwordField != nullptr) {
      m_passwordField->setValue("");
@@ -523,7 +563,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
  }
  
  void GreeterSurface::onAuthError(const GreetdError& error) {
-@@ -1718,7 +1834,9 @@
+@@ -1718,7 +1845,9 @@
    m_pendingResponse.clear();
    m_pendingReplies.clear();
    clearPasswordInput();
@@ -533,7 +573,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    kLog.warn("authentication failed: {}", error.description);
    if (!resetAuthSession()) {
      return;
-@@ -1741,6 +1859,7 @@
+@@ -1741,6 +1870,7 @@
  void GreeterSurface::updateStatus(const std::string& text, bool isError) {
    // Empty text clears the line; non-empty text shows as an error or, for PAM
    // info prompts, as a neutral hint rather than being discarded.
@@ -541,7 +581,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    m_status = text;
    m_statusIsError = isError;
    if (m_statusLabel != nullptr) {
-@@ -2102,7 +2221,10 @@
+@@ -2102,7 +2232,10 @@
  
  void GreeterSurface::loadPreferences() {
    const auto prefs = greeter::loadGreeterPreferences();
@@ -552,7 +592,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    const auto initialSession = greeter::resolveInitialSessionName(prefs);
  
    if (initialSession.has_value()) {
-@@ -2127,6 +2249,7 @@
+@@ -2127,6 +2260,7 @@
    m_clockPosition = prefs.clockPosition;
    m_clockTimeFormat = prefs.clockTimeFormat;
    m_clockDateFormat = prefs.clockDateFormat;
@@ -560,7 +600,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
  }
  
  void GreeterSurface::savePreferences() const {
-@@ -2294,8 +2417,7 @@
+@@ -2294,8 +2428,7 @@
      return;
    }
    m_passwordVisible = false;
@@ -570,7 +610,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    updateStatus("", false);
    if (m_userSelectArea != nullptr) {
      m_inputDispatcher.setFocus(m_userSelectArea);
-@@ -2309,10 +2431,19 @@
+@@ -2309,10 +2442,19 @@
  void GreeterSurface::rebuildFocusRing() {
    InputArea* previouslyFocused = InputArea::getFocused();
    m_focusRing.clear();
@@ -590,7 +630,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
      }
      if (m_loginButton != nullptr && m_loginButton->inputArea() != nullptr) {
        m_focusRing.push_back({m_loginButton->inputArea(), [this]() { tryAuthenticate(); }});
-@@ -2336,13 +2467,19 @@
+@@ -2336,13 +2478,19 @@
    }
  
    if (m_firmwareButton != nullptr && m_firmwareButton->inputArea() != nullptr && m_firmwareButton->visible()) {
@@ -613,7 +653,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    }
  
    // Keep focus on whatever was focused before the rebuild, if still present.
-@@ -2421,7 +2558,7 @@
+@@ -2421,7 +2569,7 @@
    box->setStyle(
        RoundedRectStyle{
            .fill = active ? colorForRole(ColorRole::Surface) : colorForRole(ColorRole::SurfaceVariant),
@@ -622,7 +662,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
            .fillMode = FillMode::Solid,
            .radius = Style::scaledRadiusLg(),
            .softness = 1.0f,
-@@ -2441,7 +2578,7 @@
+@@ -2441,7 +2589,7 @@
    m_userSelectBox->setStyle(
        RoundedRectStyle{
            .fill = active ? colorForRole(ColorRole::Secondary) : colorForRole(ColorRole::Surface),
@@ -631,7 +671,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
            .fillMode = FillMode::Solid,
            .radius = Style::scaledRadiusLg(),
            .softness = 1.0f,
-@@ -2543,7 +2680,7 @@
+@@ -2543,7 +2691,7 @@
    m_sessionSelectBox->setStyle(
        RoundedRectStyle{
            .fill = active ? colorForRole(ColorRole::Secondary) : colorForRole(ColorRole::Surface),
@@ -640,7 +680,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
            .fillMode = FillMode::Solid,
            .radius = Style::scaledRadiusLg(),
            .softness = 1.0f,
-@@ -3171,6 +3308,16 @@
+@@ -3171,6 +3319,16 @@
  }
  
  bool GreeterSurface::handleNavigationKey(std::uint32_t sym, std::uint32_t utf32, std::uint32_t modifiers) {
@@ -657,7 +697,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    if (m_authenticating) {
      return false;
    }
-@@ -3305,6 +3452,11 @@
+@@ -3305,6 +3463,11 @@
  }
  
  void GreeterSurface::clearUserMenuRows() {
@@ -669,7 +709,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    if (m_userMenuEmptyLabel != nullptr) {
      (void)m_root.removeChild(m_userMenuEmptyLabel);
      m_userMenuEmptyLabel = nullptr;
-@@ -3332,7 +3484,9 @@
+@@ -3332,7 +3495,9 @@
  }
  
  void GreeterSurface::clearUserMenu() {
@@ -680,7 +720,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    clearUserMenuRows();
    m_userMenuSearchQuery.clear();
    m_userMenuScrollOffset = 0;
-@@ -3344,7 +3498,9 @@
+@@ -3344,7 +3509,9 @@
  }
  
  void GreeterSurface::clearSessionMenu() {
@@ -691,7 +731,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    if (m_sessionMenuPanel != nullptr) {
      (void)m_root.removeChild(m_sessionMenuPanel);
      m_sessionMenuPanel = nullptr;
-@@ -3368,7 +3524,9 @@
+@@ -3368,7 +3535,9 @@
  }
  
  void GreeterSurface::clearSchemeMenu() {
@@ -702,7 +742,7 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
    if (m_schemeMenuPanel != nullptr) {
      (void)m_root.removeChild(m_schemeMenuPanel);
      m_schemeMenuPanel = nullptr;
-@@ -3815,3 +3973,97 @@
+@@ -3815,3 +3984,97 @@
        m_schemeMenuScroll, [this](std::size_t i) { selectScheme(i); }
    );
  }
@@ -859,7 +899,6 @@ diff --git a/src/greeter/greeter_surface.h b/src/greeter/greeter_surface.h
    bool m_authenticating = false;
    bool m_greetdUnavailable = false;
 diff --git a/src/greeter/power_confirmation.h b/src/greeter/power_confirmation.h
-new file mode 100644
 --- /dev/null
 +++ b/src/greeter/power_confirmation.h
 @@ -0,0 +1,22 @@
@@ -1276,7 +1315,6 @@ diff --git a/tests/legacy_staging_compatibility_test.cpp b/tests/legacy_staging_
  [clock]
  enabled = false
 diff --git a/tests/power_confirmation_test.cpp b/tests/power_confirmation_test.cpp
-new file mode 100644
 --- /dev/null
 +++ b/tests/power_confirmation_test.cpp
 @@ -0,0 +1,20 @@
@@ -1301,7 +1339,6 @@ new file mode 100644
 +  }
 +}
 diff --git a/tests/style_test.cpp b/tests/style_test.cpp
-new file mode 100644
 --- /dev/null
 +++ b/tests/style_test.cpp
 @@ -0,0 +1,22 @@

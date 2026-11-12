@@ -1,11 +1,16 @@
 """Regression checks for versioned release provenance."""
 
+import hashlib
 import io
+import json
+import tempfile
 import unittest
 from http.client import HTTPMessage
+from pathlib import Path
 from unittest.mock import patch
 from urllib.request import HTTPRedirectHandler
 
+import update
 from update import fetch_json, source_entry
 
 
@@ -40,6 +45,31 @@ class SourceTests(unittest.TestCase):
         del release["assets"][0]["digest"]
         with self.assertRaises(ValueError):
             source_entry(release, "a" * 40)
+
+    def test_verified_release_publishes_manifest_and_preserves_mode(self):
+        payload = b"verified font fixture"
+        release = self.release()
+        release["assets"][0]["digest"] = "sha256:" + hashlib.sha256(payload).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "source.json"
+            manifest.write_text("{}\n")
+            manifest.chmod(0o644)
+            with (
+                patch("sys.argv", ["update.py", "--manifest", str(manifest)]),
+                patch.object(
+                    update, "fetch_json", side_effect=[release, {"sha": "a" * 40}]
+                ),
+                patch.object(
+                    update, "urlopen", side_effect=[io.BytesIO(), io.BytesIO(payload)]
+                ),
+                patch.object(update, "faces", return_value=["AppleColorEmoji"]),
+            ):
+                self.assertEqual(update.main(), 0)
+            self.assertEqual(
+                json.loads(manifest.read_text()), source_entry(release, "a" * 40)
+            )
+            self.assertEqual(manifest.stat().st_mode & 0o777, 0o644)
+            self.assertEqual(list(Path(directory).iterdir()), [manifest])
 
 
 class RequestTests(unittest.TestCase):

@@ -1,4 +1,5 @@
 {
+  replaceVars,
   lib,
   stdenvNoCC,
   fetchurl,
@@ -65,36 +66,17 @@ stdenvNoCC.mkDerivation {
   ];
 
   installPhase = ''
-    runHook preInstall
-    mkdir -p "$out/model/huggingface"
-    ${lib.concatStringsSep "\n" (
-      lib.mapAttrsToList (name: file: "cp ${file} \"$out/model/${name}\"") files
-    )}
-    tar -xzf ${archives.huggingface} -C "$out/model/huggingface"
-    tar -xzf ${archives.gte} -C "$out/model"
-    tar -xzf ${archives.silero} -C "$out/model"
-    tar -xzf ${archives.whisper} -C "$out/model"
-
-    # AudioMuse only loads the RoBERTa tokenizer from this cache. Removing the
-    # unused BERT/BART weights saves about 1.4 GB without changing inference.
-    find "$out/model/huggingface" -type l -print0 | while IFS= read -r -d $'\0' link; do
-      target="$(readlink -f "$link")"
-      cp --remove-destination "$target" "$link"
-    done
-    rm -rf \
-      "$out/model/huggingface/hub/models--bert-base-uncased" \
-      "$out/model/huggingface/hub/models--facebook--bart-base"
-    find "$out/model/huggingface/hub/models--roberta-base" -type f \
-      \( -name model.safetensors -o -name pytorch_model.bin \) -delete
-    find "$out/model/huggingface/hub/models--roberta-base" -type f \
-      -size +10M -delete
-
-    test -s "$out/model/musicnn_embedding.onnx"
-    test -s "$out/model/model_epoch_36.onnx.data"
-    test -s "$out/model/whisper-small-onnx/encoder_model.onnx"
-    test -s "$out/model/gte-multilingual-base/tokenizer.json"
-    test -z "$(find -L "$out/model" -type l -print -quit)"
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/models-install-phase.sh {
+        installModels = lib.concatStringsSep "\n" (
+          lib.mapAttrsToList (name: file: "cp ${file} \"$out/model/${name}\"") files
+        );
+        archives_huggingface = archives.huggingface;
+        archives_gte = archives.gte;
+        archives_silero = archives.silero;
+        archives_whisper = archives.whisper;
+      }
+    }
   '';
 
   meta = {

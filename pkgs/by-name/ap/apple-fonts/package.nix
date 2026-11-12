@@ -1,4 +1,6 @@
 {
+  callPackage,
+  replaceVars,
   lib,
   stdenvNoCC,
   fetchurl,
@@ -8,7 +10,6 @@
   _7zz,
   buildEnv,
   writeText,
-  writeShellApplication,
 }:
 let
   manifest = builtins.fromJSON (builtins.readFile ./sources.json);
@@ -16,21 +17,15 @@ let
   builder = lib.fileset.toSource {
     root = ./.;
     fileset = lib.fileset.unions [
-      ./unpack.py
+      ./unpack_font_distribution.py
       ./font_support.py
     ];
   };
-  updateScript = lib.getExe (writeShellApplication {
-    name = "update-apple-fonts";
-    runtimeInputs = [
-      python3
-      fontconfig
-      _7zz
-    ];
-    text = ''
-      exec python3 pkgs/by-name/ap/apple-fonts/update.py "$@"
-    '';
-  });
+  updateScript = [
+    (lib.getExe (callPackage ./update.nix { }))
+    "--source-directory"
+    (builtins.unsafeDiscardStringContext (toString ./.))
+  ];
   mkFont =
     entry: src:
     stdenvNoCC.mkDerivation {
@@ -47,24 +42,25 @@ let
         _7zz
       ];
       installPhase = ''
-        runHook preInstall
-        export XDG_CACHE_HOME="$TMPDIR/font-cache"
-        export FONTCONFIG_FILE=${./fonts.conf}
-        python3 ${builder}/unpack.py "$src" ${writeText "font-manifest.json" (builtins.toJSON entry)} "$out"
-        install -Dm444 ${./README.md} "$out/share/doc/${entry.name}/PACKAGING.md"
-        install -Dm444 ${
-          writeText "license-scope.json" (
-            builtins.toJSON {
-              source = entry.name;
-              inherit (entry) hash;
-              url = entry.url or null;
-              evidence = licenseEvidence.sources.${entry.name} or licenseEvidence.default;
-            }
-          )
-        } "$out/share/doc/${entry.name}/license-scope.json"
-        runHook postInstall
+        source ${
+          replaceVars ./scripts/install-phase.sh {
+            fonts_conf = "${./fonts.conf}";
+            inherit builder;
+            fontManifest = writeText "font-manifest.json" (builtins.toJSON entry);
+            readme = "${./README.md}";
+            entry_name = entry.name;
+            licenseScope = writeText "license-scope.json" (
+              builtins.toJSON {
+                source = entry.name;
+                inherit (entry) hash;
+                url = entry.url or null;
+                evidence = licenseEvidence.sources.${entry.name} or licenseEvidence.default;
+              }
+            );
+          }
+        }
       '';
-      # Verification in unpack.py checks the manifest, face identities and every
+      # Verification in unpack_font_distribution.py checks the manifest, face identities and every
       # copied byte before this derivation succeeds.
       preferLocalBuild = true;
       allowSubstitutes = false;

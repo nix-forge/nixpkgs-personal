@@ -53,6 +53,20 @@ For this collection, explicitly resolve package arguments against the incoming u
 
 Use `lib.callPackageWith pkgs` when a fixed incoming scope is required. Merely using an inherited `callPackage` is not sufficient evidence that its automatic argument scope excludes final overlay values. Avoid a recursive scope that combines upstream and personal outputs.
 
+Cross compilation also requires Nixpkgs' build/host dependency variants. Use
+`pkgs.splicePackages` with the incoming set as `pkgsHostTarget`, then retain
+Nixpkgs' unspliced package-set arguments before constructing `callPackageWith`.
+This preserves native behavior and lets `nativeBuildInputs` select build tools
+when an overlay supplies an unspliced incoming set. Adjacent build-stage sets
+remain those supplied by the caller.
+[Pinned splicing implementation](https://github.com/NixOS/nixpkgs/blob/151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4/pkgs/top-level/splice.nix)
+
+Avoid comparing derivation output paths when filtering cross build tools. The
+Noctalia allocator override now compares package names: derivation equality
+forced the target-side `makeWrapper` before Nixpkgs could select its build-side
+variant. Regression evaluation covers the real recipe copied out of its folder,
+the registry and an incoming overlay scope without building ARM programs.
+
 Aliases may remain for compatibility, but any output promised as an independently copyable package needs its own package directory. A package may build internal components or expose passthru information without creating a dependency on another public personal package.
 
 ## Build and metadata standards
@@ -95,3 +109,86 @@ Run upstream unit tests during `checkPhase` where supported. Use installation ch
 For this project, verify independence by copying each directory and evaluating it with a clean upstream package scope. Inspect required function arguments, symlink escapes, and runtime references as well. Source-text scanning alone cannot prove dependency isolation. Validate output metadata for every supported system; build applicable packages on actual compatible builders. Record unavailable builders and GUI checks as validation limits.
 
 Package update tools should locate files relative to themselves, accept `--help` without network access, validate upstream metadata before writing, and change only their own pinned files. Expose conventional `passthru.updateScript` where practical. Keep reviewed historical versions explicitly excluded from automatic updates. The standard updater entrypoint is documented by Nixpkgs; the stricter write boundary is this project's policy. [Nixpkgs automatic update conventions](https://github.com/NixOS/nixpkgs/blob/master/pkgs/README.md#automatic-package-updates)
+
+## Native helpers review
+
+Reviewed 2026-10-12 against the current official sources and repository pin
+`151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4`. The question was whether native helpers
+could replace local writers and renderers while each package remains copyable.
+
+Use each helper for its intended artifact:
+
+| Artifact | Helper | Relevant behavior |
+| --- | --- | --- |
+| Installed Bash command | `writeShellApplication` | Runtime inputs, strict Bash options, syntax checks and ShellCheck |
+| Minimal Bash wrapper | `writeShellScriptBin` | Shebang and syntax checks; declare dependencies explicitly |
+| One executable Python file | `writers.writePython3Bin` | Local source path, Python libraries and default flake8 checks |
+| Python application or library distribution | `buildPythonApplication` or `buildPythonPackage` | Upstream Python build metadata and dependency hooks |
+| Build-consumed template | `replaceVars` | Validates unused and unresolved substitutions, allows named literal tokens with `null` |
+| Evaluation-time source text | `lib.replaceStrings` | Pure substitution; assertions must supply token validation |
+
+These behaviors come from the [pinned shell builders](https://github.com/NixOS/nixpkgs/blob/151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4/pkgs/build-support/trivial-builders/default.nix),
+[pinned Python writers](https://github.com/NixOS/nixpkgs/blob/151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4/pkgs/build-support/writers/scripts.nix),
+[Python packaging guide](https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/python.section.md),
+and [replacement implementation](https://github.com/NixOS/nixpkgs/blob/151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4/pkgs/build-support/replace-vars/replace-vars-with.nix).
+
+For hook fragments, source the generated `replaceVars` output in the stdenv
+shell. This preserves `runHook`, arrays, variables and directory changes.
+Calling a writer or `bash` would start a separate process. Reading the generated
+output with `builtins.readFile` would require import-from-derivation, which
+Nixpkgs prohibits. This recommendation follows from the
+[standard environment lifecycle](https://github.com/NixOS/nixpkgs/blob/master/doc/stdenv/stdenv.chapter.md)
+and the helper's derivation output.
+
+Replacement values still need destination-language quoting. Native substitution
+also rejects unresolved tokens introduced by a replacement. Steam and Scrypted
+fill their launcher's output path during installation, so their shell fragments
+construct that deferred token from separate shell string parts. The launcher that
+uses `writeShellApplication` keeps pure source rendering so the writer checks
+the complete body.
+
+The implementation replaces the duplicated package renderers with upstream
+helpers and retains package-local sources and the clean dependency scope.
+Local TypeScript packages use `lib.fileset.toSource` to exclude recipe and
+documentation changes from their build sources.
+The generated-template check removes application dependencies only from its
+validation copies, then builds the real native substitutions and checks Bash
+syntax. Production recipes keep every dependency context. The helper regression
+check exercises shared shell state, phase hooks, argument quoting, a restricted
+runtime PATH and a Python library import.
+
+Directory independence reduces the work of preparing a submission. Upstream
+still requires real maintainership, and its contributor guidance discourages
+new `overrideAttrs` variants. Existing personal variants may need to become
+options or changes to their original packages. Native helpers alone do not
+establish upstream acceptance. See the
+[by-name rules](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/README.md)
+and [contributor guidance](https://github.com/NixOS/nixpkgs/blob/master/pkgs/README.md).
+
+Implementation validation used a private source snapshot of the working tree.
+`just check` evaluated all three exported systems with import-from-derivation
+disabled. `just test` passed the package copy/metadata/overlay and consumer-policy
+checks on `aarch64-darwin`. `just lint` passed Python formatting, Ruff and type
+checks. Native Darwin builds passed the helper regressions, Firefox Emoji,
+the MetaBrainz extension and T3's runtime-check TypeScript package. The consuming
+desktop system's complete derivation also evaluated successfully against the
+working package sources.
+
+The template check can inspect another system's recipes using the pinned native
+renderer. Its source text contains the target's dependency paths, but the check
+builds only substitutions and validates syntax. This permits Linux-specific
+hook coverage on a Darwin host without compiling target applications. All three
+source matrices built and passed on the native Darwin renderer:
+
+| Recipe system | Bash templates | Python templates |
+| --- | --- | --- |
+| `x86_64-linux` | 514 | 1 |
+| `aarch64-linux` | 502 | 0 |
+| `aarch64-darwin` | 464 | 0 |
+
+Counts include separately instantiated font variants and nested helper files.
+Linux application builds and the Linux-only package tooling unit suite were not
+run in this validation.
+
+These results cover evaluation, generated sources and the named builds. They
+do not establish native builds of every application or interactive GUI behavior.

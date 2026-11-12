@@ -38,6 +38,12 @@ Run `python3 pkgs/by-name/sp/spotify-spotx/update.py --dry-run` from the reposit
 to preview a source update. The updater also works from a copied package
 directory and locates its metadata relative to itself.
 
+The macOS archive URL contains Spotify's public, time-limited `fauth` download
+token copied from the pinned SpotX script. It is not a Spotify account token.
+The updater rejects a token with fewer than seven days left, and the package
+test checks the committed URL for expiry. Refresh the package source before
+that window closes so clean builds can still fetch the archive.
+
 The package expression records platform support, licensing, and build checks.
 Repository CI evaluates every supported platform; this package has an explicit
 hosted-build exclusion. GUI interaction requires a separate native smoke test.

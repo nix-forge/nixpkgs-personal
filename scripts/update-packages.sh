@@ -7,7 +7,7 @@ repository_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" || {
   exit 2
 }
 
-updater="$repository_root/scripts/update-packages.py"
+updater="$repository_root/scripts/update_packages.py"
 if [[ ! -f $updater ]]; then
   echo "error: $repository_root is not a nixpkgs-personal checkout" >&2
   exit 2

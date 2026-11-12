@@ -1,4 +1,5 @@
 {
+  replaceVars,
   lib,
   stdenvNoCC,
   fetchurl,
@@ -33,41 +34,29 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   strictDeps = true;
 
   installPhase = ''
-    runHook preInstall
-    install -Dm444 "$src" "$out/share/fonts/truetype/FirefoxEmoji.ttf"
-    install -Dm444 ${upstreamLicense} "$out/share/doc/${finalAttrs.pname}/LICENSE.md"
-    install -Dm444 ${apacheLicense} "$out/share/doc/${finalAttrs.pname}/Apache-2.0.txt"
-    cat > "$out/share/doc/${finalAttrs.pname}/README.txt" <<'EOF'
-    Firefox Emoji artwork by Mozilla Foundation. Font distributed unmodified.
-    Source: https://github.com/mozilla/fxemoji/tree/${source.revision}
-    See LICENSE.md for upstream attribution and license terms.
-    This historical font is for explicit family selection, not current Unicode coverage.
-    EOF
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        inherit upstreamLicense;
+        inherit (finalAttrs) pname;
+        inherit apacheLicense;
+        source_revision = source.revision;
+      }
+    }
   '';
 
   doInstallCheck = true;
   nativeInstallCheckInputs = [ fontconfig ];
   installCheckPhase = ''
-    runHook preInstallCheck
-    export XDG_CACHE_HOME="$TMPDIR/font-cache"
-    mkdir -p "$XDG_CACHE_HOME/fontconfig"
-    export FONTCONFIG_FILE="$TMPDIR/fonts.conf"
-    cat > "$FONTCONFIG_FILE" <<EOF
-    <fontconfig><cachedir>$XDG_CACHE_HOME/fontconfig</cachedir></fontconfig>
-    EOF
-    font="$out/share/fonts/truetype/FirefoxEmoji.ttf"
-    cmp "$src" "$font"
-    test "$(fc-scan --format '%{family}' "$font")" = 'Firefox Emoji'
-    ${
-      lib.getExe (
-        writers.writePython3Bin "check-installed-assets" {
-          libraries = [ python3.pkgs.fonttools ];
-          flakeIgnore = [ "E501" ];
-        } ./check-installed.py
-      )
-    } "$font"
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        assetsCheck = lib.getExe (
+          writers.writePython3Bin "check-installed-assets" {
+            libraries = [ python3.pkgs.fonttools ];
+            flakeIgnore = [ "E501" ];
+          } ./check_installed.py
+        );
+      }
+    }
   '';
 
   # Frozen compatibility release. Automatic updates could change the artwork,

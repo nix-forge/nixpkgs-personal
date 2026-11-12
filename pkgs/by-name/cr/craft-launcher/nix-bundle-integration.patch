@@ -1,0 +1,221 @@
+--- a/crates/core/src/status.rs
++++ b/crates/core/src/status.rs
+@@ -32,7 +32,7 @@
+ impl InstallSource {
+     pub fn label(self) -> &'static str {
+         match self {
+-            Self::Launcher => "ArtCraft Launcher",
++            Self::Launcher => "Craft Launcher",
+             Self::MacApp => "Applications folder",
+             Self::Msi => "Windows Installer",
+             Self::Deb => "Debian package",
+--- a/crates/native/src/backend.rs
++++ b/crates/native/src/backend.rs
+@@ -63,7 +63,7 @@
+     /// A detection pass is running; another request waits for the next one.
+     detecting: AtomicBool,
+     last_check: Mutex<Option<i64>>,
+-    /// The newer ArtCraft Launcher release, once a check has found one.
++    /// The newer Craft Launcher release, once a check has found one.
+     launcher_release: Mutex<Option<Release>>,
+     /// When GitHub was last asked about each app (Unix seconds), to keep the fallback rare.
+     github_asked: Mutex<HashMap<String, i64>>,
+@@ -257,7 +257,7 @@
+                                 sources.lock().unwrap_or_else(PoisonError::into_inner).push(used);
+                             }
+                             if app.id == LAUNCHER_ID {
+-                                // Is there a newer ArtCraft Launcher?
++                                // Is there a newer Craft Launcher?
+                                 if let Some(LatestRelease::Found(r)) = latest
+                                     && let (Some(newest), Some(current)) = (r.version.as_ref(), crate::self_update::current_version())
+                                     && version::is_newer(newest, &current)
+@@ -326,7 +326,7 @@
+             restarting
+         };
+         if restarting {
+-            let result = Err("ArtCraft Launcher is restarting to finish its update. Try again once it's back.".into());
++            let result = Err("Craft Launcher is restarting to finish its update. Try again once it's back.".into());
+             self.shared.emit(Event::JobFinished { app: app.id.to_string(), result });
+             return;
+         }
+@@ -395,7 +395,7 @@
+         let (Some(install), Some(platform)) = (self.self_install.clone(), self.platform) else {
+             self.shared.emit(Event::JobFinished {
+                 app: id,
+-                result: Err("this copy of ArtCraft Launcher can't update itself; download the new version instead".into()),
++                result: Err("this copy of Craft Launcher can't update itself; download the new version instead".into()),
+             });
+             return;
+         };
+@@ -561,7 +561,7 @@
+         _ => (busy.join(", "), "were", "them"),
+     };
+     format!(
+-        "ArtCraft Launcher didn't restart to update: {names} {were} still installing. Answer or close any password prompt, \
++        "Craft Launcher didn't restart to update: {names} {were} still installing. Answer or close any password prompt, \
+          let {them} finish or cancel {them}, then press Update and restart again."
+     )
+ }
+--- a/crates/native/src/desktop_entry.rs
++++ b/crates/native/src/desktop_entry.rs
+@@ -71,6 +71,10 @@
+ /// under the app's id. `None` when the path can't be put in an `Exec=` line.
+ pub fn render(app: &CraftApp, appimage: &Path, icon: bool) -> Option<String> {
+     let exec = exec_quote(appimage)?;
++    let exec = match option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN") {
++        Some(helper) => format!("{} {exec}", exec_quote(Path::new(helper))?),
++        None => exec,
++    };
+     let (categories, wm_class) = meta(app);
+     let mut text = String::from("[Desktop Entry]\nType=Application\n");
+     text.push_str(&format!("Name={}\n", value(app.name)));
+@@ -96,6 +100,9 @@
+ /// quoting and the plain `Exec="<path>" %F` the apps' AppImages write for themselves.
+ pub fn exec_program(text: &str) -> Option<String> {
+     let line = text.lines().find_map(|l| l.strip_prefix("Exec="))?;
++    let helper = option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN")
++        .and_then(|path| exec_quote(Path::new(path))).map(|quoted| format!("{quoted} "));
++    let line = helper.as_deref().and_then(|prefix| line.strip_prefix(prefix)).unwrap_or(line);
+     // String-value escapes first, then the quoting rule.
+     let mut unescaped = String::with_capacity(line.len());
+     let mut chars = line.chars();
+@@ -150,6 +157,10 @@
+              StartupWMClass=photocraft\nX-ArtCraft-Launcher=true\n",
+             app("photocraft").tagline
+         );
++        let expected = match option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN") {
++            Some(helper) => expected.replace("Exec=", &format!("Exec={} ", exec_quote(Path::new(helper)).unwrap())),
++            None => expected,
++        };
+         assert_eq!(text, expected);
+         assert!(is_ours(&text));
+         let no_icon = render(app("wordcraft"), Path::new("/x/w.AppImage"), false).unwrap();
+@@ -159,6 +170,16 @@
+     }
+ 
+     #[test]
++    fn configured_appimage_helper_preserves_the_downloaded_path() {
++        let Some(helper) = option_env!("CRAFT_LAUNCHER_APPIMAGE_RUN") else { return };
++        let path = Path::new("/home/test/My Apps/100% \"quote\" $HOME `test`.AppImage");
++        let entry = render(app("photocraft"), path, true).unwrap();
++        let prefix = format!("Exec={} ", exec_quote(Path::new(helper)).unwrap());
++        assert!(entry.lines().any(|line| line.starts_with(&prefix)));
++        assert_eq!(exec_program(&entry).map(PathBuf::from), Some(path.to_path_buf()));
++    }
++
++    #[test]
+     fn quotes_exec_paths_per_the_spec() {
+         assert_eq!(exec_quote(Path::new("/home/ana/My Apps/p.AppImage")).unwrap(), "\"/home/ana/My Apps/p.AppImage\"");
+         assert_eq!(exec_quote(Path::new("/a/\"q\" $HOME `x`.AppImage")).unwrap(), r#""/a/\\"q\\" \\$HOME \\`x\\`.AppImage""#);
+--- a/crates/native/src/detect.rs
++++ b/crates/native/src/detect.rs
+@@ -68,7 +68,11 @@
+     }
+     Some(Installed {
+         version: version::parse(&rec.version),
+-        source: InstallSource::Launcher,
++        source: {
++            #[cfg(unix)]
++            if rec.path.canonicalize().is_ok_and(|path| crate::nix::is_store_path(&path)) { return Some(Installed { version: version::parse(&rec.version), source: InstallSource::Nix, location: rec.path.display().to_string(), package: None }); }
++            InstallSource::Launcher
++        },
+         location: rec.path.display().to_string(),
+         package: None,
+     })
+@@ -150,9 +154,11 @@
+     /// Where a `.app` might be: the system and the user's Applications folders.
+     pub fn candidates(app: &CraftApp) -> Vec<PathBuf> {
+         let bundle = format!("{}.app", app.name);
+-        let mut out = vec![Path::new("/Applications").join(&bundle)];
++        let mut out = vec![Path::new("/Applications").join(&bundle), Path::new("/Applications/Nix Apps").join(&bundle)];
+         if let Some(home) = dirs::home_dir() {
+             out.push(home.join("Applications").join(&bundle));
++            out.push(home.join("Applications/Nix Apps").join(&bundle));
++            out.push(home.join("Applications/Home Manager Apps").join(&bundle));
+         }
+         out
+     }
+@@ -173,7 +179,7 @@
+         let full_key = format!("{}Version", app.name);
+         let text =
+             [full_key.as_str(), "CFBundleShortVersionString", "CFBundleVersion"].iter().find_map(|k| dict.get(k).and_then(plist::Value::as_string));
+-        Some(Installed { version: text.and_then(version::parse), source: InstallSource::MacApp, location: path.display().to_string(), package: None })
++        Some(Installed { version: text.and_then(version::parse), source: if path.canonicalize().is_ok_and(|path| crate::nix::is_store_path(&path)) { InstallSource::Nix } else { InstallSource::MacApp }, location: path.display().to_string(), package: None })
+     }
+ }
+ 
+--- a/crates/native/src/login.rs
++++ b/crates/native/src/login.rs
+@@ -1,4 +1,4 @@
+-//! "Start ArtCraft Launcher when I log in".
++//! "Start Craft Launcher when I log in".
+ //!
+ //! - macOS: a LaunchAgent in `~/Library/LaunchAgents`.
+ //! - Windows: a value under `HKCU\…\CurrentVersion\Run`.
+@@ -9,12 +9,22 @@
+ use std::path::PathBuf;
+ 
+ #[cfg_attr(windows, allow(dead_code))]
+-const ID: &str = "ai.storyteller.artcraft-launcher";
++// Keep existing login-entry filenames and macOS LaunchAgent labels.
++const ID: &str = "io.github.nix-forge.craft-launcher";
++#[cfg(not(any(target_os = "macos", windows)))]
++const DESKTOP_ID: &str = "io.github.nix_forge.craft-launcher";
+ /// The command-line flag a login start passes.
+ pub const HIDDEN_FLAG: &str = "--hidden";
+ 
+ /// The program to start at login: the AppImage when running from one, else this executable.
+ fn program() -> Result<PathBuf, String> {
++    #[cfg(unix)]
++    if let Ok(executable) = std::env::current_exe()
++        && crate::nix::is_store_path(&executable)
++        && let Some(wrapper) = option_env!("CRAFT_LAUNCHER_WRAPPER")
++    {
++        return Ok(PathBuf::from(wrapper));
++    }
+     if let Some(appimage) = std::env::var_os("APPIMAGE") {
+         return Ok(PathBuf::from(appimage));
+     }
+@@ -35,7 +45,7 @@
+     #[cfg(target_os = "macos")]
+     return agent().is_ok_and(|p| p.exists());
+     #[cfg(windows)]
+-    return windows_run().and_then(|k| k.get_value::<String, _>("ArtCraft Launcher").ok()).is_some();
++    return windows_run().and_then(|k| k.get_value::<String, _>("Craft Launcher").ok()).is_some();
+     #[cfg(not(any(target_os = "macos", windows)))]
+     return autostart().is_ok_and(|p| p.exists());
+ }
+@@ -70,9 +80,9 @@
+             .map_err(|e| format!("couldn't change the startup list ({e})"))?;
+         if on {
+             let value = format!("\"{}\" {HIDDEN_FLAG}", program()?.display());
+-            key.set_value("ArtCraft Launcher", &value).map_err(|e| format!("couldn't change the startup list ({e})"))
++            key.set_value("Craft Launcher", &value).map_err(|e| format!("couldn't change the startup list ({e})"))
+         } else {
+-            match key.delete_value("ArtCraft Launcher") {
++            match key.delete_value("Craft Launcher") {
+                 Ok(()) => Ok(()),
+                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                 Err(e) => Err(format!("couldn't change the startup list ({e})")),
+@@ -112,5 +122,20 @@
+ #[cfg(not(any(target_os = "macos", windows)))]
+ fn autostart_entry(program: &std::path::Path) -> Result<String, String> {
+     let quoted = crate::desktop_entry::exec_quote(program).ok_or("this executable cannot be represented in a desktop entry")?;
+-    Ok(format!("[Desktop Entry]\nType=Application\nName=ArtCraft Launcher\nComment=Install and update the Craft App Suite\nExec={quoted} {HIDDEN_FLAG}\nIcon={ID}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"))
++    Ok(format!("[Desktop Entry]\nType=Application\nName=Craft Launcher\nComment=Install and update the Craft App Suite\nExec={quoted} {HIDDEN_FLAG}\nIcon={DESKTOP_ID}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"))
+ }
++
++#[cfg(all(test, target_os = "linux"))]
++mod nix_autostart_tests {
++    use super::*;
++    #[test]
++    fn generated_autostart_starts_the_installed_wrapper() {
++        let wrapper = std::path::Path::new(env!("CRAFT_LAUNCHER_WRAPPER"));
++        let entry = autostart_entry(wrapper).unwrap();
++        assert_eq!(crate::desktop_entry::exec_program(&entry).as_deref(), wrapper.to_str());
++        assert!(entry.contains(" --hidden\n"));
++        assert!(!entry.contains(".craft-launcher-wrapped"));
++        assert!(entry.contains("Name=Craft Launcher\n"));
++        assert!(entry.contains("Icon=io.github.nix_forge.craft-launcher\n"));
++    }
++}

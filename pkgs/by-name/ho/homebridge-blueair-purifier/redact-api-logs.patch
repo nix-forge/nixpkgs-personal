@@ -1,0 +1,95 @@
+diff --git a/homebridge-ui/server.js b/homebridge-ui/server.js
+index 1c43dd0ad20a..7406557bc47a 100644
+--- a/homebridge-ui/server.js
++++ b/homebridge-ui/server.js
+@@ -67,7 +67,6 @@ class UiServer extends HomebridgePluginUiServer {
+     const config = require(this.homebridgeConfigPath).platforms.find((obj) => obj.platform === 'blueair-purifier');
+     this.logger = new Logger(config?.uiDebug ? config.uiDebug : false);
+     this.logger.info('Custom UI created.');
+-    this.logger.debug(`ENV:\n${JSON.stringify(process.env, null, 2)}`);
+ 
+     this.onRequest('/mergeToDefault', async ({ config }) => {
+       _.defaultsDeep(config, defaultConfig);
+@@ -76,7 +75,6 @@ class UiServer extends HomebridgePluginUiServer {
+       });
+       this.config = config;
+       this.logger.setDebugEnabled(config.uiDebug ? config.uiDebug : false);
+-      this.logger.debug(`Merged config:\n${JSON.stringify(config, null, 2)}`);
+       return config;
+     });
+ 
+diff --git a/src/api/BlueAirAwsApi.ts b/src/api/BlueAirAwsApi.ts
+index ed1339a0cda4..500409f19eba 100644
+--- a/src/api/BlueAirAwsApi.ts
++++ b/src/api/BlueAirAwsApi.ts
+@@ -97,8 +97,7 @@ export default class BlueAirAwsApi {
+ 
+     this.mutex = new Mutex();
+ 
+-    this.logger.debug(`Creating BlueAir API instance with config: ${JSON.stringify(config)} and username: ${username}\
+-    and auth region: ${region}, cloud region: ${cloudRegion}`);
++    this.logger.debug(`Creating BlueAir API instance for auth region: ${region}, cloud region: ${cloudRegion}`);
+ 
+     this.gigyaApi = new GigyaApi(username, password, region, logger);
+ 
+@@ -334,7 +333,7 @@ export default class BlueAirAwsApi {
+     const release = await this.mutex.acquire();
+     const controller = new AbortController();
+     const timeout = setTimeout(() => controller.abort(), BLUEAIR_API_TIMEOUT);
+-    this.logger.debug(`[AWS] apiCall request: ${method} ${this.blueAirApiUrl}${url}, body: ${JSON.stringify(data)}`);
++    this.logger.debug(`[AWS] apiCall request: ${method} ${url}`);
+     try {
+       const response = await fetch(`${this.blueAirApiUrl}${url}`, {
+         method: method,
+@@ -350,9 +349,9 @@ export default class BlueAirAwsApi {
+         signal: controller.signal,
+       });
+       const json = await response.json();
+-      this.logger.debug(`[AWS] apiCall response: ${response.status} ${response.statusText}, body: ${JSON.stringify(json)}`);
++      this.logger.debug(`[AWS] apiCall response: ${response.status} ${response.statusText}`);
+       if (response.status !== 200) {
+-        throw new Error(`API call error with status ${response.status}: ${response.statusText}, ${JSON.stringify(json)}`);
++        throw new Error(`API call error with status ${response.status}: ${response.statusText}`);
+       }
+       return json as T;
+     } catch (error) {
+diff --git a/src/api/GigyaApi.ts b/src/api/GigyaApi.ts
+index 5a5711974049..cd5710ada027 100644
+--- a/src/api/GigyaApi.ts
++++ b/src/api/GigyaApi.ts
+@@ -14,7 +14,7 @@ export default class GigyaApi {
+   ) {
+     const config = getGigyaConfig(region);
+ 
+-    this.logger.debug(`Creating Gigya API instance with config: ${JSON.stringify(config)} and username: ${username} and region: ${region}`);
++    this.logger.debug(`Creating Gigya API instance for region: ${region}`);
+ 
+     this.api_key = config.apiKey;
+     this.gigyaApiUrl = `https://accounts.${config.gigyaRegion}.gigya.com`;
+@@ -31,7 +31,7 @@ export default class GigyaApi {
+     const response = await this.apiCall('/accounts.login', params.toString());
+ 
+     if (!response.sessionInfo) {
+-      throw new Error(`Gigya session error: sessionInfo in response: ${JSON.stringify(response)}`);
++      throw new Error('Gigya session error: missing sessionInfo');
+     }
+ 
+     this.logger.debug('Gigya session received');
+@@ -51,7 +51,7 @@ export default class GigyaApi {
+     const response = await this.apiCall('/accounts.getJWT', params.toString());
+ 
+     if (!response.id_token) {
+-      throw new Error(`Gigya JWT error: no id_token in response: ${JSON.stringify(response)}`);
++      throw new Error('Gigya JWT error: missing id_token');
+     }
+ 
+     this.logger.debug('Gigya JWT received');
+@@ -76,7 +76,7 @@ export default class GigyaApi {
+       });
+       const json = await response.json();
+       if (response.status !== 200) {
+-        throw new Error(`API call error with status ${response.status}: ${response.statusText}, ${JSON.stringify(json)}`);
++        throw new Error(`API call error with status ${response.status}: ${response.statusText}`);
+       }
+       return json;
+     } catch (error) {

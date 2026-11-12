@@ -1,0 +1,481 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -145,3 +145,7 @@
+ [profile.release]
+ lto = "thin"
+ codegen-units = 1
++
++[patch.crates-io]
++zip = { path = "vendor/zip" }
++candle-core = { path = "vendor/candle-core" }
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -704,8 +704,6 @@
+ [[package]]
+ name = "candle-core"
+ version = "0.9.2"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "c15b675b80d994b2eadb20a4bbe434eabeb454eac3ee5e2b4cf6f147ee9be091"
+ dependencies = [
+  "byteorder",
+  "float8",
+@@ -895,6 +893,15 @@
+ version = "0.9.6"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
++
++[[package]]
++name = "constant_time_eq"
++version = "0.6.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9eb6feb175df65d0a3ccd3e73484e940d0ac664e8034f0519fd49a93db3071d9"
++dependencies = [
++ "rustversion",
++]
+ 
+ [[package]]
+ name = "core-foundation"
+@@ -2799,8 +2806,10 @@
+ checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
+ dependencies = [
+  "cfg-if",
++ "js-sys",
+  "libc",
+  "r-efi 6.0.0",
++ "wasm-bindgen",
+ ]
+ 
+ [[package]]
+@@ -3725,6 +3734,18 @@
+ checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
+ dependencies = [
+  "jni-sys 0.3.1",
++]
++
++[[package]]
++name = "nix"
++version = "0.31.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
++dependencies = [
++ "bitflags 2.13.2",
++ "cfg-if",
++ "cfg_aliases",
++ "libc",
+ ]
+ 
+ [[package]]
+@@ -6227,9 +6248,9 @@
+ 
+ [[package]]
+ name = "typed-path"
+-version = "0.12.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "8e28f89b80c87b8fb0cf04ab448d5dd0dd0ade2f8891bae878de66a75a28600e"
++version = "0.13.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9ce898823d8cd0f028662d2f349694b1af0a5cc9be83f1d213a00d3147445e1e"
+ 
+ [[package]]
+ name = "typenum"
+@@ -7594,14 +7615,18 @@
+ 
+ [[package]]
+ name = "zip"
+-version = "7.2.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "c42e33efc22a0650c311c2ef19115ce232583abbe80850bc8b66509ebef02de0"
+-dependencies = [
++version = "9.5.0"
++dependencies = [
++ "constant_time_eq",
+  "crc32fast",
++ "getrandom 0.4.3",
+  "indexmap",
++ "libc",
+  "memchr",
++ "nix",
+  "typed-path",
++ "windows-sys 0.61.2",
++ "zeroize",
+ ]
+ 
+ [[package]]
+--- a/crates/tts/Cargo.toml
++++ b/crates/tts/Cargo.toml
+@@ -21,7 +21,7 @@
+ thiserror = { workspace = true }
+ candle-core = { version = "0.9", default-features = false, optional = true }
+ candle-nn = { version = "0.9", default-features = false, optional = true }
+-zip = { version = "7", default-features = false, optional = true }
++zip = { version = "=9.5.0", default-features = false, optional = true }
+ serde_json = { workspace = true, optional = true }
+ 
+ [[example]]
+--- a/crates/tts/src/kokoro/weights.rs
++++ b/crates/tts/src/kokoro/weights.rs
+@@ -134,11 +134,15 @@
+ pub(crate) fn read_voice(path: &Path) -> Result<Vec<f32>, TtsError> {
+     let f = std::fs::File::open(path).map_err(|e| err(format!("{}: {e}", path.display())))?;
+     let mut z = zip::ZipArchive::new(f).map_err(|e| err(format!("{}: {e}", path.display())))?;
+-    let name = (0..z.len())
+-        .filter_map(|i| z.by_index(i).ok().map(|e| e.name().to_string()))
+-        .find(|n| n.ends_with("/data/0"))
+-        .ok_or_else(|| err(format!("{}: not a voice pack", path.display())))?;
+-    let order = (0..z.len()).filter_map(|i| z.by_index(i).ok().map(|e| e.name().to_string())).find(|n| n.ends_with("/byteorder"));
++    z.validate_header_consistency().map_err(|e| err(format!("{}: {e}", path.display())))?;
++    let mut names = Vec::new();
++    for i in 0..z.len() {
++        if let Ok(entry) = z.by_index(i) {
++            names.push(entry.name().map_err(err)?.into_owned());
++        }
++    }
++    let name = names.iter().find(|name| name.ends_with("/data/0")).ok_or_else(|| err(format!("{}: not a voice pack", path.display())))?;
++    let order = names.iter().find(|name| name.ends_with("/byteorder"));
+     if let Some(o) = order {
+         let mut s = String::new();
+         z.by_name(&o).map_err(err)?.take(16).read_to_string(&mut s).map_err(err)?;
+@@ -264,3 +268,6 @@
+         let _ = std::fs::remove_dir_all(&d);
+     }
+ }
++
++#[cfg(test)]
++mod archive_security_tests;
+--- /dev/null
++++ b/crates/tts/src/kokoro/weights/archive_security_tests.rs
+@@ -0,0 +1,334 @@
++//! Original synthetic ZIP fixtures for the voice and tensor-reader boundaries.
++use std::io::{Cursor, Read, Write};
++use std::path::Path;
++
++use candle_core::{Device, Tensor, npy::NpzTensors, pickle::PthTensors};
++
++fn archive(entries: &[(&str, &[u8])]) -> Vec<u8> {
++    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
++    for (name, data) in entries {
++        writer.start_file(*name, zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored)).unwrap();
++        writer.write_all(data).unwrap();
++    }
++    writer.finish().unwrap().into_inner()
++}
++
++fn voice() -> Vec<u8> {
++    archive(&[("voice/data/0", &vec![0; super::PACK_LEN * super::STYLE * 4]), ("voice/byteorder", b"little"), ("unused", b"")])
++}
++
++fn pth() -> Vec<u8> {
++    // Protocol-2 dictionary: a one-element float32 tensor rebuilt from persistent storage.
++    fn string(bytes: &mut Vec<u8>, value: &str) {
++        bytes.push(b'X');
++        bytes.extend_from_slice(&(value.len() as u32).to_le_bytes());
++        bytes.extend_from_slice(value.as_bytes());
++    }
++    let mut pickle = b"\x80\x02}".to_vec();
++    string(&mut pickle, "weight");
++    pickle.extend_from_slice(b"ctorch._utils\n_rebuild_tensor_v2\n((");
++    string(&mut pickle, "storage");
++    pickle.extend_from_slice(b"ctorch\nFloatStorage\n");
++    string(&mut pickle, "0");
++    string(&mut pickle, "cpu");
++    pickle.extend_from_slice(b"K\x01tQK\x00K\x01\x85K\x01\x85\x89}tRs.");
++    archive(&[("model/data.pkl", &pickle), ("model/data/0", &7.0_f32.to_le_bytes()), ("unused", b"")])
++}
++
++fn npz(path: &Path) -> Vec<u8> {
++    let tensor = Tensor::new(&[7.0_f32], &Device::Cpu).unwrap();
++    Tensor::write_npz(&[("weight", &tensor)], path).unwrap();
++    std::fs::read(path).unwrap()
++}
++
++fn header(bytes: &[u8], name: &str) -> usize {
++    let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
++    let start = zip.by_name(name).unwrap().header_start();
++    start as usize
++}
++
++fn check(bytes: &[u8], required: &str, extra_parts: bool, accepts: impl Fn(&[u8]) -> bool) {
++    assert!(accepts(bytes), "ordinary control");
++    for (label, offset) in [("local filename", 30), ("compression", 8), ("CRC", 14)] {
++        let mut bad = bytes.to_vec();
++        bad[header(bytes, required) + offset] ^= 1;
++        assert!(!accepts(&bad), "{label}");
++    }
++    if !extra_parts {
++        assert!(accepts(&zip64(bytes)), "ZIP64 control");
++        return;
++    }
++    let extra = append(bytes.to_vec(), b"spare", b"spare", &[], &[], false, false);
++    let mut bad = extra.clone();
++    bad[header(&extra, "spare") + 30] ^= 1;
++    assert!(!accepts(&bad), "ignored header");
++    for name in ["unused-alias", "文"] {
++        let alias = unicode_path(name, 0x4ddb0c25);
++        assert!(!accepts(&append(bytes.to_vec(), b"plumless", b"buckeroo", &alias, &alias, false, false)), "UnicodePath CRC collision");
++    }
++    assert!(!accepts(&append(extra, b"spare", b"spare", &[], &[], false, false)), "duplicate names");
++    let legacy = append(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", &[], &[], false, false);
++    assert!(!accepts(&append(legacy, "café.txt".as_bytes(), "café.txt".as_bytes(), &[], &[], false, true)), "duplicate decoded names");
++    assert!(!accepts(&unlisted(bytes.to_vec())), "unlisted local header");
++    for (local, central) in [(true, false), (false, true)] {
++        assert!(!accepts(&encoding_flags(bytes.to_vec(), b"caf\xc3\xa9", local, central)), "encoding mismatch");
++        assert!(accepts(&encoding_flags(bytes.to_vec(), b"ascii", local, central)), "ASCII flag control");
++    }
++    let alias = unicode_path("café.txt", 0xa0976e8f);
++    assert!(accepts(&append(bytes.to_vec(), b"caf\x82.txt", b"caf\x82.txt", &alias, &alias, false, false)), "UnicodePath control");
++    assert!(accepts(&append(bytes.to_vec(), b"notes", b"notes", &[], &[], true, false)), "stream descriptor");
++    assert!(accepts(&zip64(bytes)), "ZIP64 control");
++}
++
++#[test]
++fn zip_archive_voice() {
++    let dir = tmp("archive-voice");
++    let path = dir.join("voice.pt");
++    check(&voice(), "voice/data/0", true, |bytes| {
++        std::fs::write(&path, bytes).unwrap();
++        crate::kokoro::VoicePack::load(&path).is_ok()
++    });
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++#[test]
++fn zip_archive_pickle() {
++    let dir = tmp("archive-pickle");
++    let path = dir.join("model.pth");
++    let bytes = pth();
++    std::fs::write(&path, &bytes).unwrap();
++    let tensors = candle_core::pickle::read_all(&path).unwrap();
++    assert_eq!(tensors.len(), 1);
++    assert_eq!(tensors[0].1.to_vec1::<f32>().unwrap(), vec![7.0]);
++    check(&bytes, "model/data.pkl", true, |bytes| {
++        std::fs::write(&path, bytes).unwrap();
++        candle_core::pickle::read_pth_tensor_info(&path, false, None).is_ok()
++    });
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++#[test]
++fn zip_archive_pickle_reopen() {
++    let dir = tmp("archive-pickle-reopen");
++    let path = dir.join("model.pth");
++    let bytes = pth();
++    std::fs::write(&path, &bytes).unwrap();
++    let tensors = PthTensors::new(&path, None).unwrap();
++    assert!(tensors.get("missing").unwrap().is_none());
++    assert_eq!(tensors.get("weight").unwrap().unwrap().to_vec1::<f32>().unwrap(), vec![7.0]);
++    check(&bytes, "model/data/0", true, |bytes| {
++        std::fs::write(&path, bytes).unwrap();
++        tensors.get("weight").is_ok()
++    });
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++#[test]
++fn zip_archive_npz() {
++    let dir = tmp("archive-npz");
++    let path = dir.join("arrays.npz");
++    let bytes = npz(&path);
++    assert_eq!(Tensor::read_npz(&path).unwrap()[0].1.to_vec1::<f32>().unwrap(), vec![7.0]);
++    check(&bytes, "weight.npy", false, |bytes| {
++        std::fs::write(&path, bytes).unwrap();
++        Tensor::read_npz(&path).is_ok()
++    });
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++#[test]
++fn zip_archive_npz_named() {
++    let dir = tmp("archive-npz-named");
++    let path = dir.join("arrays.npz");
++    let bytes = npz(&path);
++    assert!(Tensor::read_npz_by_name(&path, &["missing"]).is_err());
++    check(&bytes, "weight.npy", true, |bytes| {
++        std::fs::write(&path, bytes).unwrap();
++        Tensor::read_npz_by_name(&path, &["weight"]).is_ok()
++    });
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++#[test]
++fn zip_archive_npz_index() {
++    let dir = tmp("archive-npz-index");
++    let path = dir.join("arrays.npz");
++    let bytes = npz(&path);
++    check(&bytes, "weight.npy", true, |bytes| {
++        std::fs::write(&path, bytes).unwrap();
++        NpzTensors::new(&path).is_ok()
++    });
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++#[test]
++fn zip_archive_npz_reopen() {
++    let dir = tmp("archive-npz-reopen");
++    let path = dir.join("arrays.npz");
++    let bytes = npz(&path);
++    let tensors = NpzTensors::new(&path).unwrap();
++    assert!(tensors.get("missing").unwrap().is_none());
++    assert_eq!(tensors.get("weight").unwrap().unwrap().to_vec1::<f32>().unwrap(), vec![7.0]);
++    check(&bytes, "weight.npy", true, |bytes| {
++        std::fs::write(&path, bytes).unwrap();
++        tensors.get("weight").is_ok()
++    });
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++#[test]
++fn zip_archive_npz_shape_reopen() {
++    let dir = tmp("archive-npz-shape");
++    let path = dir.join("arrays.npz");
++    let bytes = npz(&path);
++    let tensors = NpzTensors::new(&path).unwrap();
++    assert!(tensors.get_shape_and_dtype("missing").is_err());
++    assert_eq!(tensors.get_shape_and_dtype("weight").unwrap().0.dims(), &[1]);
++    check(&bytes, "weight.npy", true, |bytes| {
++        std::fs::write(&path, bytes).unwrap();
++        tensors.get_shape_and_dtype("weight").is_ok()
++    });
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++fn tmp(name: &str) -> std::path::PathBuf {
++    let path = std::env::temp_dir().join(format!("filmcraft-zip-{}-{name}", std::process::id()));
++    std::fs::create_dir_all(&path).unwrap();
++    path
++}
++
++fn unicode_path(name: &str, crc: u32) -> Vec<u8> {
++    let mut field = 0x7075_u16.to_le_bytes().to_vec();
++    field.extend_from_slice(&((name.len() + 5) as u16).to_le_bytes());
++    field.push(1);
++    field.extend_from_slice(&crc.to_le_bytes());
++    field.extend_from_slice(name.as_bytes());
++    field
++}
++
++#[allow(clippy::too_many_arguments)]
++fn append(mut bytes: Vec<u8>, local: &[u8], central: &[u8], local_extra: &[u8], central_extra: &[u8], descriptor: bool, utf8: bool) -> Vec<u8> {
++    let end = bytes.len() - 22;
++    assert_eq!(&bytes[end..end + 4], b"PK\x05\x06");
++    let count = u16::from_le_bytes(bytes[end + 10..end + 12].try_into().expect("count"));
++    let size = u32::from_le_bytes(bytes[end + 12..end + 16].try_into().expect("directory size"));
++    let start = u32::from_le_bytes(bytes[end + 16..end + 20].try_into().expect("directory start"));
++    let flags = if descriptor { 8_u16 } else { 0 } | if utf8 { 0x800 } else { 0 };
++    let mut entry = b"PK\x03\x04".to_vec();
++    for word in [20_u16, flags, 0, 0, 0] {
++        entry.extend_from_slice(&word.to_le_bytes());
++    }
++    entry.extend_from_slice(&[0; 12]);
++    entry.extend_from_slice(&(local.len() as u16).to_le_bytes());
++    entry.extend_from_slice(&(local_extra.len() as u16).to_le_bytes());
++    entry.extend_from_slice(local);
++    entry.extend_from_slice(local_extra);
++    if descriptor {
++        entry.extend_from_slice(b"PK\x07\x08");
++        entry.extend_from_slice(&[0; 12]);
++    }
++    let mut directory = b"PK\x01\x02".to_vec();
++    for word in [20_u16, 20, flags, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&[0; 12]);
++    for word in [central.len() as u16, central_extra.len() as u16, 0, 0, 0] {
++        directory.extend_from_slice(&word.to_le_bytes());
++    }
++    directory.extend_from_slice(&0_u32.to_le_bytes());
++    directory.extend_from_slice(&start.to_le_bytes());
++    directory.extend_from_slice(central);
++    directory.extend_from_slice(central_extra);
++    let mut eocd = bytes.split_off(end);
++    let old_directory = bytes.split_off(start as usize);
++    bytes.extend_from_slice(&entry);
++    bytes.extend_from_slice(&old_directory);
++    bytes.extend_from_slice(&directory);
++    for offset in [8, 10] {
++        eocd[offset..offset + 2].copy_from_slice(&(count + 1).to_le_bytes());
++    }
++    eocd[12..16].copy_from_slice(&(size + directory.len() as u32).to_le_bytes());
++    eocd[16..20].copy_from_slice(&(start + entry.len() as u32).to_le_bytes());
++    bytes.extend_from_slice(&eocd);
++    bytes
++}
++
++fn unlisted(mut bytes: Vec<u8>) -> Vec<u8> {
++    let end = bytes.len() - 22;
++    let start = u32::from_le_bytes(bytes[end + 16..end + 20].try_into().expect("directory start"));
++    let name = b"orphan";
++    let mut local = b"PK\x03\x04".to_vec();
++    local.extend_from_slice(&20_u16.to_le_bytes());
++    local.extend_from_slice(&[0; 20]);
++    local.extend_from_slice(&(name.len() as u16).to_le_bytes());
++    local.extend_from_slice(&[0; 2]);
++    local.extend_from_slice(name);
++    let mut eocd = bytes.split_off(end);
++    let directory = bytes.split_off(start as usize);
++    bytes.extend_from_slice(&local);
++    bytes.extend_from_slice(&directory);
++    eocd[16..20].copy_from_slice(&(start + local.len() as u32).to_le_bytes());
++    bytes.extend_from_slice(&eocd);
++    bytes
++}
++
++fn zip64(bytes: &[u8]) -> Vec<u8> {
++    let mut input = zip::ZipArchive::new(Cursor::new(bytes)).expect("fixture archive");
++    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
++    for i in 0..input.len() {
++        let mut file = input.by_index(i).expect("fixture part");
++        let name = std::str::from_utf8(file.name_raw()).expect("ASCII fixture name").to_owned();
++        let options = zip::write::SimpleFileOptions::default().compression_method(file.compression()).large_file(true);
++        writer.start_file(name, options).expect("fixture writer");
++        let mut data = Vec::new();
++        file.read_to_end(&mut data).expect("fixture contents");
++        writer.write_all(&data).expect("fixture output");
++    }
++    writer.finish().expect("fixture finish").into_inner()
++}
++
++fn encoding_flags(bytes: Vec<u8>, name: &[u8], local_utf8: bool, central_utf8: bool) -> Vec<u8> {
++    let mut bytes = append(bytes, name, name, &[], &[], false, false);
++    let (local, central) = {
++        let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).expect("fixture archive");
++        let index = archive.len() - 1;
++        let entry = archive.by_index(index).expect("last fixture entry");
++        (entry.header_start() as usize, entry.central_header_start() as usize)
++    };
++    if local_utf8 {
++        bytes[local + 7] |= 8;
++    }
++    if central_utf8 {
++        bytes[central + 9] |= 8;
++    }
++    bytes
++}
++
++#[test]
++fn zip_archive_pickle_fortran_layout_control() {
++    let dir = tmp("archive-fortran");
++    let path = dir.join("model.pth");
++    let bytes = pth();
++    let mut input = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
++    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
++    for i in 0..input.len() {
++        let mut entry = input.by_index(i).unwrap();
++        let name = std::str::from_utf8(entry.name_raw()).unwrap().to_owned();
++        let mut data = Vec::new();
++        entry.read_to_end(&mut data).unwrap();
++        if name.ends_with("/data.pkl") {
++            let old = b"K\x01tQK\x00K\x01\x85K\x01\x85\x89}";
++            let start = data.windows(old.len()).position(|bytes| bytes == old).unwrap();
++            data.splice(start..start + old.len(), b"K\x06tQK\x00K\x02K\x03\x86K\x01K\x02\x86\x89}".iter().copied());
++        } else if name.ends_with("/data/0") {
++            data = (0..6).flat_map(|value| (value as f32).to_le_bytes()).collect();
++        }
++        writer.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
++        writer.write_all(&data).unwrap();
++    }
++    std::fs::write(&path, writer.finish().unwrap().into_inner()).unwrap();
++    let tensors = candle_core::pickle::read_all(&path).unwrap();
++    assert_eq!(tensors[0].1.dims(), &[2, 3]);
++    assert_eq!(tensors[0].1.to_vec2::<f32>().unwrap(), vec![vec![0.0, 2.0, 4.0], vec![1.0, 3.0, 5.0]]);
++    std::fs::remove_dir_all(dir).unwrap();
++}
