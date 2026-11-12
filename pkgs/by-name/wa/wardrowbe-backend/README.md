@@ -105,8 +105,9 @@ The scoped compiler drops only Nixpkgs' Cython 3.3.0 backport of
 [PR 7970](https://github.com/cython/cython/pull/7970) when selecting 3.3.1 or
 newer. That release already guards unknown annotations and includes the
 [original pure-Python/.pxd regression](https://github.com/cython/cython/blob/3.3.1/tests/run/pure_pxd.srctree).
-Its native install check compiles and runs that upstream fixture. Other
-inherited compiler patches and SQLAlchemy's upstream tests remain enabled.
+Its native install check compiles and runs that upstream compiler-source
+fixture. SQLAlchemy then builds with the installed compiler. Other inherited
+compiler patches and SQLAlchemy's upstream tests remain enabled.
 
 Wardrowbe 1.12 also requires certifi 2026.10.19 or newer. A scoped source pin
 supplies the newer Mozilla bundle until the incoming Python set catches up.

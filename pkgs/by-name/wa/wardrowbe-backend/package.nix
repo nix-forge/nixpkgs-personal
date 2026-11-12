@@ -53,8 +53,8 @@ let
                           )
                         )
                       ) (cythonOld.patches or [ ]);
-                      # Run the actual upstream fixture against the installed
-                      # compiler, including its typed .pxd / unknown Final case.
+                      # Compile and run the upstream compiler-source fixture,
+                      # including its typed .pxd / unknown Final case.
                       doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
                       postInstallCheck = (cythonOld.postInstallCheck or "") + ''
                         test -f tests/run/pure_pxd.srctree
