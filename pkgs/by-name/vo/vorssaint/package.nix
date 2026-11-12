@@ -8,6 +8,7 @@
   findutils,
   imagemagick,
   makeWrapper,
+  open-apple-macros ? null,
   python3,
   rcodesign,
   sqlite,
@@ -17,6 +18,16 @@
 let
   pname = "vorssaint";
   source = import ./source.nix;
+  # SDK 27 uses SwiftUI macros, provided separately from the Swift 6.4 toolchain.
+  usesSwiftUIMacros = lib.versionAtLeast swift.version "6.4";
+  macroFlags = lib.escapeShellArgs (
+    lib.optionals usesSwiftUIMacros [
+      "-external-plugin-path"
+      "${open-apple-macros}/lib/swift/host/plugins#${open-apple-macros}/libexec/swift/plugins/OpenAppleMacrosServer"
+      # Disable only Swift's nested plugin sandbox; the Nix build stays sandboxed.
+      "-disable-sandbox"
+    ]
+  );
 in
 stdenv.mkDerivation (finalAttrs: {
   inherit pname;
@@ -46,6 +57,12 @@ stdenv.mkDerivation (finalAttrs: {
     rcodesign
     swift
   ];
+  depsBuildBuild = lib.optionals usesSwiftUIMacros [
+    (
+      assert open-apple-macros != null;
+      open-apple-macros
+    )
+  ];
   buildInputs = [ sqlite ];
   strictDeps = true;
 
@@ -62,6 +79,7 @@ stdenv.mkDerivation (finalAttrs: {
         sqliteLibraryPath = "${lib.getLib sqlite}/lib";
         sqliteCheck = ./check_sqlite.swift;
         deploymentTarget = ./scripts/read_deployment_target.py;
+        inherit macroFlags;
 
       }
     }
