@@ -68,7 +68,6 @@ let
     "mutant-standard-emoji"
     "spotify-spotx"
     "steam"
-    "stirling-pdf-engine"
     "ttf-ms-win11-auto"
     "wootility-bin"
   ];
