@@ -4,10 +4,10 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from app.database import async_session_maker, engine  # ty: ignore[unresolved-import]
-from app.models.outfit import Outfit, OutfitSource, OutfitStatus  # ty: ignore[unresolved-import]
-from app.models.user import User  # ty: ignore[unresolved-import]
-from app.services.outfit_service import OutfitListFilters, OutfitService  # ty: ignore[unresolved-import]
+from app.database import async_session_maker, engine  # ty: ignore[import-not-found]
+from app.models.outfit import Outfit, OutfitSource, OutfitStatus  # ty: ignore[import-not-found]
+from app.models.user import User  # ty: ignore[import-not-found]
+from app.services.outfit_service import OutfitListFilters, OutfitService  # ty: ignore[import-not-found]
 from sqlalchemy.engine import make_url
 
 

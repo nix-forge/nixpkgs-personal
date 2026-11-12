@@ -5,9 +5,9 @@ import sys
 from pathlib import Path
 
 # The recipe provides these modules; the tooling shell intentionally does not.
-from arq import create_pool  # ty: ignore[unresolved-import]
-from arq.connections import RedisSettings  # ty: ignore[unresolved-import]
-from arq.worker import Worker  # ty: ignore[unresolved-import]
+from arq import create_pool  # ty: ignore[import-not-found]
+from arq.connections import RedisSettings  # ty: ignore[import-not-found]
+from arq.worker import Worker  # ty: ignore[import-not-found]
 
 
 async def double(_ctx, value):  # ruff: ignore[unused-async] - ARQ requires a coroutine function.
