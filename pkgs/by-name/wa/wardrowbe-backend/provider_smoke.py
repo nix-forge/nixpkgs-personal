@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 import httpx
-from app.services.ai_provider import (  # ty: ignore[unresolved-import]
+from app.services.ai_provider import (  # ty: ignore[import-not-found]
     discover_models,
     provider_headers,
 )
