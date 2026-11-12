@@ -1,5 +1,0 @@
-      mpvLog({ action: "Failed to get audio devices" }, err);
-      return [];
-    }
-  }
-);

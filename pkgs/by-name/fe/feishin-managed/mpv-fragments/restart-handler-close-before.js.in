@@ -1,7 +1,0 @@
-      mpvLog({ action: "Failed to restart mpv, falling back to web player" }, err);
-      setAudioPlayerFallback(true);
-    }
-  }
-);
-require$$0.ipcMain.handle(
-  "player-initialize",

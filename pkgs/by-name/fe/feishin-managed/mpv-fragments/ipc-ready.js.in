@@ -1,6 +1,0 @@
-    await mpv.start();
-    const child = mpv.mpvPlayer;
-    if (!child || (child.exitCode === null && child.signalCode === null)) {
-      child?.once("exit", () => require("./mpv-readiness.cjs").setIpcReady(false, ipcGeneration));
-      require("./mpv-readiness.cjs").setIpcReady(true, ipcGeneration);
-    }

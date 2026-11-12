@@ -152,8 +152,6 @@ in
         checkPhase = builtins.readFile ./scripts/check-javascript.sh;
         installPhase = builtins.readFile ./scripts/install-check-output.sh;
       };
-      # The application compiler uses ReactFlux's real locked dependencies.
-      reactflux-typescript = pkgs.callPackage ../../pkgs/by-name/re/reactflux/package.nix { };
       package-policy =
         let
           report = import ../../tests/package-policy.nix {

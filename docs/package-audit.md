@@ -57,7 +57,7 @@ claim macOS builds or GUI tests were run from the Linux review host.
 | `apple-color-emoji` | Linux ARM64, Linux x64 | Local Python updater | Source identity, repaired glyph checks and 3 updater tests |
 | `apple-fonts` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Per-file hash and face verification during installation |
 | `bibata-cursors-hyprcursor` | Linux ARM64, Linux x64 | Manual review | Package installation checks |
-| `bitwarden-desktop` | macOS ARM64 | Local Python updater | Package installation checks |
+| `bitwarden-desktop-bin` | macOS ARM64 | Local Python updater | Package installation checks |
 | `claude-desktop` | macOS ARM64 | Local Python updater | Package installation checks |
 | `emojione-legacy` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Package installation checks |
 | `finder-favorites` | macOS ARM64 | Manual review | Native compiler, unit, self-test and install checks |
@@ -81,7 +81,7 @@ claim macOS builds or GUI tests were run from the Linux review host.
 | `ttf-ms-win11-auto` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Extracted and installed manifest validation; 5 unit tests |
 | `twemoji-color-font-optional` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Remaining font files and excluded-file/policy checks |
 | `vorssaint` | macOS ARM64 | Local Python updater | Package installation checks |
-| `wootility` | macOS ARM64 | Local Python updater | Package installation checks |
+| `wootility-bin` | macOS ARM64 | Local Python updater | Package installation checks |
 
 ## Validation
 
@@ -157,7 +157,7 @@ classifications, not an audit of every dependency's copyright notices.
 | `apple-color-emoji` | unfree, OFL-1.1 | Yes | Font binary |
 | `apple-fonts` | unfree | Yes | Font binary |
 | `bibata-cursors-hyprcursor` | GPL-3.0-or-later | No | Source |
-| `bitwarden-desktop` | GPL-3.0-only | No | Native binary |
+| `bitwarden-desktop-bin` | GPL-3.0-only | No | Native binary |
 | `claude-desktop` | unfree | Yes | Native binary |
 | `emojione-legacy` | MIT, CC-BY-4.0 | No | Font binary |
 | `finder-favorites` | MIT | No | Source |
@@ -181,7 +181,7 @@ classifications, not an audit of every dependency's copyright notices.
 | `ttf-ms-win11-auto` | unfree | Yes | Font binary |
 | `twemoji-color-font-optional` | CC-BY-4.0, MIT | No | Font binary |
 | `vorssaint` | GPL-3.0-or-later | No | Source |
-| `wootility` | unfree | Yes | Native binary |
+| `wootility-bin` | unfree | Yes | Native binary |
 
 ### Validation and limits
 
