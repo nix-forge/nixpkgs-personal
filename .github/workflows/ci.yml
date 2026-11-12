@@ -7,6 +7,10 @@ on:
         type: choice
         default: all
         options: [all, tools, vorssaint, metadata]
+      source_ref:
+        description: Immutable source commit required for the metadata scope.
+        type: string
+        required: false
 permissions: {}
 concurrency:
   group: retained-package-${{ github.ref }}-${{ inputs.scope }}
@@ -91,9 +95,13 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Require an immutable metadata source
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: '[[ "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]]'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ee7d3ad2321ff0d4ac08451348889bb33e772a2f
+          ref: ${{ inputs.source_ref }}
           fetch-depth: 0
           persist-credentials: false
       - uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
