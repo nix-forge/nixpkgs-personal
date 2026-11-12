@@ -858,7 +858,7 @@ Unofficial macOS system monitoring toolkit built from Vorssaint.
 
 [Recipe](../pkgs/by-name/vo/vorssaint/package.nix) · [Package guide](../pkgs/by-name/vo/vorssaint/README.md) · [Upstream](https://vorssaint.com/)
 
-- `aarch64-darwin`: 3.4.4; [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html).
+- `aarch64-darwin`: 3.4.4; [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html), [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#vorssaint
