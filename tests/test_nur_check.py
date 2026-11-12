@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
-    "check_nur", ROOT / "scripts/check-nur.py"
+    "check_nur", ROOT / "scripts/check_nur.py"
 )
 assert SPEC is not None
 assert SPEC.loader is not None

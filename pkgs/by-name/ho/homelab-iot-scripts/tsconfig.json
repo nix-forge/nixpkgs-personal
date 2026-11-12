@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "strict": true,
+    "noEmitOnError": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": false,
+    "outDir": "dist",
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "noPropertyAccessFromIndexSignature": true
+  },
+  "include": ["*.cts", "*.mts"]
+}

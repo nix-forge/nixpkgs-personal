@@ -1,0 +1,53 @@
+--- math_presentation.py
++++ math_presentation.py
+@@ -12,6 +12,8 @@
+ 
+ from __future__ import annotations
+ 
++import re
++
+ from pydantic import Field
+ from pydantic_ai import Agent
+ 
+@@ -40,11 +42,14 @@
+ 
+ 
+ _MATH_INTENT_SYSTEM_PROMPT = (
+-    "Decide whether the user's prompt is asking for verification of "
+-    "numerical content — math correctness, audit, recalculation, totals, "
+-    "sums, percentages, balances, arithmetic, or financial figures. "
+-    "Set is_math=true if so, otherwise false. Decide from the meaning of "
+-    "the prompt, not specific keywords; the prompt may be in any language."
++    "Decide whether the user explicitly asks to verify numerical correctness "
++    "in a PDF: recalculate arithmetic, audit totals, or check whether figures "
++    "are consistent. Set is_math=true only when numerical verification is a "
++    "requested result. Mentioning amounts, calculations, tax returns, or an "
++    "instruction to preserve financial values does not request a math audit. "
++    "For privacy review, identifying personal information, or redaction advice, "
++    "set is_math=false even if the prompt says to keep financial calculations. "
++    "Decide from the user's intent in any language, not isolated keywords."
+ )
+ 
+ 
+@@ -79,5 +84,21 @@
+     async def classify(self, user_message: str) -> bool:
+         if not user_message:
+             return False
++        # A privacy request that says to preserve amounts is not asking for a
++        # math audit. Bypass the small model for this unambiguous case so it
++        # cannot route sensitive-document review to the wrong tool.
++        privacy_request = re.search(
++            r"\b(?:privacy|redact(?:ion|ed|ing)?|personally identifying)\b",
++            user_message,
++            re.IGNORECASE,
++        )
++        explicit_math_request = re.search(
++            r"\b(?:check|verify|audit|recalculate|validate)\b.{0,100}"
++            r"\b(?:math|arithmetic|calculations?|totals?|sums?|percentages?|balances?|figures?)\b",
++            user_message,
++            re.IGNORECASE | re.DOTALL,
++        )
++        if privacy_request and not explicit_math_request:
++            return False
+         result = await self._agent.run(user_message)
+         return result.output.is_math

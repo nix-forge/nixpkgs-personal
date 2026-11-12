@@ -1,0 +1,11 @@
+#!@runtime_shell@
+# shellcheck shell=bash
+# Nix replaces this template marker with the selected absolute runtimeShell.
+# shellcheck disable=SC2239
+# Run the unchanged upstream tests against a genuinely private packaged bus.
+set -euo pipefail
+unset DBUS_SESSION_BUS_ADDRESS DBUS_SYSTEM_BUS_ADDRESS
+unset DBUS_STARTER_ADDRESS DBUS_STARTER_BUS_TYPE
+exec @dbus_run_session@ \
+  --dbus-daemon=@dbus_daemon@ \
+  --config-file=@dbus_session_config@ "$@"

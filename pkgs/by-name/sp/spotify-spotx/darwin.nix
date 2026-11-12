@@ -1,8 +1,11 @@
 {
+  callPackage,
+  replaceVars,
   bash,
   coreutils,
   darwin,
   fetchurl,
+  file,
   findutils,
   gnugrep,
   gnused,
@@ -14,6 +17,7 @@
   spotxArgs,
   spotxSource,
   stdenvNoCC,
+  python3,
   unzip,
   util-linux,
   writeText,
@@ -39,6 +43,7 @@ stdenvNoCC.mkDerivation {
   phases = [
     "installPhase"
     "signSpotifyBundlePhase"
+    "installCheckPhase"
   ];
 
   nativeBuildInputs = [
@@ -46,6 +51,7 @@ stdenvNoCC.mkDerivation {
     coreutils
     darwin.DarwinTools
     darwin.system_cmds
+    (lib.getBin file)
     findutils
     gnugrep
     gnused
@@ -57,65 +63,35 @@ stdenvNoCC.mkDerivation {
     zip
   ];
 
-  installPhase = ''
-    runHook preInstall
-
-    app="$out/Applications/Spotify.app"
-    install -d "$app"
-    tar -xpf ${spotifySource} -C "$app"
-    chmod -R u+rwX "$app"
-
-    # Keep the upstream patcher offline and replace its one absolute host-tool
-    # call. Any unexpected curl use fails even if a builder permits networking.
-    fakeBin="$TMPDIR/fake-bin"
-    install -d "$fakeBin"
-    printf '%s\n' '#!/bin/sh' 'exit 1' > "$fakeBin/curl"
-    chmod +x "$fakeBin/curl"
-    cat > "$fakeBin/xattr" <<'EOF'
-    #!/bin/sh
-    if [ "$#" -eq 2 ] && [ "$1" = "-cr" ]; then
-      exit 0
-    fi
-    printf 'unsupported xattr invocation: %s\n' "$*" >&2
-    exit 1
-    EOF
-    chmod +x "$fakeBin/xattr"
-
-    export HOME="$TMPDIR/spotx-home"
-    export PATH="$fakeBin:$PATH"
-    export SPOTX_BUILD_MODE=true
-    install -d "$HOME"
-
-    spotxScript="$TMPDIR/spotx.sh"
-    sed 's|/usr/bin/xattr|xattr|g' ${spotxSource}/spotx.sh > "$spotxScript"
-
-    ${lib.getExe bash} "$spotxScript" \
-      -F ${lib.escapeShellArg source.version} \
-      -P "$out/Applications" \
-      --blockupdates \
-      --skipcodesign \
-      ${lib.escapeShellArgs spotxArgs}
-
-    unzip -p "$app/Contents/Resources/Apps/xpui.spa" > "$TMPDIR/spotx-xpui-content"
-    grep -Fq '//# SpotX was here' "$TMPDIR/spotx-xpui-content"
-    rm -f "$app/Contents/MacOS/Spotify.bak"
-    rm -f "$app/Contents/Resources/Apps/xpui.bak"
-
-    runHook postInstall
+  nativeInstallCheckInputs = [ python3 ];
+  postInstallCheck = ''
+    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Spotify.app" --expected-version ${lib.escapeShellArg source.version}
+  '';
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
     runHook postInstallCheck
   '';
 
+  installPhase = ''
+    source ${
+      replaceVars ./scripts/darwin-install-phase.sh {
+        inherit spotifySource;
+        inherit spotxSource;
+        bash = lib.getExe bash;
+        sourceVersion = lib.escapeShellArg source.version;
+        patchArguments = lib.escapeShellArgs spotxArgs;
+      }
+    }
+  '';
+
   signSpotifyBundlePhase = ''
-    runHook preSignSpotifyBundle
-
-    app="$out/Applications/Spotify.app"
-    ${lib.getExe rcodesign} sign \
-      --code-signature-flags runtime \
-      --entitlements-xml-file ${entitlements} \
-      "$app"
-    test -s "$app/Contents/_CodeSignature/CodeResources"
-
-    runHook postSignSpotifyBundle
+    source ${
+      replaceVars ./scripts/darwin-sign-bundle.sh {
+        rcodesign = lib.getExe rcodesign;
+        inherit entitlements;
+      }
+    }
   '';
 
   passthru = {
@@ -124,16 +100,20 @@ stdenvNoCC.mkDerivation {
     spotxVersion = source.version;
     spotifyVersion = source.version;
     updateScript = [
-      "python3"
-      "pkgs/by-name/sp/spotify-spotx/update.py"
+      (lib.getExe (callPackage ./update.nix { }))
+      "--source-directory"
+      (builtins.unsafeDiscardStringContext (toString ./.))
     ];
   };
 
   meta = {
-    description = "Spotify for macOS patched with SpotX-Bash and signed as a complete app bundle";
+    description = "Music streaming client patched with SpotX-Bash and signed as a complete macOS bundle";
     homepage = "https://github.com/SpotX-Official/SpotX-Bash";
     license = lib.licenses.unfree;
     platforms = [ "aarch64-darwin" ];
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-  };
+  }
+  // lib.optionalAttrs (
+    stdenvNoCC.hostPlatform.isDarwin && lib.versionAtLeast (lib.versions.majorMinor lib.version) "26.11"
+  ) { mainDarwinApp = "Spotify.app"; };
 }

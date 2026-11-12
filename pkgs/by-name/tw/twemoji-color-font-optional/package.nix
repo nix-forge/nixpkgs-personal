@@ -10,23 +10,13 @@
   # update a source defined outside this package directory.
   passthru = lib.removeAttrs (old.passthru or { }) [ "updateScript" ];
   meta = old.meta // {
+    maintainers = [ ];
     sourceProvenance = [ lib.sourceTypes.binaryBytecode ];
     description = "Twitter color emoji font without default Fontconfig substitutions";
     platforms = lib.platforms.unix;
   };
   doInstallCheck = true;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    cmp "$src/LICENSE-CC-BY.txt" "$out/share/doc/twemoji-color-font-optional/LICENSE-CC-BY.txt"
-    cmp "$src/LICENSE-MIT.txt" "$out/share/doc/twemoji-color-font-optional/LICENSE-MIT.txt"
-    test "$(find "$out/share/fonts" -type f | wc -l)" -gt 0
-    test ! -e "$out/etc/fonts"
-    runHook postInstallCheck
-  '';
+  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
   # Provide the family explicitly without replacing normal text or Noto emoji.
-  postInstall = (old.postInstall or "") + ''
-    install -Dm644 LICENSE-CC-BY.txt "$out/share/doc/twemoji-color-font-optional/LICENSE-CC-BY.txt"
-    install -Dm644 LICENSE-MIT.txt "$out/share/doc/twemoji-color-font-optional/LICENSE-MIT.txt"
-    rm -rf "$out/etc/fonts"
-  '';
+  postInstall = (old.postInstall or "") + (builtins.readFile ./scripts/post-install.sh);
 })

@@ -28,8 +28,9 @@ Existing application permissions and preferences do not automatically migrate.
 The package does not unregister or modify an existing upstream installation.
 
 Run `python3 update.py --dry-run` to preview a pin update. `rebrand.py` applies
-checked identity and updater changes after the Swift compatibility patch. Review
-upstream branding, helper requirements, and update code on each source update.
+checked identity and updater changes after any selected Swift compatibility patch.
+Review upstream branding, helper requirements, and update code on each source
+update.
 Native macOS checks compile the app and run the helper self-test; launching the
 GUI and verifying macOS permissions require a separate native smoke test.
 
@@ -42,8 +43,7 @@ Defining a second `SQLite3` module conflicts with AppKit and SwiftUI imports.
 Native builds compile those frameworks together with SQLite, check that the
 imported header and runtime versions match, and run an in-memory SQL query
 with the app's import and linker flags before compiling the app. This covers
-the OpenCode reader added in 3.4.1 while retaining the older source pin until
-its update passes validation.
+the OpenCode reader in the selected 3.4.1 source.
 
 The Now Playing adapter enforces complete concurrency diagnostics with warnings
 as errors in Swift 5 language mode. The full application and fan helper still
@@ -52,13 +52,16 @@ targets and propagates compiler errors, while continuing to inspect the remainin
 targets:
 
 ```console
-SWIFTC=swiftc Scripts/check-concurrency.sh /path/to/patched-source
+SWIFTC=swiftc scripts/check-concurrency.sh /path/to/patched-source
 ```
 
-Supply the unpacked source after the package's compatibility patch and
+The diagnostic counts and optimization measurements below are historical. They
+do not establish results for the updated 3.4.1 source and Swift 6.2.4.
+
+Supply the unpacked source after any selected compatibility patch and
 `rebrand.py`. Set `VORSSAINT_WARNINGS_AS_ERRORS=1` to make application and helper
 warnings fail too. This lane is diagnostic and is not an ordinary package build
-gate. On the pinned source, Swift 5.10.1 reports 21 application errors and
+gate. On the earlier source pin, Swift 5.10.1 reported 21 application errors and
 366 warnings before stopping; later source files can contain further findings.
 Adding `@MainActor` to `AppDelegate` alone breaks ordinary compilation at
 `CommandBarCatalog` call sites, so that change requires migrating the callers.
@@ -67,7 +70,7 @@ Swift 6.3.3 also reports an expression-diagnostic failure in
 callbacks. The package keeps its logger on the controller and reads startup
 arguments through Foundation, removing four pinned-toolchain diagnostics without
 changing queue or XPC behavior. Upstream 3.4.1 includes those two helper fixes,
-so the local `fan-helper-concurrency.patch` applies only to older releases.
+so the redundant local fan-helper patch has been removed.
 Complete helper checking still reports 19
 Swift 5.10 warnings, including callback captures and the imported
 `mach_task_self_` global. The existing locked `AsyncResultBox` compatibility
@@ -83,7 +86,7 @@ fell from 3.71 to 2.67 seconds; peak resident memory increased from 201 to 246 M
 These measurements do not establish application startup or fan-control latency.
 
 ```console
-Scripts/benchmark-optimization.sh /path/to/patched-source
+scripts/benchmark-optimization.sh /path/to/patched-source
 ```
 
 The script alternates baseline and WMO builds and reports wall time, CPU time,

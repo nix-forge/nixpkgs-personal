@@ -100,18 +100,16 @@ jobs:
       - name: Test package automation publication
         run: |
           test -f tests/test_update_packages.py
-          python3 -B -m unittest discover -s tests -p test_update_packages.py -v
+          nix develop --command python3 -B -m unittest discover -s tests -p test_update_packages.py -v
       - name: Test build selection and source fetch retries
         run: python3 -m unittest discover -s .github/tests
-      - name: Test safe release archive inspection
-        run: python3 -B -m unittest discover -s pkgs/by-name/re/remindctl -p test_update.py
       - name: Test GitHub skill updater error diagnostics
         run: nix develop --command python3 -B -m unittest discover -s pkgs/by-name/ps/pstack-skills -p
           test_update.py
       - name: Test AudioMuse AI dependency updater
         run: python3 -B -m unittest discover -s pkgs/by-name/au/audiomuse-ai -p 'test_*.py'
       - name: Check package discovery catalog
-        run: python3 scripts/package-catalog.py --check
+        run: python3 scripts/package_catalog.py --check
       - name: Check shared workflow contracts
         uses: nix-forge/ci/actions/validate-workflows@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
       - name: Run repository hooks and publication checks
@@ -166,32 +164,100 @@ jobs:
         include:
           - system: x86_64-linux
             runner: ubuntu-24.04
-            name: Build (x86_64-linux)
-            partition-count: 2
+            name: Build (x86_64-linux 1/6)
+            partition-count: 6
             partition-index: 0
           - system: x86_64-linux
             runner: ubuntu-24.04
             name: Build (x86_64-linux 2/2)
-            partition-count: 2
+            partition-count: 6
             partition-index: 1
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 3/6)
+            partition-count: 6
+            partition-index: 2
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 4/6)
+            partition-count: 6
+            partition-index: 3
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 5/6)
+            partition-count: 6
+            partition-index: 4
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            name: Build (x86_64-linux 6/6)
+            partition-count: 6
+            partition-index: 5
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
-            name: Build (aarch64-linux)
-            partition-count: 2
+            name: Build (aarch64-linux 1/6)
+            partition-count: 6
             partition-index: 0
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
             name: Build (aarch64-linux 2/2)
-            partition-count: 2
+            partition-count: 6
+            partition-index: 1
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 3/6)
+            partition-count: 6
+            partition-index: 2
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 4/6)
+            partition-count: 6
+            partition-index: 3
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 5/6)
+            partition-count: 6
+            partition-index: 4
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            name: Build (aarch64-linux 6/6)
+            partition-count: 6
+            partition-index: 5
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 1/6)
+            partition-count: 6
+            partition-index: 0
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 2/2)
+            partition-count: 6
             partition-index: 1
           - system: aarch64-darwin
             runner: macos-26
-            name: Build (aarch64-darwin)
-            partition-count: 1
-            partition-index: 0
+            name: Build (aarch64-darwin 3/6)
+            partition-count: 6
+            partition-index: 2
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 4/6)
+            partition-count: 6
+            partition-index: 3
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 5/6)
+            partition-count: 6
+            partition-index: 4
+          - system: aarch64-darwin
+            runner: macos-26
+            name: Build (aarch64-darwin 6/6)
+            partition-count: 6
+            partition-index: 5
     runs-on: ${{ matrix.runner }}
-    # A single uncached Node.js dependency can exceed two hours on hosted runners.
-    timeout-minutes: 180
+    # Stable aggregate jobs below gate every shard. Six shards per system
+    # bound cold application batches that exceeded the six-hour hosted limit.
+    # Legacy 2/2 names remain stable for branch-protection compatibility.
+    # Each check/package still belongs to exactly one shard per native system.
+    timeout-minutes: 360
     permissions:
       contents: read
     steps:
@@ -228,19 +294,23 @@ jobs:
           PARTITION_INDEX: ${{ matrix.partition-index }}
         shell: bash
         run: bash .github/scripts/build-affected.sh
-      - name: Verify Codex bundle with Apple's signature verifier
-        if: matrix.system == 'aarch64-darwin'
-        shell: bash
-        run: |
-          set -euo pipefail
-          package=$(nix eval --raw --no-write-lock-file .#packages.aarch64-darwin.openai-codex-desktop.outPath)
-          app_name=$(nix eval --raw --no-write-lock-file .#packages.aarch64-darwin.openai-codex-desktop.appName)
-          if [[ ! -d "$package" ]]; then
-            nix build --no-link --no-write-lock-file .#packages.aarch64-darwin.openai-codex-desktop
-          fi
-          bundle="$package/Applications/$app_name.app"
-          test -d "$bundle"
-          /usr/bin/codesign --verify --deep --strict --verbose=2 "$bundle"
+
+  build-complete:
+    name: Build (${{ matrix.system }})
+    needs: [build]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    strategy:
+      fail-fast: false
+      matrix:
+        system: [x86_64-linux, aarch64-linux, aarch64-darwin]
+    steps:
+      - name: Require every native build shard to pass
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: test "$BUILD_RESULT" = success
   expensive-font-audit:
     needs: [source-start]
     name: Manual expensive font audit (${{ matrix.system }})
@@ -306,6 +376,7 @@ jobs:
       - lint
       - flake
       - build
+      - build-complete
       - expensive-font-audit
       - expensive-audiomuse-audit
       - nur

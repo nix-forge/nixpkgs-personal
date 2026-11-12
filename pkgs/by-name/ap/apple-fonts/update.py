@@ -20,8 +20,9 @@ import urllib.request
 from pathlib import Path
 
 from font_support import inventory, sha256
-from unpack import parse_xml, unpack
+from unpack_font_distribution import parse_xml, unpack
 from update_support import HTTPS_CONTEXT
+from update_transaction import commit_files
 
 CATALOG = "https://mesu.apple.com/assets/macos/com_apple_MobileAsset_Font8/com_apple_MobileAsset_Font8.xml"
 DEVELOPER = [
@@ -217,17 +218,7 @@ def update(cache: Path, old: dict, developers_only: bool = False) -> dict:
 
 
 def replace_files(updates: dict[Path, str]) -> None:
-    temporary = []
-    try:
-        for path, content in updates.items():
-            target = path.with_name(f".{path.name}.tmp")
-            target.write_text(content)
-            temporary.append((target, path))
-        for target, path in temporary:
-            target.replace(path)
-    finally:
-        for target, _ in temporary:
-            target.unlink(missing_ok=True)
+    commit_files(updates)
 
 
 def main() -> int:

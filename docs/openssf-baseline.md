@@ -45,9 +45,9 @@ before protected main can advance.
 Use [CONTRIBUTING.md](../CONTRIBUTING.md) and the package test commands for the
 affected recipe. The baseline evidence set is:
 
-    nix flake check --show-trace
+    just check
     python3 tests/test_nur_check.py
-    python3 tests/run-package-tests.py
+    python3 tests/run_package_tests.py
 
 Package changes include an evaluation or runtime assertion where the package
 has behavior to test. Source hashes and license metadata are reviewed with

@@ -1,0 +1,63 @@
+{
+  "displayName": "Homebridge BlueAir Platform",
+  "name": "homebridge-blueair-purifier",
+  "version": "1.2.2",
+  "description": "Homebridge plugin for BlueAir purifiers",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kovapatrik/homebridge-blueair-purifier.git"
+  },
+  "homepage": "https://github.com/kovapatrik/homebridge-blueair-purifier#readme",
+  "bugs": {
+    "url": "https://github.com/kovapatrik/homebridge-blueair-purifier/issues"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/kovapatrik"
+    },
+    {
+      "type": "buymeacoffee",
+      "url": "https://www.buymeacoffee.com/kovapatrik"
+    }
+  ],
+  "engines": {
+    "node": "^20.18.0 || ^22.10.0 || ^24.0.0",
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "lint": "eslint . --cache --ext .ts",
+    "watch": "npm run build && npm link && nodemon",
+    "build": "rimraf ./dist && tsc",
+    "prepublishOnly": "npm run lint && npm run build",
+    "format": "prettier --log-level warn --write \"**/*.ts\" && npm run lint -- --fix"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "blueair",
+    "purifier",
+    "air purifier"
+  ],
+  "devDependencies": {
+    "@types/lodash": "^4.17.0",
+    "@types/node": "^20.12.5",
+    "@typescript-eslint/eslint-plugin": "^7.5.0",
+    "@typescript-eslint/parser": "^7.5.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "homebridge": "^1.8.4",
+    "nodemon": "^3.1.0",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.4"
+  },
+  "dependencies": {
+    "@homebridge/plugin-ui-utils": "^1.0.3",
+    "async-mutex": "^0.5.0",
+    "lodash": "^4.18.1"
+  }
+}

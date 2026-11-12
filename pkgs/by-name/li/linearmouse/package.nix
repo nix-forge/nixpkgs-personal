@@ -1,6 +1,8 @@
 {
+  callPackage,
   lib,
   stdenvNoCC,
+  python3,
   fetchurl,
   _7zz,
 }:
@@ -22,13 +24,7 @@ stdenvNoCC.mkDerivation {
   # Suppress NTFS/APFS alternate streams as 7-Zip would otherwise materialize a
   # quarantine stream as an Info.plist:com.apple.quarantine file and invalidate
   # the embedded LaunchAtLogin helper's signature.
-  unpackPhase = ''
-    runHook preUnpack
-
-    7zz x -sns- "$src"
-
-    runHook postUnpack
-  '';
+  unpackPhase = builtins.readFile ./scripts/unpack-phase.sh;
 
   dontPatch = true;
   dontConfigure = true;
@@ -37,29 +33,22 @@ stdenvNoCC.mkDerivation {
   # Developer ID signature and make its TCC identity less stable.
   dontFixup = true;
 
-  installPhase = ''
-    runHook preInstall
+  installPhase = builtins.readFile ./scripts/install-phase.sh;
 
-    install -d "$out/Applications"
-    cp -a LinearMouse.app "$out/Applications/"
-
-    runHook postInstall
+  nativeInstallCheckInputs = [ python3 ];
+  postInstallCheck = ''
+    python3 ${./scripts/check_app_bundle.py} "$out/Applications/LinearMouse.app" --expected-version ${lib.escapeShellArg source.version}
   '';
-
   doInstallCheck = true;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    test -s "$out/Applications/LinearMouse.app/Contents/Info.plist"
-    test -x "$out/Applications/LinearMouse.app/Contents/MacOS/LinearMouse"
-    runHook postInstallCheck
-  '';
+  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru = {
     configurationSchema = fetchurl source.configurationSchema;
     configurationSchemaVersion = source.version;
     updateScript = [
-      "python3"
-      "pkgs/by-name/li/linearmouse/update.py"
+      (lib.getExe (callPackage ./update.nix { }))
+      "--source-directory"
+      (builtins.unsafeDiscardStringContext (toString ./.))
     ];
   };
 
@@ -71,5 +60,8 @@ stdenvNoCC.mkDerivation {
     license = lib.licenses.mit;
     platforms = lib.platforms.darwin;
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-  };
+  }
+  // lib.optionalAttrs (
+    stdenvNoCC.hostPlatform.isDarwin && lib.versionAtLeast (lib.versions.majorMinor lib.version) "26.11"
+  ) { mainDarwinApp = "LinearMouse.app"; };
 }

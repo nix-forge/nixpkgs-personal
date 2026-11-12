@@ -25,21 +25,19 @@ directory but retain their original `SKILL.md` name and all other bytes. An
 integration must use the original name for these skills. Namespaces do not
 expand any license grant. Every selected skill retains its upstream notices.
 
-The default installs the 14 examples with reviewed Apache-2.0 licenses,
-including canvas-design's OFL fonts. The four document skills can be selected
-with `selectedSkills = [ "docx" "pdf" "pptx" "xlsx" ];`. They remain unfree.
+The default installs the 18 skills with reviewed Apache-2.0 licenses,
+including the four document skills and canvas-design's OFL fonts. The document
+skills can also be selected with
+`selectedSkills = [ "docx" "pdf" "pptx" "xlsx" ];`.
 `includeRestricted = true` selects all 19 skills, including `doc-coauthoring`,
 which lacks an explicit per-skill license at this pin and is conservatively
 classified unfree. It is preserved unchanged pending clarification.
 
-Anthropic's [pinned README](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/README.md)
-documents document-skills installation in Claude Code and Claude integrations.
-Its [document-skill terms](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/docx/LICENSE.txt)
-restrict retention outside the Services and derivative works. Use those skills
-within an applicable supported Anthropic agreement; the package does not
-establish permission to export them to arbitrary agents. Local installation
-is not categorically prohibited by the README. `allowUnfree` is an evaluation
-setting, not acceptance of or an exception to those terms.
+At the [reviewed revision](https://github.com/anthropics/skills/tree/2c5958ecac7cee2b583967a2c4981d0f4a75c579),
+the document skills' previous custom terms have been replaced with complete
+[Apache-2.0 notices](https://github.com/anthropics/skills/blob/2c5958ecac7cee2b583967a2c4981d0f4a75c579/skills/docx/LICENSE.txt).
+Their definitions now refer to those notices without the former proprietary
+classification. The catalog records the reviewed notice and definition hashes.
 
 ## Updating the inventory
 

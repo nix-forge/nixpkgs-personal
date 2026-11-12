@@ -15,6 +15,8 @@ The website contains the stable package and maintenance documentation. Source,
 package-level notes, checks, and release history remain in the
 [GitHub repository](https://github.com/nix-forge/nixpkgs-personal).
 
+The [Crafting Apps review](research/artcraft-upstream-review-research.md) records upstream concerns, package fixes and completed platform checks. More investigations are listed in the [research index](research/README.md).
+
 ## Use a package
 
 Build a package without adding the repository to a configuration:

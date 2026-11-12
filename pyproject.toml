@@ -73,6 +73,28 @@ ban-relative-imports = "all"
 strict = true
 
 [tool.ruff.lint.per-file-ignores]
+
+
+"flake/dev/scripts/check_audiomuse_python_contract.py" = [
+  # Import smoke tests fail the build on an incompatible packaged runtime.
+  "assert",
+]
+"pkgs/by-name/wa/wardrowbe-backend/scripts/check_*.py" = [
+  # Native install checks fail immediately on incompatible application imports.
+  "assert",
+]
+"pkgs/by-name/gr/gridcraft/scripts/check_*.py" = [
+  # Installed artifacts must match the fixed independent fixture expectations.
+  "assert",
+  "magic-value-comparison",
+]
+
+"pkgs/by-name/**/scripts/check_*.py" = [
+  # Nix install checks deliberately fail assertions for invalid package artifacts.
+  "assert",
+  "magic-value-comparison",
+]
+
 "fuzz/*.py" = [
   # Fuzzer properties deliberately use assertions to signal a crash.
   "assert",
@@ -121,7 +143,7 @@ strict = true
   "subprocess-without-shell-equals-true",
   "suspicious-subprocess-import",
 ]
-"pkgs/by-name/**/unpack.py" = [
+"pkgs/by-name/**/unpack_font_distribution.py" = [
   # Vendor font archives are unpacked into disposable build directories and
   # checked before installation; commands are fixed argument lists.
   "complex-structure",
@@ -138,7 +160,7 @@ strict = true
   "docstring-missing-returns",
   "print",
 ]
-"pkgs/by-name/ap/apple-color-emoji/check.py" = [
+"pkgs/by-name/ap/apple-color-emoji/check_emoji_artwork.py" = [
   "complex-structure",
   "magic-value-comparison",
   "print",
@@ -146,12 +168,12 @@ strict = true
   "too-many-locals",
   "too-many-statements",
 ]
-"pkgs/by-name/ap/apple-color-emoji/repair.py" = [
+"pkgs/by-name/ap/apple-color-emoji/repair_missing_artwork.py" = [
   "complex-structure",
   "too-many-locals",
   "too-many-statements",
 ]
-"pkgs/by-name/ap/apple-fonts/export.py" = [
+"pkgs/by-name/ap/apple-fonts/export_font_archive.py" = [
   "docstring-missing-exception",
   "docstring-missing-returns",
   "print",
@@ -162,7 +184,7 @@ strict = true
   "suspicious-xml-element-tree-usage",
   "suspicious-xml-etree-import",
 ]
-"pkgs/by-name/mu/mutant-standard-emoji/normalize-shaping.py" = [
+"pkgs/by-name/mu/mutant-standard-emoji/normalize_shaping.py" = [
   "assert",
   "complex-structure",
   "magic-value-comparison",
@@ -174,27 +196,6 @@ strict = true
   "assert",
   "magic-value-comparison",
   "print",
-]
-"pkgs/by-name/op/openai-codex-desktop/check-sandbox.py" = [
-  "assert",
-  "docstring-missing-exception",
-  "print",
-  "subprocess-without-shell-equals-true",
-  "suspicious-subprocess-import",
-]
-"pkgs/by-name/op/openai-codex-desktop/update.py" = [
-  # The appcast is size-bounded, fetched from the pinned HTTPS origin, and DTD
-  # and entity declarations are rejected before ElementTree parses it.
-  "suspicious-xml-element-tree-usage",
-  "suspicious-xml-etree-import",
-]
-"pkgs/by-name/t3/t3-code/farm-stage-deps.py" = [
-  "complex-structure",
-  "magic-value-comparison",
-  "print",
-  "too-many-branches",
-  "too-many-locals",
-  "too-many-statements",
 ]
 "pkgs/by-name/tt/ttf-ms-win11-auto/font_manifest.py" = [
   "docstring-missing-exception",
@@ -209,11 +210,7 @@ strict = true
   "too-many-branches",
   "too-many-statements",
 ]
-"pkgs/by-name/bi/bitwarden-desktop/update.py" = ["complex-structure"]
-"pkgs/by-name/t3/t3-code/update.py" = [
-  "too-many-locals",
-  "too-many-statements-in-try-clause",
-]
+"pkgs/by-name/bi/bitwarden-desktop-bin/update.py" = ["complex-structure"]
 "scripts/*.py" = [
   # Repository maintenance CLIs invoke fixed local tools and print results.
   "docstring-missing-exception",
@@ -233,6 +230,12 @@ strict = true
   "print",
   "subprocess-without-shell-equals-true",
   "suspicious-subprocess-import",
+]
+
+"pkgs/by-name/so/soularr/check_*.py" = [
+  # These package checks use unittest without requiring pytest at build time.
+  "pytest-unittest-assertion",
+  "pytest-unittest-raises-assertion",
 ]
 
 [tool.ruff.format]

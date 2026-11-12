@@ -25,9 +25,12 @@ directory but retain their original `SKILL.md` name and all other bytes. An
 integration must use the original name for these skills. Namespaces do not
 expand any license grant. Every selected skill retains its upstream notices.
 
-The default retains all 39 curated skills, including eight Figma skills.
-The free selection has 31 skills: Apache-2.0 examples and MIT-licensed Notion
-and Vercel skills. It does not require unfree consent. Full selections do.
+The default installs the 31 reviewed free skills: Apache-2.0 examples and
+MIT-licensed Notion and Vercel skills. The eight Figma skills are excluded.
+After reviewing the applicable grant for the intended activity, use an explicit
+`selectedSkills` list or `includeRestricted = true` to include restricted skills.
+The full selection contains all 39 curated skills and requires Nix unfree
+consent. That consent is a package-manager setting, not a license grant.
 
 The [pinned Figma notice](https://github.com/openai/skills/blob/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/figma/LICENSE.txt)
 incorporates the [Figma Developer Terms](https://www.figma.com/legal/developer-terms/).

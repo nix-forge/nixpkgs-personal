@@ -1,0 +1,248 @@
+--- a/backend/app/api/preferences.py
++++ b/backend/app/api/preferences.py
+@@ -1,10 +1,14 @@
+-from typing import Annotated
++import os
++
++from typing import Annotated, Literal
+ from urllib.parse import urlparse
+ from uuid import UUID
+ 
+ import httpx
+ from fastapi import APIRouter, Depends, HTTPException, status
+ 
++from app.config import get_settings
++from app.services.ai_provider import discover_models
+ from app.database import DbSession
+ from app.models.user import User
+ from app.schemas.outfit import stored_occasion_or_default
+@@ -138,47 +142,49 @@
+         )
+ 
+     try:
+-        async with httpx.AsyncClient(timeout=10) as client:
+-            # Try Ollama-style health check
+-            health_url = url.replace("/v1", "/api/tags")
+-            response = await client.get(health_url)
++        settings = get_settings()
++        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
++            return await discover_models(client, url, settings.ai_base_url, settings.ai_api_key)
++    except httpx.ConnectError:
++        return {"status": "error", "error": "Connection refused - is the server running?"}
++    except httpx.TimeoutException:
++        return {"status": "error", "error": "Connection timed out"}
++    except (ValueError, KeyError, TypeError):
++        return {"status": "error", "error": "Provider returned an invalid model list"}
+ 
+-            if response.status_code == 200:
+-                data = response.json()
+-                models = data.get("models", [])
+-                model_names = [m.get("name", "") for m in models]
+ 
+-                # Categorize models
+-                vision_models = [
+-                    m
+-                    for m in model_names
+-                    if any(v in m.lower() for v in ["moondream", "llava", "bakllava", "vision"])
+-                ]
+-                text_models = [m for m in model_names if m not in vision_models]
++async def _codex_control(method: str, action: str, user: User, login_method: str = "browser") -> dict:
++    socket = os.environ.get("WARDROWBE_CODEX_SOCKET")
++    if not socket:
++        if action == "status":
++            return {"enabled": False, "connected": False, "models": []}
++        raise HTTPException(503, "OpenAI account connection is disabled on this server")
++    try:
++        transport = httpx.AsyncHTTPTransport(uds=socket)
++        async with httpx.AsyncClient(transport=transport, timeout=30, follow_redirects=False) as client:
++            response = await client.request(method, f"http://localhost/{action}", params={"user": str(user.id), **({"method": login_method} if action == "login" else {})})
++        if response.status_code != 200:
++            # Only the private adapter's deliberately safe errors cross this boundary.
++            detail = response.json().get("detail", "OpenAI connection failed")
++            raise HTTPException(response.status_code, detail)
++        result = response.json()
++        if action == "status":
++            result["endpoint"] = os.environ.get("WARDROWBE_CODEX_URL", "")
++        return result
++    except (httpx.RequestError, ValueError) as error:
++        raise HTTPException(503, "OpenAI connection is unavailable. Try again shortly.") from error
+ 
+-                return {
+-                    "status": "connected",
+-                    "available_models": model_names,
+-                    "vision_models": vision_models,
+-                    "text_models": text_models,
+-                }
+-            else:
+-                return {
+-                    "status": "error",
+-                    "error": f"HTTP {response.status_code}",
+-                }
+-    except httpx.ConnectError:
+-        return {
+-            "status": "error",
+-            "error": "Connection refused - is the server running?",
+-        }
+-    except httpx.TimeoutException:
+-        return {
+-            "status": "error",
+-            "error": "Connection timed out",
+-        }
+-    except Exception as e:
+-        return {
+-            "status": "error",
+-            "error": str(e),
+-        }
++
++@router.get("/openai/status", response_model=dict)
++async def openai_status(current_user: Annotated[User, Depends(get_current_user)]) -> dict:
++    return await _codex_control("GET", "status", current_user)
++
++
++@router.post("/openai/login", response_model=dict)
++async def openai_login(current_user: Annotated[User, Depends(get_current_user)], method: Literal["browser", "device"] = "browser") -> dict:
++    return await _codex_control("POST", "login", current_user, method)
++
++
++@router.post("/openai/disconnect", response_model=dict)
++async def openai_disconnect(current_user: Annotated[User, Depends(get_current_user)]) -> dict:
++    return await _codex_control("POST", "disconnect", current_user)
+--- a/backend/app/services/ai_service.py
++++ b/backend/app/services/ai_service.py
+@@ -12,6 +12,7 @@
+ from PIL import Image, ImageOps
+ from pydantic import BaseModel
+ 
++from app.services.ai_provider import provider_headers
+ from app.config import get_settings
+ from app.utils.garment_vocabulary import (
+     COLORS,
+@@ -311,12 +312,9 @@
+         self.vision_model = self._endpoints[0].vision_model
+         self.text_model = self._endpoints[0].text_model
+ 
+-    def _get_headers(self) -> dict:
+-        """Get headers for AI API requests, including auth if configured."""
+-        headers = {"Content-Type": "application/json"}
+-        if self.api_key:
+-            headers["Authorization"] = f"Bearer {self.api_key}"
+-        return headers
++    def _get_headers(self, endpoint: AIEndpointConfig) -> dict:
++        settings = get_settings()
++        return provider_headers(endpoint.url, settings.ai_base_url, self.api_key)
+ 
+     def _preprocess_image(self, image_path: str | Path) -> str:
+         """
+@@ -447,7 +445,7 @@
+             use_reasoning_effort = bool(self.settings.ai_reasoning_effort)
+             current_reasoning_effort = self.settings.ai_reasoning_effort
+ 
+-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
++            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=False) as client:
+                 attempt = 0
+                 while attempt < self.settings.ai_max_retries:
+                     try:
+@@ -465,7 +463,7 @@
+ 
+                         response = await client.post(
+                             f"{endpoint.url}/chat/completions",
+-                            headers=self._get_headers(),
++                            headers=self._get_headers(endpoint),
+                             json=request_body,
+                         )
+                         response.raise_for_status()
+@@ -649,10 +647,10 @@
+ 
+         for endpoint in self._endpoints:
+             try:
+-                async with httpx.AsyncClient(timeout=5, follow_redirects=True) as client:
++                async with httpx.AsyncClient(timeout=5, follow_redirects=False) as client:
+                     # Try OpenAI-compatible /v1/models endpoint first
+                     response = await client.get(
+-                        f"{endpoint.url}/models", headers=self._get_headers()
++                        f"{endpoint.url}/models", headers=self._get_headers(endpoint)
+                     )
+                     if response.status_code == 200:
+                         data = response.json()
+@@ -731,7 +729,7 @@
+             use_reasoning_effort = bool(self.settings.ai_reasoning_effort)
+             current_reasoning_effort = self.settings.ai_reasoning_effort
+ 
+-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
++            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=False) as client:
+                 for attempt in range(self.settings.ai_max_retries):
+                     try:
+                         request_body = {
+@@ -746,7 +744,7 @@
+ 
+                         response = await client.post(
+                             f"{endpoint.url}/chat/completions",
+-                            headers=self._get_headers(),
++                            headers=self._get_headers(endpoint),
+                             json=request_body,
+                         )
+                         response.raise_for_status()
+--- /dev/null
++++ b/backend/app/services/ai_provider.py
+@@ -0,0 +1,61 @@
++"""Provider discovery and credentials scoped to the configured endpoint."""
++
++import asyncio
++import httpx
++import os
++from pathlib import Path
++
++
++def provider_headers(url, configured_url, api_key):
++    headers = {"Content-Type": "application/json"}
++    codex_url = os.environ.get("WARDROWBE_CODEX_URL", "").rstrip("/")
++    if codex_url and url.rstrip("/") == codex_url:
++        token_file = os.environ.get("WARDROWBE_CODEX_TOKEN_FILE", "")
++        if token_file:
++            headers["Authorization"] = f"Bearer {Path(token_file).read_text(encoding='utf-8').strip()}"
++    elif api_key and url.rstrip("/") == configured_url.rstrip("/"):
++        headers["Authorization"] = f"Bearer {api_key}"
++    return headers
++
++
++async def discover_models(client, url, configured_url, api_key):
++    response = await client.get(
++        f"{url}/models", headers=provider_headers(url, configured_url, api_key)
++    )
++    if response.status_code != 200:
++        return {"status": "error", "error": f"Model discovery returned HTTP {response.status_code}"}
++    names = sorted({item["id"] for item in response.json()["data"] if isinstance(item.get("id"), str)})
++    # OpenAI compatible catalogs do not standardize vision capabilities.
++    # Offer the catalog in both selectors unless Ollama can identify capabilities.
++    vision, text = names, names
++    if url.endswith("/v1"):
++        native = url[:-3]
++        try:
++            tags = await client.get(f"{native}/api/tags", timeout=2)
++            is_ollama = tags.status_code == 200 and isinstance(tags.json().get("models"), list)
++        except (httpx.RequestError, ValueError, AttributeError):
++            is_ollama = False
++        if is_ollama:
++            slots = asyncio.Semaphore(4)
++
++            async def capabilities(name):
++                async with slots:
++                    try:
++                        result = await client.post(f"{native}/api/show", json={"model": name}, timeout=2)
++                        if result.status_code != 200:
++                            return name, None
++                        return name, result.json().get("capabilities")
++                    except (httpx.RequestError, ValueError, AttributeError):
++                        return name, None
++
++            try:
++                available = await asyncio.wait_for(
++                    asyncio.gather(*(capabilities(name) for name in names[:100])), timeout=5
++                )
++            except TimeoutError:
++                available = []
++            known = {name: caps for name, caps in available if isinstance(caps, list)}
++            vision = [name for name in names if name not in known or "vision" in known[name]]
++            text = [name for name in names if name not in known or "completion" in known[name]]
++    return {"status": "connected", "available_models": names,
++            "vision_models": vision, "text_models": text}

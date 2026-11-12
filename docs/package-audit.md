@@ -1,5 +1,10 @@
 # Package audit
 
+This is a historical review. Packages retired to upstream, and applications
+removed from installation selections, are no longer personal outputs. The
+[current catalog](catalog.md) is authoritative; their earlier evidence remains
+below for reference.
+
 Reviewed 2026-09-14. The [research](package-design-research.md) explains the
 layout and language choices; the [standard](package-standard.md) defines the
 contract checked by CI. The current inventory consolidates Apple's developer
@@ -57,7 +62,7 @@ claim macOS builds or GUI tests were run from the Linux review host.
 | `apple-color-emoji` | Linux ARM64, Linux x64 | Local Python updater | Source identity, repaired glyph checks and 3 updater tests |
 | `apple-fonts` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Per-file hash and face verification during installation |
 | `bibata-cursors-hyprcursor` | Linux ARM64, Linux x64 | Manual review | Package installation checks |
-| `bitwarden-desktop` | macOS ARM64 | Local Python updater | Package installation checks |
+| `bitwarden-desktop-bin` | macOS ARM64 | Local Python updater | Package installation checks |
 | `claude-desktop` | macOS ARM64 | Local Python updater | Package installation checks |
 | `emojione-legacy` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Package installation checks |
 | `finder-favorites` | macOS ARM64 | Manual review | Native compiler, unit, self-test and install checks |
@@ -72,18 +77,16 @@ claim macOS builds or GUI tests were run from the Linux review host.
 | `noctalia-dark-app-icons` | Linux ARM64, Linux x64 | Manual review | Package installation checks |
 | `noctalia-personal` | Linux ARM64, Linux x64 | Manual review | C++ bar-icon policy test and pinned upstream build |
 | `ocr-capture` | macOS ARM64 | Manual review | Native compiler, unit, self-test and install checks |
-| `openai-codex-desktop` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Platform-specific package contract; 8 updater tests |
 | `openai-skills` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Package installation checks |
 | `pstack-skills` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Package installation checks |
 | `remindctl` | macOS ARM64 | Local Python updater | Package installation checks |
 | `spotify-spotx` | macOS ARM64, Linux x64 | Local Python updater | Offline patch marker; macOS bundle signing checks |
 | `steam` | macOS ARM64 | Local Python updater | Package installation checks |
 | `steam-cef-scale-override` | Linux x64 | Manual review | C ABI integration, invalid-input and ELF checks |
-| `t3-code` | macOS ARM64 | Local Python updater | Package installation checks |
 | `ttf-ms-win11-auto` | macOS ARM64, Linux ARM64, Linux x64 | Local Python updater | Extracted and installed manifest validation; 5 unit tests |
 | `twemoji-color-font-optional` | macOS ARM64, Linux ARM64, Linux x64 | Manual review | Remaining font files and excluded-file/policy checks |
 | `vorssaint` | macOS ARM64 | Local Python updater | Package installation checks |
-| `wootility` | macOS ARM64 | Local Python updater | Package installation checks |
+| `wootility-bin` | macOS ARM64 | Local Python updater | Package installation checks |
 
 ## Validation
 
@@ -159,7 +162,7 @@ classifications, not an audit of every dependency's copyright notices.
 | `apple-color-emoji` | unfree, OFL-1.1 | Yes | Font binary |
 | `apple-fonts` | unfree | Yes | Font binary |
 | `bibata-cursors-hyprcursor` | GPL-3.0-or-later | No | Source |
-| `bitwarden-desktop` | GPL-3.0-only | No | Native binary |
+| `bitwarden-desktop-bin` | GPL-3.0-only | No | Native binary |
 | `claude-desktop` | unfree | Yes | Native binary |
 | `emojione-legacy` | MIT, CC-BY-4.0 | No | Font binary |
 | `finder-favorites` | MIT | No | Source |
@@ -174,18 +177,16 @@ classifications, not an audit of every dependency's copyright notices.
 | `noctalia-dark-app-icons` | CC-BY-SA-4.0, GPL-3.0-only | No | Source |
 | `noctalia-personal` | MIT, Apache-2.0 | No | Source |
 | `ocr-capture` | MIT | No | Source |
-| `openai-codex-desktop` | unfree | Yes | Native binary |
-| `openai-skills` | Apache-2.0, MIT, unfree | Yes | Source |
+| `openai-skills` | Apache-2.0, MIT (default); unfree Figma opt-in | Only restricted selections | Source |
 | `pstack-skills` | MIT | No | Source |
 | `remindctl` | MIT | No | Native binary |
 | `spotify-spotx` | unfree | Yes | Native binary |
 | `steam` | unfree | Yes | Native binary |
 | `steam-cef-scale-override` | MIT | No | Source |
-| `t3-code` | MIT | No | Native binary |
 | `ttf-ms-win11-auto` | unfree | Yes | Font binary |
 | `twemoji-color-font-optional` | CC-BY-4.0, MIT | No | Font binary |
 | `vorssaint` | GPL-3.0-or-later | No | Source |
-| `wootility` | unfree | Yes | Native binary |
+| `wootility-bin` | unfree | Yes | Native binary |
 
 ### Validation and limits
 

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "notification-process"
+version = "0.1.0"
+description = "Owned POSIX commands with blocking pipe and exit notifications"
+requires-python = ">=3.14"
+
+[tool.setuptools]
+py-modules = ["notification_process"]
+package-dir = { "" = "src" }

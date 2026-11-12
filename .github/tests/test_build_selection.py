@@ -9,7 +9,7 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "build-affected.sh"
 RETRY = SCRIPT.with_name("build-with-fetch-retry.sh")
-PARTITION = SCRIPT.with_name("partition-packages.py")
+PARTITION = SCRIPT.with_name("partition_packages.py")
 WEIGHTS = SCRIPT.parents[1] / "ci-package-weights.json"
 
 
@@ -26,31 +26,22 @@ def commit(root):
 def package(path, name, version="1", description="before"):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        'let drv = builtins.derivation { name = "'
-        + name
-        + "-"
-        + version
-        + '"; system = "x86_64-linux"; builder = "/bin/sh"; }; '
-        + 'in drv // { meta.description = "'
-        + description
-        + '"; }\n'
+        (Path(__file__).with_name("fixtures") / "package.nix.in")
+        .read_text(encoding="utf-8")
+        .replace("@name@", name)
+        .replace("@version@", version)
+        .replace("@description@", description)
     )
 
 
-def flake(root, name, empty=False, invalid=False):
+def flake(root, name, empty=False, invalid=False, application=False):
     text = (
-        "{ outputs = { self }: { packages.x86_64-linux = { "
-        + (
-            ""
-            if empty
-            else name
-            + " = import ./pkgs/by-name/"
-            + name[:2]
-            + "/"
-            + name
-            + "/package.nix; "
-        )
-        + "other = import ./other.nix; }; }; }\n"
+        (Path(__file__).with_name("fixtures") / "flake.nix.in")
+        .read_text(encoding="utf-8")
+        .replace("@name@", name)
+        .replace("@prefix@", name[:2])
+        .replace("@empty@", "true" if empty else "false")
+        .replace("@application@", "true" if application else "false")
     )
     (root / "flake.nix").write_text("invalid nix syntax !!!" if invalid else text)
 
@@ -58,7 +49,7 @@ def flake(root, name, empty=False, invalid=False):
 class BuildSelectionTests(unittest.TestCase):
     def test_weighted_partition_scales_with_new_packages(self):
         names = ["maintainerr", "alpha", "beta", "gamma", "future"]
-        for count in (1, 2, 3):
+        for count in (1, 2, 3, 6):
             shards = []
             for index in range(count):
                 result = subprocess.run(
@@ -110,6 +101,7 @@ class BuildSelectionTests(unittest.TestCase):
             "missing-base",
             "diff-failure",
             "unchanged-contracts",
+            "application-contracts",
             "current-eval-failure",
             "evaluation-only",
             "unknown-policy-package",
@@ -143,7 +135,7 @@ class BuildSelectionTests(unittest.TestCase):
                 command(["git", "config", "user.email", "ci@example.invalid"], root)
                 command(["git", "config", "core.hooksPath", "/dev/null"], root)
                 name = (
-                    "openai-codex-desktop"
+                    "unchanged-app"
                     if case == "unchanged-contracts"
                     else "maintainerr"
                     if case == "partitioned-maintainerr"
@@ -172,6 +164,8 @@ class BuildSelectionTests(unittest.TestCase):
                     name,
                     empty=case == "new-package",
                     invalid=case == "base-eval-failure",
+                    application=case
+                    in {"application-contracts", "unchanged-contracts"},
                 )
                 if case == "registry-change":
                     registry = root / "flake/dev/packages.nix"
@@ -200,7 +194,13 @@ class BuildSelectionTests(unittest.TestCase):
                     else "1",
                     description="after",
                 )
-                flake(root, name, invalid=case == "current-eval-failure")
+                flake(
+                    root,
+                    name,
+                    invalid=case == "current-eval-failure",
+                    application=case
+                    in {"application-contracts", "unchanged-contracts"},
+                )
                 if case == "registry-change":
                     package(registry, "other", version="2")
                     entry.write_text(
@@ -221,23 +221,18 @@ class BuildSelectionTests(unittest.TestCase):
                 bindir = temp / "bin"
                 bindir.mkdir()
                 nix = bindir / "nix"
-                nix.write_text("""#!/usr/bin/env bash
-set -eu
-if [[ "$1" == build ]]; then
-    printf '%s\\n' "$*" >> "$BUILD_LOG"
-    exit 0
-fi
-exec "$REAL_NIX" "$@"
-""")
+                nix.write_text(
+                    (Path(__file__).with_name("fixtures") / "nix.sh").read_text(
+                        encoding="utf-8"
+                    )
+                )
                 nix.chmod(0o755)
                 git = bindir / "git"
-                git.write_text("""#!/usr/bin/env bash
-set -eu
-if [[ "$1" == diff && "$TEST_CASE" == diff-failure ]]; then
-    exit 128
-fi
-exec "$REAL_GIT" "$@"
-""")
+                git.write_text(
+                    (Path(__file__).with_name("fixtures") / "git.sh").read_text(
+                        encoding="utf-8"
+                    )
+                )
                 git.chmod(0o755)
                 log = temp / "build.log"
                 if case in {"no-base", "partitioned-maintainerr"}:
@@ -260,6 +255,7 @@ exec "$REAL_GIT" "$@"
                     "REAL_GIT": real_git,
                     "TEST_CASE": case,
                     "BUILD_LOG": str(log),
+                    "EVAL_LOG": str(temp / "eval.log"),
                     "BASE_SHA": base,
                     "SYSTEM": "x86_64-linux",
                 }
@@ -285,6 +281,13 @@ exec "$REAL_GIT" "$@"
                         self.assertIn("policy", result.stdout.lower())
                     continue
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                evaluations = (temp / "eval.log").read_text().splitlines()
+                current_maps = [
+                    line for line in evaluations if ".#packages.x86_64-linux" in line
+                ]
+                self.assertEqual(len(current_maps), 1, evaluations)
+                self.assertIn("builtins.mapAttrs", current_maps[0])
+                self.assertFalse(any("--raw" in line for line in evaluations))
                 if case == "evaluation-only":
                     self.assertEqual(builds, [])
                     self.assertIn("fixture restriction", result.stdout)
@@ -298,15 +301,27 @@ exec "$REAL_GIT" "$@"
                 elif case == "registry-change":
                     self.assertEqual(len(builds), 1, builds)
                     self.assertIn(".#other", builds[0])
-                elif case == "unchanged-contracts":
-                    self.assertEqual(len(builds), 1, builds)
-                    self.assertIn(
-                        "checks.x86_64-linux.openai-codex-desktop-updater", builds[0]
+                elif case in {"application-contracts", "unchanged-contracts"}:
+                    contracts = (
+                        "cli",
+                        "gui",
+                        "wayland",
+                        "licenses",
+                        "appstream",
+                        "wayland-clipboard",
+                        "server",
+                        "quit-state",
+                        "host-tests-artifact",
+                        "appimage-runtime",
                     )
-                    self.assertIn(
-                        "checks.x86_64-linux.openai-codex-desktop-package-contract",
-                        builds[0],
-                    )
+                    self.assertEqual(len(builds), len(contracts), builds)
+                    for index, contract in enumerate(contracts):
+                        self.assertIn(
+                            f"applicationChecks.x86_64-linux.{name}-{contract}",
+                            builds[index],
+                        )
+                    self.assertNotIn("other-cli", "\n".join(builds))
+                    self.assertIn("unchanged derivation", result.stdout)
                 else:
                     full_rebuild = case in {
                         "base-eval-failure",

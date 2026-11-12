@@ -1,4 +1,5 @@
 {
+  replaceVars,
   lib,
   fetchFromGitHub,
   python313Packages,
@@ -42,11 +43,12 @@ python313Packages.buildPythonPackage (finalAttrs: {
   # same phase. This avoids coupling the recipe to Nixpkgs' generated-table
   # patch and makes an upstream layout change fail loudly.
   postPatch = ''
-    substituteInPlace setup.py \
-      --replace-fail '${upstream.upstreamTokenizersRequirement}' '${upstream.tokenizersRequirement}'
-    python setup.py deps_table_update
-    grep -Fq '"tokenizers": "${upstream.tokenizersRequirement}",' \
-      src/transformers/dependency_versions_table.py
+    source ${
+      replaceVars ./scripts/transformers-post-patch.sh {
+        upstream_upstreamTokenizersRequirement = upstream.upstreamTokenizersRequirement;
+        upstream_tokenizersRequirement = upstream.tokenizersRequirement;
+      }
+    }
   '';
 
   # Nixpkgs' tokenizers is newer than Transformers' release metadata allows,

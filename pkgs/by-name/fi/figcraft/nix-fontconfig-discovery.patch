@@ -1,0 +1,140 @@
+--- a/crates/text/src/fontdb.rs
++++ b/crates/text/src/fontdb.rs
+@@ -632,6 +632,10 @@
+     /// Index the system font directories (desktop only): family names are read now, faces loaded
+     /// when first used. Safe to call more than once.
+     pub fn scan_system(&mut self) {
++        #[cfg(not(target_arch = "wasm32"))]
++        if system_fonts_opted_out() {
++            return;
++        }
+         if self.system_scanned {
+             return;
+         }
+@@ -668,6 +672,10 @@
+     }
+     #[cfg(all(unix, not(target_os = "macos")))]
+     {
++        #[cfg(target_os = "linux")]
++        if !system_fonts_opted_out() {
++            v.extend(fontconfig_dirs());
++        }
+         v.push("/usr/share/fonts".into());
+         v.push("/usr/local/share/fonts".into());
+         if let Some(h) = std::env::var_os("HOME") {
+@@ -676,6 +684,37 @@
+         }
+     }
+     v
++}
++
++// Query the host's configured font collection, including immutable Nix profile paths.
++// This subprocess is Linux-only; Darwin keeps its native font directories.
++#[cfg(target_os = "linux")]
++fn fontconfig_dirs() -> Vec<std::path::PathBuf> {
++    let Ok(output) = std::process::Command::new(env!("FIGCRAFT_FC_LIST"))
++        .args(["--format", "%{file}\\n"])
++        .output()
++    else { return Vec::new() };
++    if !output.status.success() {
++        return Vec::new();
++    }
++    fontconfig_dirs_from_output(&output.stdout)
++}
++
++#[cfg(target_os = "linux")]
++fn fontconfig_dirs_from_output(output: &[u8]) -> Vec<std::path::PathBuf> {
++    use std::os::unix::ffi::OsStrExt;
++    // Unix font paths are byte strings. Ignore malformed records without losing valid paths.
++    let mut dirs = std::collections::BTreeSet::new();
++    for line in output.split(|b| *b == b'\n') {
++        if line.is_empty() || line.contains(&0) {
++            continue;
++        }
++        let path = std::path::Path::new(std::ffi::OsStr::from_bytes(line));
++        if path.is_absolute() && let Some(parent) = path.parent() {
++            dirs.insert(parent.to_path_buf());
++        }
++    }
++    dirs.into_iter().collect()
+ }
+ 
+ fn scan_dir(dir: &std::path::Path, depth: usize, out: &mut BTreeMap<String, (String, Vec<Pending>)>) {
+@@ -702,7 +741,11 @@
+         // Skip very large files (colour emoji); they are not outline fonts we can draw anyway.
+         let Some(bytes) = usize::try_from(meta.len()).ok().filter(|l| *l <= 64 * 1024 * 1024).and_then(|l| index_bytes(&path, l)) else { continue };
+         for (index, family, style) in faces_in(&bytes) {
+-            out.entry(family.to_lowercase()).or_insert_with(|| (family.clone(), Vec::new())).1.push(Pending { path: path.clone(), index, style });
++            let entries = &mut out.entry(family.to_lowercase()).or_insert_with(|| (family.clone(), Vec::new())).1;
++            // Fontconfig and the conventional roots may name the same file.
++            if !entries.iter().any(|entry| entry.path == path && entry.index == index) {
++                entries.push(Pending { path: path.clone(), index, style });
++            }
+         }
+     }
+ }
+--- a/crates/text/src/fontdb_tests.rs
++++ b/crates/text/src/fontdb_tests.rs
+@@ -67,3 +67,62 @@
+         assert_eq!(faces_in(&index_bytes(&p, whole.len()).unwrap()), faces_in(&whole), "{}", p.display());
+     }
+ }
++
++#[cfg(target_os = "linux")]
++#[test]
++fn fontconfig_listing_preserves_unix_paths_and_deduplicates_directories() {
++    use std::os::unix::ffi::OsStrExt;
++    let input = b"/nix/store/fonts with spaces/Regular.ttf\n/nix/store/fonts with spaces/Bold.ttf\nrelative.ttf\nrelative/font.ttf\n\n/fonts/\xff/Regular.ttf\n/fonts/\xff/Bold.ttf\n/bad\0/path.ttf\n/other/Font.otf\n";
++    assert_eq!(fontconfig_dirs_from_output(input), vec![
++        std::path::PathBuf::from(std::ffi::OsStr::from_bytes(b"/fonts/\xff")),
++        std::path::PathBuf::from("/nix/store/fonts with spaces"),
++        std::path::PathBuf::from("/other"),
++    ]);
++}
++
++#[cfg(target_os = "linux")]
++#[test]
++fn fontconfig_selected_directory_indexes_a_real_font() {
++    use std::os::unix::ffi::OsStrExt;
++    // The unique directory is outside all conventional font locations. No host font needed.
++    let mut name = format!("figcraft-fontconfig-{}-", std::process::id()).into_bytes();
++    name.push(0xff);
++    let dir = std::env::temp_dir().join(std::ffi::OsStr::from_bytes(&name));
++    std::fs::create_dir(&dir).unwrap();
++    let font = CRAFT_FONTS.iter().find(|f| f.family == "Inter" && f.style == "Regular").unwrap();
++    let path = dir.join("font with spaces.ttf");
++    std::fs::write(&path, font.bytes).unwrap();
++    let mut listing = path.as_os_str().as_bytes().to_vec();
++    listing.push(b'\n');
++    let dirs = fontconfig_dirs_from_output(&listing);
++    let mut found = BTreeMap::new();
++    for dir in dirs {
++        scan_dir(&dir, 0, &mut found);
++        scan_dir(&dir, 0, &mut found);
++    }
++    assert_eq!(found.get("inter").unwrap().1.len(), 1);
++    let mut db = FontDb { pending: found, ..FontDb::default() };
++    let face = db.find("Inter", "Regular").unwrap();
++    assert!(face.has_char('A'));
++    std::fs::remove_dir_all(dir).unwrap();
++}
++
++#[test]
++fn every_pinned_craft_font_is_available_without_system_fonts() {
++    let mut db = FontDb::default();
++    for font in CRAFT_FONTS {
++        let face = Face::from_bytes(FontBytes::Static(font.bytes), 0, Some(font.family), Some(font.style)).unwrap();
++        db.add(face);
++    }
++    assert_eq!(db.face_count(), 57);
++    for font in CRAFT_FONTS {
++        assert!(db.find(font.family, font.style).is_some(), "{} {}", font.family, font.style);
++    }
++    assert!(db.find("Noto Sans CJK SC", "Regular").unwrap().has_char('中'));
++    assert!(db.find("Noto Sans Arabic", "Regular").unwrap().has_char('ع'));
++    if system_fonts_opted_out() {
++        db.scan_system();
++        assert!(!db.system_scanned);
++        assert!(db.pending.is_empty());
++    }
++}

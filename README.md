@@ -203,3 +203,40 @@ source retention limits, and licensing details.
 
 The root `default.nix` supports NUR and non-flake consumers with caller-supplied
 Nixpkgs. Registration is pending. See [NUR usage, compatibility and submission](docs/nur.md).
+
+## Native and cross builds
+
+Ordinary flake outputs use their native platform. `lib.packagesFor` accepts an
+explicit Linux `buildSystem` and `hostSystem`: matching architectures stay
+native, while different architectures select cross-compilation in either
+direction. Documentation-only packages run natively on the selected worker.
+CPU emulation is separate and only needed to execute foreign target programs.
+
+See [Linux build workflow](docs/arm-cross-builds.md) for the automatic selector.
+
+## Rift on macOS
+
+`rift` compiles the pinned upstream source release and its matching CLI.
+It provides a real `Rift.app` for Home Manager to copy to a stable application
+path. The app and CLI are locally ad-hoc signed; this is not a Developer ID
+signature, and an upgrade may require Accessibility approval again.
+
+Import `inputs.nixpkgs-personal.homeManagerModules.rift`, then configure
+`programs.rift.enable = true` and `programs.rift.settings`. An overlay is optional:
+the module can instantiate its own package recipe. Home Manager owns the single
+LaunchAgent, uses the copied app, and passes an explicit configuration path.
+`programs.rift.startAtLogin = false` installs configuration without starting a
+service. Do not combine it with `rift service install` or Homebrew's service.
+
+The generated configuration is declarative. Edit Nix settings instead of saving
+from Rift's Settings UI. The module disables Overview and window previews by
+default and declares no Screen Recording grant. Window management needs macOS
+Accessibility permission. Optional capture features require a separate deliberate
+choice. Use built-in Rift key bindings with argument arrays for commands; string
+commands do not provide shell quoting or expansion.
+
+The package checks its authored plist identity/version, ad-hoc signature
+metadata, both binary versions, and the CLI workspace command interface. After
+copying, use macOS `codesign --verify --strict --deep` for native bundle verification. A consumer can run
+`modules/home/tests/rift.nix` with its Home Manager input for integration checks.
+The module is independent of any consumer's hostnames, workspace policy, or OCR.

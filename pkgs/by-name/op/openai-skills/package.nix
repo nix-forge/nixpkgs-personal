@@ -1,10 +1,12 @@
 {
+  callPackage,
+  replaceVars,
   lib,
   stdenvNoCC,
   fetchFromGitHub,
   python3,
   writeText,
-  includeRestricted ? true,
+  includeRestricted ? false,
   selectedSkills ? null,
 }:
 let
@@ -43,29 +45,37 @@ stdenvNoCC.mkDerivation {
   # Skill resources are data; generic script fixups would alter upstream files.
   dontFixup = true;
   installPhase = ''
-    runHook preInstall
-    python3 ${./catalog.py} install "$src" --manifest ${./catalog.json} \
-      --selection ${selection} --output "$out"
-    install -Dm644 ${./README.md} "$out/share/doc/${pname}/PACKAGING.md"
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        catalog_py = "${./catalog.py}";
+        catalog_json = "${./catalog.json}";
+        inherit selection;
+        readme = "${./README.md}";
+        inherit pname;
+      }
+    }
   '';
   doInstallCheck = true;
   installCheckPhase = ''
-    runHook preInstallCheck
-    python3 ${./catalog.py} verify "$src" --manifest ${./catalog.json} \
-      --selection ${selection} --output "$out"
-    runHook postInstallCheck
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        catalog_py = "${./catalog.py}";
+        catalog_json = "${./catalog.json}";
+        inherit selection;
+      }
+    }
   '';
   passthru = {
     inherit availableSkills freeSkills;
     restrictedSkills = lib.subtractLists freeSkills availableSkills;
     updateScript = [
-      "python3"
-      "pkgs/by-name/op/openai-skills/update.py"
+      (lib.getExe (callPackage ./update.nix { }))
+      "--source-directory"
+      (builtins.unsafeDiscardStringContext (toString ./.))
     ];
   };
   meta = {
-    description = "openai Agent Skills with reviewed component selection";
+    description = "Selected agent skills from OpenAI with reviewed component licensing";
     homepage = "https://github.com/openai/skills";
     license = map (name: lib.licenses.${name}) licenseNames;
     sourceProvenance = [

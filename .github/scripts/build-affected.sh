@@ -37,7 +37,9 @@ else
   echo '::notice::Base history unavailable; rebuilding all current packages.'
 fi
 
-all_packages=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" --apply builtins.attrNames | jq -r '.[]')
+current_derivations=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" \
+  --apply 'builtins.mapAttrs (_: package: package.drvPath)')
+all_packages=$(jq -r 'keys[]' <<<"$current_derivations")
 if [[ $base_available == false ]] || grep -qE '^((flake\.nix|flake\.lock|pkgs/default\.nix|\.github/ci-policy\.json)$|flake/|tests/|\.github/(scripts|tests|workflows)/)' <<<"$changed_files"; then
   targets="$all_packages"
 elif grep -q '^pkgs/by-name/' <<<"$changed_files"; then
@@ -52,7 +54,7 @@ if [[ -z $targets ]]; then
   exit 0
 fi
 
-targets=$(printf '%s\n' "$targets" | python3 .github/scripts/partition-packages.py \
+targets=$(printf '%s\n' "$targets" | python3 .github/scripts/partition_packages.py \
   --count "$partition_count" --index "$partition_index" \
   --weights .github/ci-package-weights.json)
 if [[ -z $targets ]]; then
@@ -73,6 +75,8 @@ if [[ $base_available == true ]]; then
   fi
 fi
 
+application_checks=$(nix eval --option allow-import-from-derivation false --json ".#applicationChecks.$SYSTEM" --apply builtins.attrNames)
+
 while IFS= read -r package; do
   [[ -n $package ]] || continue
   echo "::group::Package: $package"
@@ -83,7 +87,7 @@ while IFS= read -r package; do
     continue
   fi
   base_drv=$(jq -r --arg package "$package" '.[$package] // empty' <<<"$base_derivations")
-  current_drv=$(nix eval --raw ".#packages.$SYSTEM.$package.drvPath")
+  current_drv=$(jq -er --arg package "$package" '.[$package]' <<<"$current_derivations")
   if [[ -n $base_drv && $base_drv == "$current_drv" ]]; then
     echo "$package: unchanged derivation; no rebuild needed."
   else
@@ -91,10 +95,12 @@ while IFS= read -r package; do
       nix build ".#$package" --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
   fi
   # Additional contracts run even when the package output is unchanged.
-  if [[ $package == openai-codex-desktop ]]; then
-    nix build --no-link --keep-going --show-trace --print-build-logs \
-      ".#checks.$SYSTEM.openai-codex-desktop-updater" \
-      ".#checks.$SYSTEM.openai-codex-desktop-package-contract"
-  fi
+  for contract in "$package-cli" "$package-gui" "$package-wayland" "$package-licenses" "$package-appstream" "$package-wayland-clipboard" "$package-server" "$package-quit-state" "$package-host-tests-artifact" "$package-appimage-runtime"; do
+    if jq -e --arg contract "$contract" 'index($contract) != null' <<<"$application_checks" >/dev/null; then
+      bash .github/scripts/build-with-fetch-retry.sh \
+        nix build --no-link ".#applicationChecks.$SYSTEM.$contract" \
+        --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
+    fi
+  done
   echo "::endgroup::"
 done <<<"$targets"

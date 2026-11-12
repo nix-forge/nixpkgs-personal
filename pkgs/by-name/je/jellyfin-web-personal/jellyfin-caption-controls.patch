@@ -1,0 +1,35 @@
+--- a/src/components/subtitlesettings/subtitlesettings.template.html
++++ b/src/components/subtitlesettings/subtitlesettings.template.html
+@@ -127,8 +127,13 @@
+             </select>
+         </div>
+ 
+-        <div class="inputContainer hide">
+-            <input is="emby-input" id="inputTextBackground" label="${LabelTextBackgroundColor}" type="text" />
++        <div class="selectContainer">
++            <select is="emby-select" id="inputTextBackground" label="${LabelTextBackgroundColor}">
++                <option value="transparent">${None}</option>
++                <option value="rgba(0, 0, 0, 0.5)">${SubtitleBlack} (50%)</option>
++                <option value="rgba(0, 0, 0, 0.75)">${SubtitleBlack} (75%)</option>
++                <option value="#000000">${SubtitleBlack} (100%)</option>
++            </select>
+         </div>
+ 
+         <div class="selectContainer">
+--- a/src/components/subtitlesettings/subtitlesettings.js
++++ b/src/components/subtitlesettings/subtitlesettings.js
+@@ -69,7 +69,13 @@
+         context.querySelector('#selectTextSize').value = appearanceSettings.textSize || '';
+         context.querySelector('#selectTextWeight').value = appearanceSettings.textWeight || 'normal';
+         context.querySelector('#selectDropShadow').value = appearanceSettings.dropShadow || '';
+-        context.querySelector('#inputTextBackground').value = appearanceSettings.textBackground || 'transparent';
++        const backgroundSelect = context.querySelector('#inputTextBackground');
++        const background = appearanceSettings.textBackground || 'transparent';
++        // Preserve existing custom colors when saving unrelated appearance changes.
++        if (!Array.from(backgroundSelect.options).some(option => option.value === background)) {
++            backgroundSelect.add(new Option(globalize.translate('Custom'), background));
++        }
++        backgroundSelect.value = background;
+         context.querySelector('#selectTextColor').value = appearanceSettings.textColor || '#ffffff';
+         context.querySelector('#inputTextColor').value = appearanceSettings.textColor || '#ffffff';
+         context.querySelector('#selectFont').value = appearanceSettings.font || '';

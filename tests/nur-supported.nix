@@ -1,5 +1,6 @@
 { nixpkgsPath, repositoryPath }:
 let
+  licenseMetadata = import ../scripts/license-metadata.nix;
   systems = [
     "x86_64-linux"
     "aarch64-linux"
@@ -25,7 +26,7 @@ let
       name: package:
       let
         licenses = pkgs.lib.toList (package.meta.license or null);
-        unfree = pkgs.lib.any (license: builtins.isAttrs license && !(license.free or true)) licenses;
+        unfree = pkgs.lib.any (license: !licenseMetadata.isFree license) licenses;
       in
       assert pkgs.lib.assertMsg (package.meta ? license) "${name}: missing package license";
       assert pkgs.lib.assertMsg (

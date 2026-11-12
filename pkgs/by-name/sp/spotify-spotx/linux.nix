@@ -1,5 +1,9 @@
 {
+  callPackage,
+  replaceVars,
   bash,
+  desktop-file-utils,
+  python3,
   coreutils,
   findutils,
   gnugrep,
@@ -38,24 +42,13 @@ spotify.overrideAttrs (old: {
   # SpotX patches stock Spotify first. spicetify-nix then appends its own
   # postInstall hook, so themes and extensions always see the SpotX result.
   postInstall = (old.postInstall or "") + ''
-    fakeBin="$TMPDIR/spotx-fake-bin"
-    install -d "$fakeBin"
-    printf '%s\n' '#!/bin/sh' 'exit 1' > "$fakeBin/curl"
-    chmod +x "$fakeBin/curl"
-
-    export HOME="$TMPDIR/spotx-home"
-    export PATH="$fakeBin:$PATH"
-    export SPOTX_BUILD_MODE=true
-    mkdir -p "$HOME"
-
-    ${lib.getExe bash} ${spotxSource}/spotx.sh \
-      -P "$out/share/spotify" \
-      ${lib.escapeShellArgs spotxArgs}
-
-    unzip -p "$out/share/spotify/Apps/xpui.spa" > "$TMPDIR/spotx-xpui-content"
-    grep -Fq '//# SpotX was here' "$TMPDIR/spotx-xpui-content"
-    rm -f "$out/share/spotify/spotify.bak"
-    rm -f "$out/share/spotify/Apps/xpui.bak"
+    source ${
+      replaceVars ./scripts/linux-post-install.sh {
+        bash = lib.getExe bash;
+        inherit spotxSource;
+        patchArguments = lib.escapeShellArgs spotxArgs;
+      }
+    }
   '';
 
   passthru = (old.passthru or { }) // {
@@ -64,13 +57,25 @@ spotify.overrideAttrs (old: {
     spotifyVersion = spotify.version;
     unpatchedSpotify = spotify;
     updateScript = [
-      "python3"
-      "pkgs/by-name/sp/spotify-spotx/update.py"
+      (lib.getExe (callPackage ./update.nix { }))
+      "--source-directory"
+      (builtins.unsafeDiscardStringContext (toString ./.))
     ];
   };
 
+  nativeInstallCheckInputs = (old.nativeInstallCheckInputs or [ ]) ++ [
+    desktop-file-utils
+    python3
+  ];
+  doInstallCheck = true;
+  postInstallCheck = (old.postInstallCheck or "") + ''
+    desktop-file-validate "$out/share/applications/spotify.desktop"
+    python3 ${./scripts/check_desktop_entry.py} "$out" "spotify.desktop" "spotify"
+  '';
+
   meta = (old.meta or { }) // {
-    description = "Spotify for Linux patched with SpotX-Bash";
+    maintainers = [ ];
+    description = "Music streaming client patched with SpotX-Bash";
     homepage = "https://github.com/SpotX-Official/SpotX-Bash";
     platforms = [ "x86_64-linux" ];
   };

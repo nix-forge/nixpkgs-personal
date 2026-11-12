@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""Run NUR's restricted index evaluation and our native-platform evaluation contract."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import tempfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+from notification_process import run as run_command
+
+ROOT = Path(__file__).resolve().parents[1]
+NUR_REVISION = "c9d28a9dc181899c9df1390804837b28cff3b0ae"
+
+
+def registration(path: Path) -> tuple[str, dict[str, str]]:
+    """Validate the submission entry before testing its actual name and URL."""
+    entries = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(entries, dict) or len(entries) != 1:
+        raise ValueError("NUR registration must contain exactly one repository")
+    name, entry = next(iter(entries.items()))
+    if not name or not isinstance(entry, dict):
+        raise ValueError("NUR registration requires a name and repository object")
+    for field in ("url", "github-contact"):
+        if not isinstance(entry.get(field), str) or not entry[field].strip():
+            raise ValueError(f"NUR registration is missing {field}")
+    return name, entry
+
+
+def source_info(reference: str) -> dict[str, str]:
+    """Fetch a source tree before entering restricted evaluation."""
+    result = run_command(
+        ["nix", "flake", "prefetch", "--json", reference],
+        timeout=180,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--nixpkgs", choices=["locked", "unstable"], default="locked")
+    parser.add_argument("--output", type=Path, default=Path("nur-results"))
+    args = parser.parse_args()
+    name, entry = registration(ROOT / "docs/nur-registration.json")
+    lock = json.loads((ROOT / "flake.lock").read_text())
+    locked = lock["nodes"][lock["nodes"]["root"]["inputs"]["nixpkgs"]]["locked"]
+    reference = (
+        f"github:{locked['owner']}/{locked['repo']}/{locked['rev']}"
+        if args.nixpkgs == "locked"
+        else "github:NixOS/nixpkgs/nixos-unstable"
+    )
+    # Resolve moving branches once, then fetch that exact revision. Lazy-tree Nix
+    # metadata may omit its store path and NAR hash until explicitly prefetched.
+    metadata = json.loads(
+        run_command(
+            ["nix", "flake", "metadata", "--json", "--no-write-lock-file", reference],
+            timeout=180,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    )
+    resolved_reference = metadata["url"]
+    nixpkgs_source = source_info(resolved_reference)
+    expected_hash = locked.get("narHash") if args.nixpkgs == "locked" else None
+    if expected_hash is not None and nixpkgs_source["hash"] != expected_hash:
+        raise RuntimeError("Fetched Nixpkgs does not match flake.lock's NAR hash")
+    nixpkgs = Path(nixpkgs_source["storePath"])
+    nur = Path(source_info(f"github:nix-community/NUR/{NUR_REVISION}")["storePath"])
+    evaluator = nur / "lib/evalRepo.nix"
+    args.output.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(prefix="nur-eval-") as directory:
+        # Restricted evaluation checks canonical paths, including macOS /tmp aliases.
+        temp = Path(directory).resolve()
+        arguments = temp / "args.json"
+        arguments.write_text(
+            json.dumps({
+                "name": name,
+                "url": entry["url"],
+                "src": str(ROOT / "default.nix"),
+            })
+        )
+        wrapper = temp / "default.nix"
+        # Paths become Nix strings via JSON encoding, never interpolated shell code.
+        wrapper.write_text(
+            "let pkgs = import <nixpkgs> {}; "
+            f"args = builtins.fromJSON (builtins.readFile {json.dumps(str(arguments))}); "
+            f"in import {json.dumps(str(evaluator))} {{ "
+            "inherit (args) name url; "
+            "src = /. + args.src; inherit pkgs; inherit (pkgs) lib; }\n"
+        )
+        command = [
+            "nix-env",
+            "-f",
+            str(wrapper),
+            "-qa",
+            "*",
+            "--meta",
+            "--xml",
+            "--allowed-uris",
+            "https://static.rust-lang.org",
+            "--option",
+            "restrict-eval",
+            "true",
+            "--option",
+            "allow-import-from-derivation",
+            "true",
+            "--drv-path",
+            "--show-trace",
+            "-I",
+            f"nixpkgs={nixpkgs}",
+            "-I",
+            str(ROOT),
+            "-I",
+            str(wrapper),
+            "-I",
+            str(arguments),
+            "-I",
+            str(evaluator),
+        ]
+        # Match NUR's policy, including no inherited allowUnfree or user config.
+        with (args.output / "index.xml").open("w") as output:
+            run_command(
+                command,
+                check=True,
+                text=True,
+                stdout=output,
+                timeout=180,
+                env={
+                    "PATH": os.environ["PATH"],
+                    # Only the explicit -I sources belong in restricted evaluation.
+                    "NIX_PATH": "",
+                    "NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM": "1",
+                },
+            )
+        count = len(ET.parse(args.output / "index.xml").getroot().findall("item"))
+        if count == 0:
+            raise RuntimeError("NUR evaluation returned no package entries")
+
+    result = run_command(
+        [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--json",
+            "--show-trace",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            str(ROOT / "tests/nur-supported.nix"),
+            "--argstr",
+            "nixpkgsPath",
+            str(nixpkgs),
+            "--argstr",
+            "repositoryPath",
+            str(ROOT),
+        ],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+        timeout=180,
+    )
+    platforms = json.loads(result.stdout)
+    counts = {system: len(packages) for system, packages in platforms.items()}
+    revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+    dirty = bool(
+        subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=normal"],
+            cwd=ROOT,
+            text=True,
+        ).strip()
+    )
+    summary = {
+        "repository_revision": revision,
+        "repository_dirty": dirty,
+        "registration": {name: entry},
+        "nixpkgs_reference": reference,
+        "nixpkgs_resolved_reference": resolved_reference,
+        "nixpkgs_revision": metadata["locked"]["rev"],
+        "nixpkgs_nar_hash": nixpkgs_source["hash"],
+        "nixpkgs_store_path": str(nixpkgs),
+        "nur_revision": NUR_REVISION,
+        "indexed_packages": count,
+        "supported_evaluations": counts,
+        "builds_performed": False,
+    }
+    (args.output / "platforms.json").write_text(json.dumps(platforms, indent=2) + "\n")
+    (args.output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    print(json.dumps(summary, indent=2))
+    if "GITHUB_STEP_SUMMARY" in os.environ:
+        with Path(os.environ["GITHUB_STEP_SUMMARY"]).open(
+            "a", encoding="utf-8"
+        ) as output:
+            output.write(
+                "### NUR compatibility\n\n"
+                f"{sum(counts.values())} package/platform evaluations passed "
+                f"against {args.nixpkgs} Nixpkgs.\n\n"
+                "| System | Evaluations |\n| --- | ---: |\n"
+            )
+            output.writelines(
+                f"| `{system}` | {evaluated} |\n"
+                for system, evaluated in counts.items()
+            )
+            output.write(f"| Total | {sum(counts.values())} |\n\n")
+            source = metadata["locked"]
+            output.write(
+                f"Restricted index entries: {count}.\n\n"
+                f"Nixpkgs: [`{source['rev'][:12]}`]"
+                f"(https://github.com/{source['owner']}/{source['repo']}/commit/{source['rev']}). "
+                f"NUR evaluator: [`{NUR_REVISION[:12]}`]"
+                f"(https://github.com/nix-community/NUR/commit/{NUR_REVISION}).\n\n"
+            )
+            repository = os.environ.get("GITHUB_REPOSITORY")
+            if repository and revision:
+                output.write(
+                    f"Evaluated checkout: [`{revision[:12]}`]"
+                    f"(https://github.com/{repository}/tree/{revision}).\n\n"
+                )
+            output.write(
+                "Full source hashes and package details are in `summary.json` "
+                "and `platforms.json`. Native package builds are separate checks.\n"
+            )
+
+
+if __name__ == "__main__":
+    main()

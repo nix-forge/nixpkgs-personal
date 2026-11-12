@@ -94,8 +94,8 @@ policy. See the [metadata research](package-metadata-research.md).
 With Nix, Git and Python 3 available, run:
 
 ```sh
-python3 scripts/check-nur.py --nixpkgs locked --output /tmp/nur-locked
-python3 scripts/check-nur.py --nixpkgs unstable --output /tmp/nur-unstable
+python3 scripts/check_nur.py --nixpkgs locked --output /tmp/nur-locked
+python3 scripts/check_nur.py --nixpkgs unstable --output /tmp/nur-unstable
 ```
 
 The script fetches a pinned NUR evaluator and the requested Nixpkgs source before

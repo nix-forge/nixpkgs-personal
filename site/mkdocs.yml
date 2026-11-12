@@ -43,4 +43,7 @@ nav:
       - Assessment: nur-assessment.md
   - Maintenance:
       - Package audit: package-audit.md
+      - Source-build review: source-provenance-review.md
       - Design research: package-design-research.md
+      - Research index: research/README.md
+      - Crafting Apps review: research/artcraft-upstream-review-research.md

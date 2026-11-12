@@ -1,6 +1,9 @@
 {
+  callPackage,
+  replaceVars,
   lib,
   stdenvNoCC,
+  python3,
   fetchurl,
   undmg,
 }:
@@ -23,32 +26,24 @@ stdenvNoCC.mkDerivation {
   dontConfigure = true;
 
   installPhase = ''
-    runHook preInstall
-
-    install -d "$out/Applications/${appName}" "$out/bin"
-    cp -R . "$out/Applications/${appName}"
-    ln -s "$out/Applications/${appName}/Contents/MacOS/soffice" "$out/bin/soffice"
-    ln -s "$out/bin/soffice" "$out/bin/libreoffice"
-
-    runHook postInstall
+    source ${replaceVars ./scripts/install-phase.sh { inherit appName; }}
   '';
 
+  nativeInstallCheckInputs = [ python3 ];
+  postInstallCheck = ''
+    python3 ${./scripts/check_app_bundle.py} "$out/Applications/LibreOffice.app" --expected-version ${lib.escapeShellArg source.version} --allow-build-suffix
+  '';
   doInstallCheck = true;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    test -s "$out/Applications/LibreOffice.app/Contents/Info.plist"
-    test -x "$out/Applications/LibreOffice.app/Contents/MacOS/soffice"
-    test -x "$out/bin/libreoffice"
-    runHook postInstallCheck
-  '';
+  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
-    "python3"
-    "pkgs/by-name/li/libreoffice/update.py"
+    (lib.getExe (callPackage ./update.nix { }))
+    "--source-directory"
+    (builtins.unsafeDiscardStringContext (toString ./.))
   ];
 
   meta = {
-    description = "Comprehensive, professional-quality productivity suite";
+    description = "Office suite with word processing, spreadsheets and presentations";
     homepage = "https://www.libreoffice.org/";
     downloadPage = "https://www.libreoffice.org/download/download-libreoffice/";
     # The official distribution uses MPL 2.0; the bundle retains third-party notices.
@@ -56,5 +51,8 @@ stdenvNoCC.mkDerivation {
     mainProgram = "libreoffice";
     platforms = [ "aarch64-darwin" ];
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-  };
+  }
+  // lib.optionalAttrs (
+    stdenvNoCC.hostPlatform.isDarwin && lib.versionAtLeast (lib.versions.majorMinor lib.version) "26.11"
+  ) { mainDarwinApp = "LibreOffice.app"; };
 }

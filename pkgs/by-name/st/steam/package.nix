@@ -1,6 +1,9 @@
 {
+  callPackage,
+  replaceVars,
   lib,
   stdenvNoCC,
+  python3,
   fetchurl,
   unzip,
 }:
@@ -25,89 +28,36 @@ stdenvNoCC.mkDerivation {
   dontFixup = true;
 
   installPhase = ''
-    runHook preInstall
-
-    workdir="$PWD/work"
-    install -d "$workdir" "$out/Applications" "$out/bin"
-
-    unzip -qq "$src" 'SteamMacBootstrapper.tar.gz' -d "$workdir"
-    tar -xzf "$workdir/SteamMacBootstrapper.tar.gz" -C "$workdir"
-
-    find "$workdir/Steam.app" -name '._*' -delete
-    cp -a "$workdir/Steam.app" "$out/Applications/"
-
-    cat > "$out/bin/${pname}" <<EOF
-    #!/bin/sh
-    set -eu
-
-    installed_client="\$HOME/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/steam_osx"
-    bootstrapper="${placeholder "out"}/Applications/Steam.app/Contents/MacOS/steam_osx"
-    restart_attempts=0
-    restart_limit=5
-
-    while :; do
-      if [ -x "\$installed_client" ]; then
-        target="\$installed_client"
-      else
-        target="\$bootstrapper"
-        if [ "\$restart_attempts" -eq 0 ]; then
-          echo "Steam is bootstrapping into ~/Library/Application Support/Steam." >&2
-        fi
-      fi
-
-      status=0
-      "\$target" "\$@" || status=\$?
-
-      if [ "\$status" -eq 42 ]; then
-        restart_attempts=\$((restart_attempts + 1))
-        if [ "\$restart_attempts" -gt "\$restart_limit" ]; then
-          echo "Steam requested too many automatic restarts." >&2
-          exit 42
-        fi
-        sleep 1
-        continue
-      fi
-
-      if [ "\$target" = "\$bootstrapper" ] && [ -x "\$installed_client" ]; then
-        restart_attempts=\$((restart_attempts + 1))
-        sleep 1
-        continue
-      fi
-
-      if [ "\$target" = "\$bootstrapper" ] && [ ! -x "\$installed_client" ]; then
-        echo "Steam bootstrap did not produce an installed client at:" >&2
-        echo "  \$installed_client" >&2
-        exit 1
-      fi
-
-      exit "\$status"
-    done
-    EOF
-    chmod 0555 "$out/bin/${pname}"
-
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        launcherSource = replaceVars ./scripts/steam-launcher.sh.in { runtimeOutput = null; };
+        inherit pname;
+      }
+    }
   '';
 
+  nativeInstallCheckInputs = [ python3 ];
+  postInstallCheck = ''
+    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Steam.app" --expected-version ${lib.escapeShellArg source.version} --version-key CFBundleVersion
+  '';
   doInstallCheck = true;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    test -s "$out/Applications/Steam.app/Contents/Info.plist"
-    test -x "$out/Applications/Steam.app/Contents/MacOS/steam_osx"
-    test -x "$out/bin/steam"
-    runHook postInstallCheck
-  '';
+  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
-    "python3"
-    "pkgs/by-name/st/steam/update.py"
+    (lib.getExe (callPackage ./update.nix { }))
+    "--source-directory"
+    (builtins.unsafeDiscardStringContext (toString ./.))
   ];
 
   meta = {
     description = "Valve's official Steam app bundle for macOS";
     homepage = "https://store.steampowered.com/about/";
     license = lib.licenses.unfree;
-    mainProgram = pname;
+    mainProgram = "steam";
     platforms = [ "aarch64-darwin" ];
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-  };
+  }
+  // lib.optionalAttrs (
+    stdenvNoCC.hostPlatform.isDarwin && lib.versionAtLeast (lib.versions.majorMinor lib.version) "26.11"
+  ) { mainDarwinApp = "Steam.app"; };
 }

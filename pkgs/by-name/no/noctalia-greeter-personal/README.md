@@ -32,6 +32,8 @@ input defaults to 36 pixels. Clock formats use strftime and update once a minute
 `font_scale` is a positive text-only multiplier with a default of 1.0.
 Omitting a format hides that label. Appearance, output policy and account
 selection belong to the consuming configuration.
+On compact outputs, the decorative bottom logo is hidden when it would
+overlap the login panel.
 
 The Meson check exercises confirmation and cancellation without invoking power
 operations. The package build compiles the complete greeter and compositor.
@@ -39,9 +41,10 @@ These checks do not establish authentication, monitor wake or GPU behavior on a
 particular workstation.
 
 Source comes from the caller's Nixpkgs package and retains upstream's MIT
-license. Updates are manual because the UI patch needs review against each
-upstream release. The build refuses an unreviewed version. Rebase the patch,
-review its input and power-action paths, run the checks, and verify a preview
-before changing the version guard.
+license. Nixpkgs updates select the upstream release. The package applies the
+patch, compiles the greeter, and runs its tests on each build. A failed patch or
+check calls for a review of the changed input and power-action paths before
+rebasing the patch. A passing build still needs a preview to establish runtime
+behavior on the target display.
 
 Upstream: [Noctalia Greeter](https://github.com/noctalia-dev/noctalia-greeter).

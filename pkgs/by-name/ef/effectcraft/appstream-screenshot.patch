@@ -1,0 +1,13 @@
+--- a/packaging/linux/ai.storyteller.effectcraft.metainfo.xml.in
++++ b/packaging/linux/ai.storyteller.effectcraft.metainfo.xml.in
+@@ -37,8 +37,8 @@
+   </keywords>
+   <screenshots>
+     <screenshot type="default">
+-      <caption>Editing The Great Wave off Kanagawa with type layers and adjustment layers</caption>
+-      <image>https://raw.githubusercontent.com/storytold/effectcraft/main/docs/images/effectcraft-demo.jpg</image>
++      <caption>Demo composition with text layers, timeline and properties</caption>
++      <image type="source" width="2400" height="1457">https://raw.githubusercontent.com/storytold/effectcraft/d60cb71e297a4bb76851b27b48c0014b56ccab69/docs/images/effectcraft-hero.png</image>
+     </screenshot>
+   </screenshots>
+   <branding>

@@ -1,4 +1,5 @@
 {
+  replaceVars,
   lib,
   callPackage,
   stdenv,
@@ -135,87 +136,37 @@ python313Packages.buildPythonApplication (_finalAttrs: {
   dontWrapPythonPrograms = true;
   nativeBuildInputs = [ makeWrapper ];
 
-  postPatch = ''
-    substituteInPlace service_roles.py \
-      --replace-fail "FLASK_BIND_HOST = '0.0.0.0'" \
-        "FLASK_BIND_HOST = os.environ.get('AUDIOMUSE_HOST', '127.0.0.1')" \
-      --replace-fail "FLASK_BIND_PORT = 8000" \
-        "FLASK_BIND_PORT = int(os.environ.get('AUDIOMUSE_PORT', '8000'))"
-  '';
+  postPatch = builtins.readFile ./scripts/post-patch.sh;
 
   installPhase = ''
-    runHook preInstall
-    mkdir -p \
-      ${appDir}/native-build/linux \
-      ${appDir}/native-build/native_common \
-      "$out/bin" \
-      "$out/share/doc/audiomuse-ai"
-    cp -R \
-      ./*.py dclap_sae_concepts.json genre_subgenre.json \
-      mood_centroids_real_080_clap.json \
-      error lyrics plugin query static taskqueue tasks templates \
-      ${appDir}/
-    cp native-build/linux/{__init__,launcher}.py ${appDir}/native-build/linux/
-    cp -R native-build/native_common/. ${appDir}/native-build/native_common/
-    install -Dm644 LICENSE "$out/share/doc/audiomuse-ai/LICENSE"
-    ${mkRole "audiomuse-ai-web" "flask"}
-    ${mkRole "audiomuse-ai-worker-high" "worker-high"}
-    ${mkRole "audiomuse-ai-worker-default" "worker-default"}
-    ${mkRole "audiomuse-ai-maintenance" "maintenance"}
-    ${mkRole "audiomuse-ai-control" "restart-listener"}
-    runHook postInstall
+    source ${
+      replaceVars ./scripts/install-phase.sh {
+        inherit appDir;
+        mkRole_audiomuse_ai_web_flask = mkRole "audiomuse-ai-web" "flask";
+        mkRole_audiomuse_ai_worker_high_worker_high = mkRole "audiomuse-ai-worker-high" "worker-high";
+        mkRole_audiomuse_ai_worker_default_worker_default = mkRole "audiomuse-ai-worker-default" "worker-default";
+        mkRole_audiomuse_ai_maintenance_maintenance = mkRole "audiomuse-ai-maintenance" "maintenance";
+        mkRole_audiomuse_ai_control_restart_listener = mkRole "audiomuse-ai-control" "restart-listener";
+      }
+    }
   '';
 
   doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
   nativeInstallCheckInputs = [ python ];
   installCheckPhase = ''
-    runHook preInstallCheck
-    export DATABASE_URL=
-    cd ${appDir}
-    python -m compileall -q .
-    for program in "$out"/bin/audiomuse-ai-*; do
-      head -n 1 "$program" | grep -q '/bin/bash'
-    done
-    python - <<'PY'
-    import sys
+    source ${
+      replaceVars ./scripts/install-check-phase.sh {
+        inherit appDir;
+        pythonCheck1 = replaceVars ./scripts/check_python_runtime.py {
+          source_python_googleGenai_version = source.python.googleGenai.version;
+          source_python_huggingfaceHub_version = source.python.huggingfaceHub.version;
+          source_python_mistralai_version = source.python.mistralai.version;
+          source_python_transformers_tokenizersRequirement = source.python.transformers.tokenizersRequirement;
+          source_python_transformers_version = source.python.transformers.version;
+        };
 
-    sys.path.insert(0, "native-build")
-    import flask
-    import google.genai
-    import importlib.metadata
-    import huggingface_hub
-    import librosa
-    import mistralai
-    import mutagen
-    import numkong
-    import onnxruntime
-    import psycopg2
-    import sentencepiece
-    import tokenizers
-    import transformers
-    import app_auth
-    import numeric_bootstrap
-    import service_roles
-    from packaging.requirements import Requirement
-    from packaging.version import Version
-    from transformers.dependency_versions_table import deps
-    from linux import launcher
-
-    package_version = importlib.metadata.version
-    assert package_version("google-genai") == "${source.python.googleGenai.version}"
-    assert package_version("mistralai") == "${source.python.mistralai.version}"
-    assert package_version("transformers") == "${source.python.transformers.version}"
-    assert package_version("huggingface-hub") == "${source.python.huggingfaceHub.version}"
-    tokenizers_requirement = Requirement(deps["tokenizers"])
-    assert deps["tokenizers"] == "${source.python.transformers.tokenizersRequirement}"
-    assert tokenizers_requirement.specifier.contains(
-        package_version("tokenizers"), prereleases=True
-    )
-    assert Version(package_version("tokenizers")) >= Version("0.22.0")
-    assert service_roles.ROLE_FLASK == "flask"
-    assert launcher.WEB_URL == "http://127.0.0.1:8000"
-    PY
-    runHook postInstallCheck
+      }
+    }
   '';
 
   passthru = {
@@ -223,8 +174,9 @@ python313Packages.buildPythonApplication (_finalAttrs: {
     models = audiomuse-ai-models;
     pythonEnvironment = python;
     updateScript = [
-      "python3"
-      "pkgs/by-name/au/audiomuse-ai/update.py"
+      (lib.getExe (callPackage ./update.nix { }))
+      "--source-directory"
+      (builtins.unsafeDiscardStringContext (toString ./.))
     ];
     upstreamRevision = appSource.rev;
   };

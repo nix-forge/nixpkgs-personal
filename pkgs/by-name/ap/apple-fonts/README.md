@@ -68,7 +68,7 @@ nix develop .#apple-fonts -c python pkgs/by-name/ap/apple-fonts/update.py \
 The repository dispatcher also discovers this updater:
 
 ```sh
-nix develop .#apple-fonts -c python scripts/update-packages.py --package apple-fonts -- --dry-run
+nix develop .#apple-fonts -c python scripts/update_packages.py --package apple-fonts -- --dry-run
 ```
 
 `--check` reports a change with exit status 1, and `--dry-run` prints the diff
@@ -106,7 +106,7 @@ license notices with repeatable `--notice` arguments. A native export is needed
 because full current macOS installer extraction has not been validated.
 
 ```sh
-nix develop .#apple-fonts -c python pkgs/by-name/ap/apple-fonts/export.py \
+nix develop .#apple-fonts -c python pkgs/by-name/ap/apple-fonts/export_font_archive.py \
   /System/Library/Fonts \
   --version 26.0-25A354 \
   --archive /tmp/macos-fonts-26.0-25A354.tar \
