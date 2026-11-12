@@ -53,12 +53,16 @@ let
                           )
                         )
                       ) (cythonOld.patches or [ ]);
-                      # Compile and run the upstream compiler-source fixture,
-                      # including its typed .pxd / unknown Final case.
-                      doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
-                      postInstallCheck = (cythonOld.postInstallCheck or "") + ''
+                      # Python maps doCheck/checkPhase to its install check.
+                      # The full upstream suite is disabled for dependency cycles;
+                      # this focused fixture needs only the existing build tools.
+                      doCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+                      nativeCheckInputs = [ ];
+                      checkPhase = ''
+                        runHook preCheck
                         test -f tests/run/pure_pxd.srctree
                         ${python3.interpreter} runtests.py -j"$NIX_BUILD_CORES" --no-code-style pure_pxd
+                        runHook postCheck
                       '';
                       meta = cythonOld.meta // {
                         changelog = "https://github.com/cython/cython/blob/${source.cythonVersion}/CHANGES.rst";
