@@ -294,7 +294,6 @@ jobs:
           PARTITION_INDEX: ${{ matrix.partition-index }}
         shell: bash
         run: bash .github/scripts/build-affected.sh
-
   build-complete:
     name: Build (${{ matrix.system }})
     needs: [build]
