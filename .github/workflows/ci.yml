@@ -155,7 +155,7 @@ jobs:
         with:
           name: audiomuse-tokenizers-compatibility
           path: receipt
-  wardrowbe:
+  wardrowbe-backend:
     if: inputs.scope == 'wardrowbe'
     name: Wardrowbe native ARM compiler, SQLAlchemy and service checks
     runs-on: ubuntu-24.04-arm
