@@ -1,5 +1,11 @@
 # Package update automation research
 
+> Historical scope: `nd-lyrics` has been retired from this repository. Use the
+> upstream `navidromePlugins.lyrics-plugin` (or `services.navidrome.withPlugins`)
+> instead; its 8.1.0 source and Cargo hashes match the retired recipe. The
+> [pinned upstream recipe](https://github.com/NixOS/nixpkgs/blob/f4a03c008967841f2a0b3cb7c436fc6fc31671f6/pkgs/by-name/na/navidrome/plugins/lyrics-plugin/package.nix)
+> owns future updates.
+
 Reviewed 2026-09-24; release gate rechecked 2026-09-25. Scope: the source-built packages in this repository and
 Nixpkgs revision `44a91898084f46797b5fac650c7e8c9ac38c43d4` pinned by
 `flake.lock`. The question is which parts of a release update can be generated
