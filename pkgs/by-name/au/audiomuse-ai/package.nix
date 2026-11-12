@@ -157,6 +157,7 @@ python313Packages.buildPythonApplication (_finalAttrs: {
     source ${
       replaceVars ./scripts/install-check-phase.sh {
         inherit appDir;
+        tokenizerCheck = ./scripts/check_tokenizer_runtime.py;
         pythonCheck1 = replaceVars ./scripts/check_python_runtime.py {
           source_python_googleGenai_version = source.python.googleGenai.version;
           source_python_huggingfaceHub_version = source.python.huggingfaceHub.version;

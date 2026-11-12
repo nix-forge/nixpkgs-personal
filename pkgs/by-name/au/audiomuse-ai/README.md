@@ -54,6 +54,15 @@ generated-file string. The application install check and the lightweight
 `audiomuse-ai-python` CI check import the resulting stack and verify the
 installed tokenizers version against the reviewed runtime requirement.
 
+The Nixpkgs Tokenizers 0.23.3 update requires extending that reviewed upper
+bound from 0.23.2. Its [release](https://github.com/huggingface/tokenizers/releases/tag/v0.23.3)
+fixes truncation/overflow handling and Python metadata; the
+[source comparison](https://github.com/huggingface/tokenizers/compare/88a4498ad4ea1a9487b0a9b0ff881383fd5a06a3...301277072263fb3830eb66eec7e47adadf76f1dc)
+records the changes. Both runtime checks also exercise offline Transformers
+and native tokenizer reload, exact token IDs, NumPy batch padding and all
+truncation overflow chunks. This qualifies the composed tokenizer APIs, not
+model inference or search relevance. Future versions remain review-gated.
+
 The updater deliberately does not invent versions for packages supplied by
 Nixpkgs. Changes to those upstream pins are review-gated and must be handled by
 the Nixpkgs input update or an explicit compatibility change. Run

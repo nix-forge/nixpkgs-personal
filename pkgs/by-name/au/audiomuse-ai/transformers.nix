@@ -52,7 +52,7 @@ python313Packages.buildPythonPackage (finalAttrs: {
   '';
 
   # Nixpkgs' tokenizers is newer than Transformers' release metadata allows,
-  # but the reviewed compatibility ceiling is the currently packaged 0.23.2.
+  # but the reviewed compatibility ceiling is the currently packaged 0.23.3.
   # This relaxes wheel metadata; the generated runtime table above still
   # enforces the reviewed range at import time.
   pythonRelaxDeps = [ "tokenizers" ];

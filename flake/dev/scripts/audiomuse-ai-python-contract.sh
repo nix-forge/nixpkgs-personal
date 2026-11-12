@@ -9,4 +9,5 @@ export DATABASE_URL=
 mkdir -p "$PYTHONPYCACHEPREFIX"
 python -m compileall -q "$AUDIOMUSE_SOURCE"
 python @pkgs_replaceVars_scripts_packages_check_py_source_python_goo@
+python @tokenizerCheck@
 touch "$out"

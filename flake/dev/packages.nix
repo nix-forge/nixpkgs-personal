@@ -238,6 +238,7 @@ in
           (
             (import ../../lib/render-text.nix) ./scripts/audiomuse-ai-python-contract.sh {
               audiomuse_applicationSource = audiomuse.applicationSource;
+              tokenizerCheck = ../../pkgs/by-name/au/audiomuse-ai/scripts/check_tokenizer_runtime.py;
               pkgs_replaceVars_scripts_packages_check_py_source_python_goo =
                 pkgs.replaceVars ./scripts/check_audiomuse_python_contract.py
                   {
