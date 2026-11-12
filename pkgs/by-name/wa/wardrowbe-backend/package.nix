@@ -40,6 +40,26 @@ let
                         version = source.cythonVersion;
                         hash = source.cythonHash;
                       };
+                      # Cython 3.3.1 includes the unknown-global-annotation fix
+                      # and pure_pxd regression from upstream PR 7970. Drop only
+                      # that inherited 3.3.0 backport when selecting newer source.
+                      patches = builtins.filter (
+                        patch:
+                        !(
+                          lib.versionAtLeast source.cythonVersion "3.3.1"
+                          && builtins.isAttrs patch
+                          && builtins.elem "https://github.com/cython/cython/pull/7970.patch" (
+                            patch.urls or [ (patch.url or "") ]
+                          )
+                        )
+                      ) (cythonOld.patches or [ ]);
+                      # Run the actual upstream fixture against the installed
+                      # compiler, including its typed .pxd / unknown Final case.
+                      doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+                      postInstallCheck = (cythonOld.postInstallCheck or "") + ''
+                        test -f tests/run/pure_pxd.srctree
+                        ${python3.interpreter} runtests.py -j"$NIX_BUILD_CORES" --no-code-style pure_pxd
+                      '';
                       meta = cythonOld.meta // {
                         changelog = "https://github.com/cython/cython/blob/${source.cythonVersion}/CHANGES.rst";
                       };
