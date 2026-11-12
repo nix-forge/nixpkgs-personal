@@ -17,6 +17,7 @@
             ++ [
               package
               (import ./javascript-tools.nix { pkgs = pkgs.buildPackages; })
+              (import ./zizmor.nix { pkgs = pkgs.buildPackages; })
             ]
             ++ (with pkgs.buildPackages; [
               actionlint
@@ -54,7 +55,6 @@
               typos
               yamlfmt
               yamllint
-              zizmor
             ])
             ++ lib.optionals pkgs.buildPackages.stdenv.hostPlatform.isDarwin [ pkgs.buildPackages.libiconv ];
         };

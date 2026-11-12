@@ -142,6 +142,7 @@
           };
           zizmor = {
             enable = true;
+            package = import ./zizmor.nix { pkgs = pkgs.buildPackages; };
             args = [ "--persona=pedantic" ];
           };
           gitleaks = {

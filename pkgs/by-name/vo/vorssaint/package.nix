@@ -115,7 +115,10 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://vorssaint.com/";
     downloadPage = "https://github.com/vorssaint/vorssaint-utils/releases";
     changelog = "https://github.com/vorssaint/vorssaint-utils/releases/tag/v${finalAttrs.version}";
-    license = lib.licenses.gpl3Plus;
+    license = [
+      lib.licenses.gpl3Plus
+      lib.licenses.mit
+    ];
     mainProgram = "vorssaint";
     platforms = [ "aarch64-darwin" ];
     sourceProvenance = [ lib.sourceTypes.fromSource ];
