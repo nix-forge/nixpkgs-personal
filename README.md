@@ -83,6 +83,11 @@ CI builds `lintChecks` once in the required Linux lint job. Native jobs discover
 output retains all checks for local validation. New native checks enter CI by
 default; additions to the lint group run in its existing required job.
 
+Package jobs compare each selected package and application check with its base
+commit using the exact Nix derivation path. Identical derivations skip a rebuild;
+changed or newly added checks still run even when their package is unchanged.
+Unavailable base history or evaluation triggers conservative rebuilding.
+
 The lint group is reserved for portable tooling. Platform-dependent tests belong
 in native checks or a required native job, so moving lint does not hide them.
 
