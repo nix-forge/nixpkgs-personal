@@ -4,6 +4,7 @@
   lib,
   buildDotnetModule,
   dotnetCorePackages,
+  stdenv,
   fetchFromGitHub,
   fetchurl,
   powershell,
@@ -28,8 +29,18 @@ buildDotnetModule (finalAttrs: {
   projectFile = "Rules/Rules.csproj";
   nugetDeps = ./deps.json;
   buildType = "PSV7Release";
-  dotnet-sdk = dotnetCorePackages.sdk_8_0;
-  dotnet-runtime = dotnetCorePackages.runtime_8_0;
+  # Darwin's source SDK bootstraps .NET twice before compiling this small
+  # module. Use the pinned upstream vendor toolchain; the module stays source-built.
+  dotnet-sdk =
+    if stdenv.buildPlatform.isDarwin then
+      dotnetCorePackages.sdk_8_0-bin
+    else
+      dotnetCorePackages.sdk_8_0;
+  dotnet-runtime =
+    if stdenv.hostPlatform.isDarwin then
+      dotnetCorePackages.runtime_8_0-bin
+    else
+      dotnetCorePackages.runtime_8_0;
   # Select the module's PowerShell 7 target only for the build. Its project
   # references a netstandard2.0 library, which must restore for that target.
   dotnetBuildFlags = [

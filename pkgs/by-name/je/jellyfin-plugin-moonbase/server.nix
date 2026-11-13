@@ -1,6 +1,7 @@
 {
   buildDotnetModule,
   dotnetCorePackages,
+  stdenv,
   fetchFromGitHub,
 }:
 let
@@ -17,8 +18,18 @@ buildDotnetModule {
   };
   projectFile = "Jellyfin/backend/Moonfin.Server.csproj";
   nugetDeps = ./deps.json;
-  dotnet-sdk = dotnetCorePackages.sdk_8_0;
-  dotnet-runtime = dotnetCorePackages.runtime_8_0;
+  # Darwin's source SDK bootstraps .NET twice before compiling this small
+  # module. Use the pinned upstream vendor toolchain; the module stays source-built.
+  dotnet-sdk =
+    if stdenv.buildPlatform.isDarwin then
+      dotnetCorePackages.sdk_8_0-bin
+    else
+      dotnetCorePackages.sdk_8_0;
+  dotnet-runtime =
+    if stdenv.hostPlatform.isDarwin then
+      dotnetCorePackages.runtime_8_0-bin
+    else
+      dotnetCorePackages.runtime_8_0;
   dotnetBuildFlags = [
     "-p:AssemblyVersion=${source.version}"
     "-p:FileVersion=${source.version}"
