@@ -33,7 +33,7 @@ def token_expires_at(expiration: int) -> str:
 
 class SpotifyAuthorizationTests(unittest.TestCase):
     def test_rejects_expiring_authorization(self) -> None:
-        with patch.object(updater.time, "time", return_value=1_000_000):
+        with patch.object(updater, "time", return_value=1_000_000):
             with self.assertRaises(SystemExit):
                 updater._validate_fauth_expiry(token_expires_at(1_000_001))
             updater._validate_fauth_expiry(token_expires_at(2_000_000))

@@ -902,7 +902,7 @@ diff --git a/tests/outfit-browsing.test.tsx b/tests/outfit-browsing.test.tsx
 new file mode 100644
 --- /dev/null
 +++ b/tests/outfit-browsing.test.tsx
-@@ -0,0 +1,190 @@
+@@ -0,0 +1,199 @@
 +import React from 'react';
 +import { beforeEach, describe, expect, it, vi } from 'vitest';
 +import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -1040,7 +1040,16 @@ new file mode 100644
 +    navigation.search = '?filter=my-looks&page=3';
 +    mount();
 +    await screen.findByRole('heading', { name: 'Outfit 49' });
-+    fireEvent.change(screen.getByPlaceholderText('search'), { target: { value: 'Outfit 1' } });
++    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
++    try {
++      fireEvent.change(screen.getByPlaceholderText('search'), { target: { value: 'Outfit 1' } });
++      await act(async () => { await vi.advanceTimersByTimeAsync(299); });
++      expect(vi.mocked(api.get).mock.calls.filter(([, options]) => options?.params?.search)).toHaveLength(0);
++      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
++      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
++    } finally {
++      vi.useRealTimers();
++    }
 +    await screen.findByRole('heading', { name: 'Outfit 1' });
 +    const requests = vi.mocked(api.get).mock.calls.filter(([, options]) => options?.params?.search);
 +    expect(requests.length).toBeGreaterThan(0);

@@ -23,6 +23,15 @@ swiftc -swift-version 5 -target "arm64-apple-macosx$minimumMacOS" \
   "${sqliteFlags[@]}" @sqliteCheck@ -o "$buildDir/check-sqlite"
 "$buildDir/check-sqlite"
 
+# Compile the same C targets as the pinned upstream build before linking Swift.
+mkdir -p "$buildDir/recorder-gif-codec"
+"$CC" -O3 -std=c99 -target "arm64-apple-macosx$minimumMacOS" -isysroot "$SDKROOT" \
+  -c Sources/RecorderGIFCodec/RecorderGIFCodec.c -o "$buildDir/recorder-gif-codec/RecorderGIFCodec.o"
+"$CC" -O3 -std=c99 -target "arm64-apple-macosx$minimumMacOS" -isysroot "$SDKROOT" \
+  -c Sources/RecorderGIFCodec/vendor/cgif/cgif_raw.c -o "$buildDir/recorder-gif-codec/cgif_raw.o"
+
+macroFlags=(@macroFlags@)
+
 # Upstream deliberately builds with a plain swiftc invocation. Keep the
 # source discovery explicit and deterministic, while excluding no sources:
 # every file under Sources/Vorssaint belongs to the app target.
@@ -32,7 +41,9 @@ while IFS= read -r sourceFile; do
 done < <(find Sources/Vorssaint -type f -name '*.swift' | sort)
 swiftc -O -swift-version 5 -target "arm64-apple-macosx$minimumMacOS" \
   -I Sources/VMStatisticsCompat -I Sources/HIDEventSystem \
+  -I Sources/CoreAudioTapCompat -I Sources/RecorderGIFCodec "${macroFlags[@]}" \
   "${sqliteFlags[@]}" "${appSources[@]}" \
+  "$buildDir/recorder-gif-codec/RecorderGIFCodec.o" "$buildDir/recorder-gif-codec/cgif_raw.o" \
   -o "$buildDir/PersonalMonitor"
 
 # Native 5.10 and 6.3 checks found a smaller helper with WMO.

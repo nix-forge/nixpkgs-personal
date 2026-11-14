@@ -9,11 +9,11 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import httpx
-from app.api import preferences  # ty: ignore[unresolved-import]
-from app.services.ai_service import AIService  # ty: ignore[unresolved-import]
-from app.utils.locale import DEFAULT_LOCALE  # ty: ignore[unresolved-import]
-from fastapi import FastAPI, HTTPException, status  # ty: ignore[unresolved-import]
-from fastapi.testclient import TestClient  # ty: ignore[unresolved-import]
+from app.api import preferences  # ty: ignore[import-not-found]
+from app.services.ai_service import AIService  # ty: ignore[import-not-found]
+from app.utils.locale import DEFAULT_LOCALE  # ty: ignore[import-not-found]
+from fastapi import FastAPI, HTTPException, status  # ty: ignore[import-not-found]
+from fastapi.testclient import TestClient  # ty: ignore[import-not-found]
 from PIL import Image
 
 

@@ -142,6 +142,7 @@
           };
           zizmor = {
             enable = true;
+            package = import ./zizmor.nix { pkgs = pkgs.buildPackages; };
             args = [ "--persona=pedantic" ];
           };
           gitleaks = {
@@ -154,7 +155,10 @@
             always_run = true;
             pass_filenames = false;
           };
-          flake-checker.enable = true;
+          flake-checker = {
+            enable = true;
+            package = import ./flake-checker.nix { pkgs = pkgs.buildPackages; };
+          };
 
           nix-flake-check = {
             enable = true;

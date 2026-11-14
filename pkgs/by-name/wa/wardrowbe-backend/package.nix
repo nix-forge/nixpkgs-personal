@@ -40,6 +40,34 @@ let
                         version = source.cythonVersion;
                         hash = source.cythonHash;
                       };
+                      # Cython 3.3.1 includes the unknown-global-annotation fix
+                      # and pure_pxd regression from upstream PR 7970. Drop only
+                      # that inherited 3.3.0 backport when selecting newer source.
+                      patches = builtins.filter (
+                        patch:
+                        !(
+                          lib.versionAtLeast source.cythonVersion "3.3.1"
+                          && builtins.isAttrs patch
+                          && builtins.elem "https://github.com/cython/cython/pull/7970.patch" (
+                            patch.urls or [ (patch.url or "") ]
+                          )
+                        )
+                      ) (cythonOld.patches or [ ]);
+                      # Python maps doCheck/checkPhase to its install check.
+                      # The full upstream suite is disabled for dependency cycles;
+                      # this focused fixture needs only the existing build tools.
+                      doCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+                      nativeCheckInputs = [ ];
+                      checkPhase = ''
+                        runHook preCheck
+                        test -f tests/run/pure_pxd.srctree
+                        # Python 3.12+ removed stdlib distutils. Keep the entire
+                        # upstream fixture, using its declared build backend.
+                        substituteInPlace tests/run/pure_pxd.srctree \
+                          --replace-fail 'from distutils.core import setup' 'from setuptools import setup'
+                        ${python3.interpreter} runtests.py -j"$NIX_BUILD_CORES" --no-code-style pure_pxd
+                        runHook postCheck
+                      '';
                       meta = cythonOld.meta // {
                         changelog = "https://github.com/cython/cython/blob/${source.cythonVersion}/CHANGES.rst";
                       };

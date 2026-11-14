@@ -14,3 +14,9 @@ changing the package. Build the package and run consumer script checks before
 adopting new diagnostics: a new rule set can change configuration acceptance.
 The installation check imports the source-built module and requires it to find
 a known unused-variable defect; it does not execute the analyzed script.
+
+On Darwin, compilation uses the pinned Nixpkgs `sdk_8_0-bin` and
+`runtime_8_0-bin` toolchain packages. This avoids bootstrapping .NET itself
+for a small analyzer build. The module is still compiled from the same tagged
+source with the same NuGet hashes, import check and rule-detection check.
+Linux retains the ordinary Nixpkgs SDK and runtime selections.

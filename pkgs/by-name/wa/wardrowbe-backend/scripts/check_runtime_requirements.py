@@ -5,7 +5,7 @@ import pathlib
 import ssl
 import sys
 from importlib.metadata import distributions, version
-from importlib.resources import files
+from importlib.resources import as_file, files
 
 from packaging.requirements import Requirement
 
@@ -36,9 +36,11 @@ if len(list(distributions(name="certifi"))) != 1:
 
 # Validate the bundled trust update even when an explicit host CA override exists.
 # GHSA-6q48-6c7w-9gw2 removes emSign ECC Root CA-G3; retain other trust roots.
-bundle = files("certifi").joinpath("cacert.pem").read_text(encoding="ascii")
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-context.load_verify_locations(cadata=bundle)
+# PEM comments may contain UTF-8 names. Let OpenSSL read the selected bundle
+# as a file instead of forcing comments through its ASCII cadata interface.
+with as_file(files("certifi").joinpath("cacert.pem")) as bundle_path:
+    context.load_verify_locations(cafile=str(bundle_path))
 fingerprints = {
     hashlib.sha256(certificate).hexdigest()
     for certificate in context.get_ca_certs(binary_form=True)

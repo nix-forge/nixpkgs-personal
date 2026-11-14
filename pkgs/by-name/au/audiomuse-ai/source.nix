@@ -45,7 +45,7 @@
       rev = "753d61104116eefc8ffc977327b441ee0c8d599f";
       hash = "sha256-a78ornUAYlOpr30iFdq1oUiWQTm6GeT0iq8ras5i3DQ=";
       upstreamTokenizersRequirement = "tokenizers>=0.22.0,<=0.23.0";
-      tokenizersRequirement = "tokenizers>=0.22.0,<=0.23.2";
+      tokenizersRequirement = "tokenizers>=0.22.0,<=0.23.3";
     };
   };
 }

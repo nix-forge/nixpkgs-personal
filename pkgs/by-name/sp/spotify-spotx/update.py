@@ -10,9 +10,9 @@ import json
 import re
 import subprocess
 import sys
-import time
 from dataclasses import dataclass
 from pathlib import Path
+from time import time
 from typing import TYPE_CHECKING, Final, NoReturn
 from urllib.error import URLError
 from urllib.parse import urlparse
@@ -232,7 +232,7 @@ def _validate_fauth_expiry(token: str) -> None:
     except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as exc:
         _fail(f"Spotify download authorization cannot be decoded: {type(exc).__name__}")
     expiration = payload.get("exp") if isinstance(payload, dict) else None
-    if type(expiration) is not int or expiration <= time.time() + 7 * 24 * 60 * 60:
+    if type(expiration) is not int or expiration <= time() + 7 * 24 * 60 * 60:
         _fail("Spotify download authorization expires within seven days")
 
 
