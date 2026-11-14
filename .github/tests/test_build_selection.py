@@ -34,14 +34,15 @@ def package(path, name, version="1", description="before"):
     )
 
 
-def flake(root, name, empty=False, invalid=False, application=False):
+def flake(root, name, empty=False, invalid=False, application="absent"):
     text = (
         (Path(__file__).with_name("fixtures") / "flake.nix.in")
         .read_text(encoding="utf-8")
         .replace("@name@", name)
         .replace("@prefix@", name[:2])
         .replace("@empty@", "true" if empty else "false")
-        .replace("@application@", "true" if application else "false")
+        .replace("@application@", "true" if application == "present" else "false")
+        .replace("@broken_application@", "true" if application == "broken" else "false")
     )
     (root / "flake.nix").write_text("invalid nix syntax !!!" if invalid else text)
 
@@ -102,7 +103,11 @@ class BuildSelectionTests(unittest.TestCase):
             "diff-failure",
             "unchanged-contracts",
             "application-contracts",
+            "changed-contracts",
+            "runtime-change-with-contracts",
+            "base-application-eval-failure",
             "current-eval-failure",
+            "current-application-eval-failure",
             "evaluation-only",
             "unknown-policy-package",
             "blank-policy-reason",
@@ -143,6 +148,8 @@ class BuildSelectionTests(unittest.TestCase):
                 )
                 source = root / "pkgs/by-name" / name[:2] / name / "package.nix"
                 package(source, name)
+                contract_source = source.with_name("contract-version")
+                contract_source.write_text("before\n")
                 package(root / "other.nix", "other")
                 if case == "unknown-policy-package":
                     policy.write_text('{"demoo": "Evaluation only: typo"}')
@@ -164,8 +171,17 @@ class BuildSelectionTests(unittest.TestCase):
                     name,
                     empty=case == "new-package",
                     invalid=case == "base-eval-failure",
-                    application=case
-                    in {"application-contracts", "unchanged-contracts"},
+                    application="broken"
+                    if case == "base-application-eval-failure"
+                    else "present"
+                    if case
+                    in {
+                        "unchanged-contracts",
+                        "changed-contracts",
+                        "runtime-change-with-contracts",
+                        "base-application-eval-failure",
+                    }
+                    else "absent",
                 )
                 if case == "registry-change":
                     registry = root / "flake/dev/packages.nix"
@@ -184,6 +200,7 @@ class BuildSelectionTests(unittest.TestCase):
                     if case
                     in {
                         "runtime-change",
+                        "runtime-change-with-contracts",
                         "evaluation-only",
                         "unknown-policy-package",
                         "blank-policy-reason",
@@ -198,9 +215,21 @@ class BuildSelectionTests(unittest.TestCase):
                     root,
                     name,
                     invalid=case == "current-eval-failure",
-                    application=case
-                    in {"application-contracts", "unchanged-contracts"},
+                    application="broken"
+                    if case == "current-application-eval-failure"
+                    else "present"
+                    if case
+                    in {
+                        "application-contracts",
+                        "unchanged-contracts",
+                        "changed-contracts",
+                        "runtime-change-with-contracts",
+                        "base-application-eval-failure",
+                    }
+                    else "absent",
                 )
+                if case == "changed-contracts":
+                    contract_source.write_text("after\n")
                 if case == "registry-change":
                     package(registry, "other", version="2")
                     entry.write_text(
@@ -269,6 +298,7 @@ class BuildSelectionTests(unittest.TestCase):
                 builds = log.read_text().splitlines() if log.exists() else []
                 if case in {
                     "current-eval-failure",
+                    "current-application-eval-failure",
                     "unknown-policy-package",
                     "blank-policy-reason",
                     "missing-policy",
@@ -277,7 +307,10 @@ class BuildSelectionTests(unittest.TestCase):
                 }:
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(builds, [])
-                    if case != "current-eval-failure":
+                    if case not in {
+                        "current-eval-failure",
+                        "current-application-eval-failure",
+                    }:
                         self.assertIn("policy", result.stdout.lower())
                     continue
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -301,7 +334,15 @@ class BuildSelectionTests(unittest.TestCase):
                 elif case == "registry-change":
                     self.assertEqual(len(builds), 1, builds)
                     self.assertIn(".#other", builds[0])
-                elif case in {"application-contracts", "unchanged-contracts"}:
+                elif case == "unchanged-contracts":
+                    self.assertEqual(builds, [])
+                    self.assertIn("unchanged check derivation", result.stdout)
+                elif case in {
+                    "application-contracts",
+                    "changed-contracts",
+                    "runtime-change-with-contracts",
+                    "base-application-eval-failure",
+                }:
                     contracts = (
                         "cli",
                         "gui",
@@ -314,14 +355,34 @@ class BuildSelectionTests(unittest.TestCase):
                         "host-tests-artifact",
                         "appimage-runtime",
                     )
-                    self.assertEqual(len(builds), len(contracts), builds)
-                    for index, contract in enumerate(contracts):
+                    runtime_builds = 1 if case == "runtime-change-with-contracts" else 0
+                    # A changed flake selects every package, including other.
+                    other_contract = case in {
+                        "application-contracts",
+                        "base-application-eval-failure",
+                    }
+                    self.assertEqual(
+                        len(builds),
+                        len(contracts) + runtime_builds + other_contract,
+                        builds,
+                    )
+                    if runtime_builds:
+                        self.assertIn(f".#{name}", builds[0])
+                    for index, contract in enumerate(contracts, start=runtime_builds):
                         self.assertIn(
                             f"applicationChecks.x86_64-linux.{name}-{contract}",
                             builds[index],
                         )
-                    self.assertNotIn("other-cli", "\n".join(builds))
-                    self.assertIn("unchanged derivation", result.stdout)
+                    if other_contract:
+                        self.assertIn(
+                            "applicationChecks.x86_64-linux.other-cli", builds[-1]
+                        )
+                    else:
+                        self.assertNotIn("other-cli", "\n".join(builds))
+                    if not runtime_builds:
+                        self.assertIn("unchanged derivation", result.stdout)
+                    if case == "base-application-eval-failure":
+                        self.assertIn("comparison unavailable", result.stdout)
                 else:
                     full_rebuild = case in {
                         "base-eval-failure",

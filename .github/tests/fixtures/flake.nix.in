@@ -1,30 +1,45 @@
 {
-  outputs = { self }: {
-    packages.x86_64-linux = {
-      other = import ./other.nix;
-    }
-    // (
-      if "@empty@" == "true" then
-        { }
-      else
-        { "@name@" = import (./. + "/pkgs/by-name/@prefix@/@name@/package.nix"); }
-    );
-    applicationChecks.x86_64-linux =
-      if "@application@" == "true" then
-        {
-          "@name@-cli" = null;
-          "@name@-gui" = null;
-          "@name@-wayland" = null;
-          "@name@-licenses" = null;
-          "@name@-appstream" = null;
-          "@name@-wayland-clipboard" = null;
-          "@name@-server" = null;
-          "@name@-quit-state" = null;
-          "@name@-host-tests-artifact" = null;
-          "@name@-appimage-runtime" = null;
-          other-cli = null;
-        }
-      else
-        { };
-  };
+  outputs =
+    { self }:
+    let
+      check =
+        suffix:
+        builtins.derivation {
+          name = "@name@-" + suffix;
+          system = "x86_64-linux";
+          builder = "/fixture-not-executed";
+          package = import (./. + "/pkgs/by-name/@prefix@/@name@/package.nix");
+          contractInput = builtins.readFile (./. + "/pkgs/by-name/@prefix@/@name@/contract-version");
+        };
+    in
+    {
+      packages.x86_64-linux = {
+        other = import ./other.nix;
+      }
+      // (
+        if "@empty@" == "true" then
+          { }
+        else
+          { "@name@" = import (./. + "/pkgs/by-name/@prefix@/@name@/package.nix"); }
+      );
+      applicationChecks.x86_64-linux =
+        if "@broken_application@" == "true" then
+          throw "base application checks are unavailable"
+        else if "@application@" == "true" then
+          {
+            "@name@-cli" = check "cli";
+            "@name@-gui" = check "gui";
+            "@name@-wayland" = check "wayland";
+            "@name@-licenses" = check "licenses";
+            "@name@-appstream" = check "appstream";
+            "@name@-wayland-clipboard" = check "wayland-clipboard";
+            "@name@-server" = check "server";
+            "@name@-quit-state" = check "quit-state";
+            "@name@-host-tests-artifact" = check "host-tests-artifact";
+            "@name@-appimage-runtime" = check "appimage-runtime";
+            other-cli = check "other-cli";
+          }
+        else
+          { };
+    };
 }

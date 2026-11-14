@@ -75,7 +75,18 @@ if [[ $base_available == true ]]; then
   fi
 fi
 
-application_checks=$(nix eval --option allow-import-from-derivation false --json ".#applicationChecks.$SYSTEM" --apply builtins.attrNames)
+application_checks=$(nix eval --option allow-import-from-derivation false --json ".#applicationChecks.$SYSTEM" \
+  --apply 'builtins.mapAttrs (_: check: check.drvPath)')
+base_application_checks='{}'
+if [[ $base_available == true ]]; then
+  if ! base_application_checks=$(nix eval --json \
+    "git+file://$PWD?rev=$BASE_SHA#applicationChecks.$SYSTEM" \
+    --no-write-lock-file --option allow-import-from-derivation false \
+    --apply 'builtins.mapAttrs (_: check: check.drvPath)'); then
+    echo '::notice::Base application-check comparison unavailable; rebuilding selected contracts.'
+    base_application_checks='{}'
+  fi
+fi
 
 while IFS= read -r package; do
   [[ -n $package ]] || continue
@@ -94,9 +105,16 @@ while IFS= read -r package; do
     bash .github/scripts/build-with-fetch-retry.sh \
       nix build ".#$package" --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
   fi
-  # Additional contracts run even when the package output is unchanged.
+  # A test can change independently of its package. Compare its own full Nix
+  # derivation, so changed contracts run without rebuilding identical contracts.
   for contract in "$package-cli" "$package-gui" "$package-wayland" "$package-licenses" "$package-appstream" "$package-wayland-clipboard" "$package-server" "$package-quit-state" "$package-host-tests-artifact" "$package-appimage-runtime"; do
-    if jq -e --arg contract "$contract" 'index($contract) != null' <<<"$application_checks" >/dev/null; then
+    if jq -e --arg contract "$contract" 'has($contract)' <<<"$application_checks" >/dev/null; then
+      current_check=$(jq -er --arg contract "$contract" '.[$contract]' <<<"$application_checks")
+      base_check=$(jq -r --arg contract "$contract" '.[$contract] // empty' <<<"$base_application_checks")
+      if [[ -n $base_check && $base_check == "$current_check" ]]; then
+        echo "$contract: unchanged check derivation; no rebuild needed."
+        continue
+      fi
       bash .github/scripts/build-with-fetch-retry.sh \
         nix build --no-link ".#applicationChecks.$SYSTEM.$contract" \
         --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
