@@ -152,6 +152,16 @@ in
         checkPhase = builtins.readFile ./scripts/check-javascript.sh;
         installPhase = builtins.readFile ./scripts/install-check-output.sh;
       };
+      rea-runtime =
+        let
+          report = import ../../tests/rea-runtime.nix {
+            nixpkgs = packageNixpkgs;
+            inherit system;
+          };
+        in
+        builtins.deepSeq report (
+          pkgs.writeText "rea-runtime.json" (builtins.unsafeDiscardStringContext (builtins.toJSON report))
+        );
       package-policy =
         let
           report = import ../../tests/package-policy.nix {

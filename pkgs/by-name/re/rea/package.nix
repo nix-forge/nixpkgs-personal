@@ -60,6 +60,9 @@ let
           preCheck = (old.preCheck or "") + ''
             # Match the test runner to the allocation, retaining compiler parallelism.
             export JOBS="$NIX_BUILD_CORES"
+            # Print each command before launch so a stalled case is identifiable.
+            export PYTHONUNBUFFERED=1
+            export TEST_CI_ARGS="''${TEST_CI_ARGS:-} --verbose"
           '';
         }
       );
@@ -67,15 +70,29 @@ let
   targetCompiler = if stdenv.hostPlatform.isLinux then clangStdenv else stdenv;
   buildCompiler =
     if stdenv.buildPlatform.isLinux then buildPackages.clangStdenv else buildPackages.stdenv;
-  # Override the compiled slim input, preserving Nixpkgs' Node patches and tests.
-  targetNodejs = nodejs_24.override {
-    nodejs-slim = withReaNodeSource targetCompiler callPackage brotli nodejs-slim_24;
-  };
-  buildNodejs = buildPackages.nodejs_24.override {
-    nodejs-slim =
-      withReaNodeSource buildCompiler buildPackages.callPackage buildPackages.brotli
-        buildPackages.nodejs-slim_24;
-  };
+  # Reuse the unmodified, substitutable Nixpkgs runtime when the same LTS line
+  # meets both security minimums. Darwin still needs the owning RSS repair.
+  reuseUpstreamNode =
+    stdenv.hostPlatform.isLinux
+    && lib.versions.major nodejs_24.version == "24"
+    && lib.versionAtLeast nodejs_24.version source.nodejs.version
+    && lib.versionAtLeast brotli.version source.brotli.version;
+  targetNodejs =
+    if reuseUpstreamNode then
+      nodejs_24
+    else
+      nodejs_24.override {
+        nodejs-slim = withReaNodeSource targetCompiler callPackage brotli nodejs-slim_24;
+      };
+  buildNodejs =
+    if stdenv.buildPlatform == stdenv.hostPlatform then
+      targetNodejs
+    else
+      buildPackages.nodejs_24.override {
+        nodejs-slim =
+          withReaNodeSource buildCompiler buildPackages.callPackage buildPackages.brotli
+            buildPackages.nodejs-slim_24;
+      };
   targetNpmHooks = buildPackages.npmHooks.override { nodejs = targetNodejs; };
   appSrc = fetchFromGitHub {
     owner = "morluto";
@@ -216,6 +233,8 @@ buildNpmPackage (finalAttrs: {
     runHook postInstallCheck
   '';
   passthru = {
+    inherit buildNodejs reuseUpstreamNode;
+    runtimeNodejs = targetNodejs;
     nativeAddon = nodePty;
     updateScript = [
       (lib.getExe (callPackage ./update.nix { }))

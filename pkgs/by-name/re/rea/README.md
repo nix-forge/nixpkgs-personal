@@ -2,11 +2,13 @@
 
 REA provides the `rea` and `rea-agents` commands and a stdio MCP server. This
 recipe builds the public stable TypeScript release and its matching native PTY
-addon from source with the upstream npm lockfile and Node 24.22.1. This package
-pins the actual Node source for both build tools and target runtime while
-keeping the rest of the collection's Nixpkgs input unchanged. Brotli 1.2.1 is
-scoped to this runtime because Node exposes its new decoder error. Linux Node
-builds use Clang to keep eight compiler workers within the reviewed working set.
+addon from source with the upstream npm lockfile. On Linux, it reuses the
+unmodified Nixpkgs Node 24 package when Node is at least 24.22.1 and Brotli is at
+least 1.2.1, allowing normal binary-cache substitution. Otherwise it retains the
+pinned Node 24.22.1 source and scoped Brotli 1.2.1 without changing the collection's
+Nixpkgs input. Scoped Linux source builds use Clang. Native build tools and the
+installed runtime share one Node derivation; cross builds keep separate runtimes.
+Supply Node and Brotli from the same package set when overriding the recipe.
 On Darwin it also compiles the process-ownership and native UI Swift helpers. A
 local patch selects those packaged helpers while preserving upstream's process
 validation and the source checkout's runtime compilation fallback.
@@ -16,7 +18,8 @@ Node 24's bundled libuv. The compatibility adapter covers Node's memory-usage
 APIs and diagnostic reports; shared libuv 1.53 and its physical-footprint
 regression tests remain unchanged. The original worker-memory assertion and
 threshold remain in place. The Node check runner uses its allocated compiler
-count. Its blocked-address fixture uses a permitted loopback address for the
+count and prints each test command without Python output buffering, so a stalled
+case is visible in the build log. Its blocked-address fixture uses a permitted loopback address for the
 successful reuse case, keeping both the block rejection and peer-address
 assertions. No additional tests are excluded. On hosts with an application
 firewall, allow the exact build executable while running the native network
@@ -81,7 +84,7 @@ optional dependencies are not globally omitted.
 
 `source.nix` pins the release commit, recursive source hash, npm dependency
 cache, matching PTY fork source, locked Node-API headers, and the scoped Node
-source. The native `update.nix` command supports `--check` for a no-write
+fallback source and security minimum. The native `update.nix` command supports `--check` for a no-write
 preview and `--version` for an explicit stable release.
 `python3 update.py --help` also works without network access. Use the native
 updater to provide Python's `sigstore` dependency along with `nix`, `git`, and
