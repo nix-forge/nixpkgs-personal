@@ -5,7 +5,10 @@ let
   native = pkgs.callPackage ../pkgs/by-name/re/rea/package.nix { };
   minimum = import ../pkgs/by-name/re/rea/source.nix;
   expectedReuse =
-    pkgs.stdenv.hostPlatform.isLinux
+    (
+      pkgs.stdenv.hostPlatform.isLinux
+      || (pkgs.stdenv.hostPlatform.isDarwin && pkgs.lib.versionAtLeast pkgs.nodejs_24.version "24.22.2")
+    )
     && pkgs.lib.versions.major pkgs.nodejs_24.version == "24"
     && pkgs.lib.versionAtLeast pkgs.nodejs_24.version minimum.nodejs.version
     && pkgs.lib.versionAtLeast pkgs.brotli.version minimum.brotli.version;
