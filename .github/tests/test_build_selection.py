@@ -89,6 +89,10 @@ class BuildSelectionTests(unittest.TestCase):
             )
         cases = [
             "metadata",
+            "malformed-base-map",
+            "malformed-current-map",
+            "unselected-throw",
+            "excluded-throw",
             "runtime-change",
             "registry-change",
             "infrastructure-script",
@@ -192,6 +196,19 @@ class BuildSelectionTests(unittest.TestCase):
                             "./other.nix", "./flake/dev/packages.nix"
                         )
                     )
+                if case in {"unselected-throw", "excluded-throw"}:
+                    entry = root / "flake.nix"
+                    entry.write_text(
+                        entry.read_text().replace(
+                            "other = import ./other.nix;",
+                            'other = throw "unselected derivation forced";',
+                        )
+                    )
+                    if case == "excluded-throw":
+                        policy.write_text(
+                            '{"other": "Evaluation only: fixture restriction"}'
+                        )
+                        package(root / "pkgs/by-name/ot/other/package.nix", "other")
                 base = commit(root)
                 package(
                     source,
@@ -228,6 +245,14 @@ class BuildSelectionTests(unittest.TestCase):
                     }
                     else "absent",
                 )
+                if case in {"unselected-throw", "excluded-throw"}:
+                    entry = root / "flake.nix"
+                    entry.write_text(
+                        entry.read_text().replace(
+                            "other = import ./other.nix;",
+                            'other = throw "unselected derivation forced";',
+                        )
+                    )
                 if case == "changed-contracts":
                     contract_source.write_text("after\n")
                 if case == "registry-change":
@@ -246,6 +271,9 @@ class BuildSelectionTests(unittest.TestCase):
                     changed = root / infrastructure[case]
                     changed.parent.mkdir(parents=True, exist_ok=True)
                     changed.write_text("# Check infrastructure changed\n")
+                if case == "excluded-throw":
+                    changed = root / ".github/scripts/fixture.sh"
+                    changed.write_text("# Select every eligible output\n")
                 commit(root)
                 bindir = temp / "bin"
                 bindir.mkdir()
@@ -298,6 +326,7 @@ class BuildSelectionTests(unittest.TestCase):
                 builds = log.read_text().splitlines() if log.exists() else []
                 if case in {
                     "current-eval-failure",
+                    "malformed-current-map",
                     "current-application-eval-failure",
                     "unknown-policy-package",
                     "blank-policy-reason",
@@ -309,6 +338,7 @@ class BuildSelectionTests(unittest.TestCase):
                     self.assertEqual(builds, [])
                     if case not in {
                         "current-eval-failure",
+                        "malformed-current-map",
                         "current-application-eval-failure",
                     }:
                         self.assertIn("policy", result.stdout.lower())
@@ -318,19 +348,34 @@ class BuildSelectionTests(unittest.TestCase):
                 current_maps = [
                     line for line in evaluations if ".#packages.x86_64-linux" in line
                 ]
-                self.assertEqual(len(current_maps), 1, evaluations)
-                self.assertIn("builtins.mapAttrs", current_maps[0])
+                self.assertEqual(
+                    len(current_maps),
+                    1 if case == "evaluation-only" else 2,
+                    evaluations,
+                )
+                self.assertIn("builtins.attrNames", current_maps[0])
+                if case != "evaluation-only":
+                    self.assertIn("builtins.mapAttrs", current_maps[1])
                 self.assertFalse(any("--raw" in line for line in evaluations))
                 if case == "evaluation-only":
                     self.assertEqual(builds, [])
-                    self.assertIn("fixture restriction", result.stdout)
-                elif case in {"metadata", "other-platform-policy"}:
+                    self.assertIn("fixture restriction", result.stdout + result.stderr)
+                elif case in {
+                    "metadata",
+                    "other-platform-policy",
+                    "unselected-throw",
+                    "excluded-throw",
+                }:
                     self.assertEqual(builds, [])
                     self.assertIn("unchanged derivation", result.stdout)
                 elif case.startswith("infrastructure-"):
                     self.assertEqual(builds, [])
                     self.assertIn("demo: unchanged derivation", result.stdout)
                     self.assertIn("other: unchanged derivation", result.stdout)
+                elif case == "malformed-base-map":
+                    self.assertEqual(len(builds), 1, builds)
+                    self.assertIn(".#demo", builds[0])
+                    self.assertIn("comparison unavailable", result.stdout)
                 elif case == "registry-change":
                     self.assertEqual(len(builds), 1, builds)
                     self.assertIn(".#other", builds[0])
