@@ -102,8 +102,10 @@ fi
 # Discover contracts without evaluating any unselected contract derivations.
 contracts=$(nix eval --option allow-import-from-derivation false --json ".#applicationChecks.$SYSTEM" \
   --apply builtins.attrNames)
-selected_contracts=$(jq -cn --argjson packages "$selected" --argjson contracts "$contracts" '
-  [$packages[] as $package | ["cli", "gui", "wayland", "licenses", "appstream", "wayland-clipboard", "server", "quit-state", "host-tests-artifact", "appimage-runtime"][] | $package + "-" + .] | map(select(. as $name | $contracts | index($name)))')
+contract_suffixes=(cli gui wayland licenses appstream wayland-clipboard server quit-state host-tests-artifact appimage-runtime)
+suffixes=$(printf '%s\n' "${contract_suffixes[@]}" | jq -Rn '[inputs]')
+selected_contracts=$(jq -cn --argjson packages "$selected" --argjson contracts "$contracts" --argjson suffixes "$suffixes" '
+  [$packages[] as $package | $suffixes[] | $package + "-" + .] | map(select(. as $name | $contracts | index($name)))')
 application_checks=$(derivation_map ".#applicationChecks.$SYSTEM" "$selected_contracts")
 jq -e --argjson selected "$selected_contracts" 'keys == ($selected | sort)' <<<"$application_checks" >/dev/null
 base_application_checks='{}'
@@ -127,7 +129,8 @@ while IFS= read -r package; do
   fi
   # A test can change independently of its package. Compare its own full Nix
   # derivation, so changed contracts run without rebuilding identical contracts.
-  for contract in "$package-cli" "$package-gui" "$package-wayland" "$package-licenses" "$package-appstream" "$package-wayland-clipboard" "$package-server" "$package-quit-state" "$package-host-tests-artifact" "$package-appimage-runtime"; do
+  for suffix in "${contract_suffixes[@]}"; do
+    contract="$package-$suffix"
     if jq -e --arg contract "$contract" 'has($contract)' <<<"$application_checks" >/dev/null; then
       current_check=$(jq -er --arg contract "$contract" '.[$contract]' <<<"$application_checks")
       base_check=$(jq -r --arg contract "$contract" '.[$contract] // empty' <<<"$base_application_checks")
