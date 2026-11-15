@@ -71,19 +71,23 @@ let
   buildCompiler =
     if stdenv.buildPlatform.isLinux then buildPackages.clangStdenv else buildPackages.stdenv;
   # Reuse the unmodified, substitutable Nixpkgs runtime when the same LTS line
-  # meets both security minimums. Darwin still needs the owning RSS repair.
+  # meets both security minimums. Darwin24.22.2 is qualified by the same RSS
+  # regression as the fallback; older Darwin runtimes retain the owning repair.
   reuseUpstreamNode =
-    stdenv.hostPlatform.isLinux
+    (
+      stdenv.hostPlatform.isLinux
+      || (stdenv.hostPlatform.isDarwin && lib.versionAtLeast nodejs_24.version "24.22.2")
+    )
     && lib.versions.major nodejs_24.version == "24"
     && lib.versionAtLeast nodejs_24.version source.nodejs.version
     && lib.versionAtLeast brotli.version source.brotli.version;
-  targetNodejs =
+  targetNodejsSlim =
     if reuseUpstreamNode then
-      nodejs_24
+      nodejs-slim_24
     else
-      nodejs_24.override {
-        nodejs-slim = withReaNodeSource targetCompiler callPackage brotli nodejs-slim_24;
-      };
+      withReaNodeSource targetCompiler callPackage brotli nodejs-slim_24;
+  targetNodejs =
+    if reuseUpstreamNode then nodejs_24 else nodejs_24.override { nodejs-slim = targetNodejsSlim; };
   buildNodejs =
     if stdenv.buildPlatform == stdenv.hostPlatform then
       targetNodejs
@@ -230,6 +234,8 @@ buildNpmPackage (finalAttrs: {
     runHook preInstallCheck
     ${lib.getExe targetNodejs} ${./scripts/check-install.mts} \
       "$out" "$skills" '${finalAttrs.version}' ${lib.getExe bash} --sandbox
+    # Re-run the original upstream RSS contract with this exact runtime.
+    bash ${./scripts/check-node-memory.sh} ${lib.getExe targetNodejs} ${targetNodejsSlim.src}
     runHook postInstallCheck
   '';
   passthru = {
