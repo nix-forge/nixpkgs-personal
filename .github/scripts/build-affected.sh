@@ -37,9 +37,9 @@ else
   echo '::notice::Base history unavailable; rebuilding all current packages.'
 fi
 
-current_derivations=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" \
-  --apply 'builtins.mapAttrs (_: package: package.drvPath)')
-all_packages=$(jq -r 'keys[]' <<<"$current_derivations")
+# Discover names without forcing derivations outside this partition/policy.
+all_packages=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" \
+  --apply builtins.attrNames | jq -r '.[]')
 if [[ $base_available == false ]] || grep -qE '^((flake\.nix|flake\.lock|pkgs/default\.nix|\.github/ci-policy\.json)$|flake/|tests/|\.github/(scripts|tests|workflows)/)' <<<"$changed_files"; then
   targets="$all_packages"
 elif grep -q '^pkgs/by-name/' <<<"$changed_files"; then
@@ -62,27 +62,53 @@ if [[ -z $targets ]]; then
   exit 0
 fi
 
-# Metadata and documentation can change without changing a build recipe.
-# If the base cannot be evaluated, conservatively rebuild every target.
+# Exclusions apply before any derivation is forced.
+targets=$(while IFS= read -r package; do
+  if ! jq -e --arg package "$package" 'has($package)' "$policy" >/dev/null; then
+    printf '%s\n' "$package"
+  else
+    echo "$package: $(jq -r --arg package "$package" '.[$package]' "$policy")" >&2
+  fi
+done <<<"$targets")
+[[ -n $targets ]] || exit 0
+selected=$(jq -Rn '[inputs | select(length > 0)]' <<<"$targets")
+
+# Bound each evaluator to 32 selected outputs, sharing one map per batch rather
+# than starting one evaluator per package/check. Missing base outputs stay absent.
+derivation_map() {
+  local reference=$1 names=$2 offset batch result='{}' values
+  for ((offset = 0; offset < $(jq length <<<"$names"); offset += 32)); do
+    batch=$(jq -c --argjson offset "$offset" '.[$offset:$offset+32] | tojson' <<<"$names")
+    batch=${batch//\$\{/\\\$\{}
+    values=$(nix eval --json "$reference" --no-write-lock-file \
+      --option allow-import-from-derivation false \
+      --apply "outputs: builtins.mapAttrs (_: value: value.drvPath) (builtins.intersectAttrs (builtins.listToAttrs (map (name: { inherit name; value = null; }) (builtins.fromJSON $batch))) outputs)") || return 1
+    jq -e 'type == "object" and all(.[]; type == "string" and test("^/nix/store/[a-z0-9]{32}-.+\\.drv$"))' <<<"$values" >/dev/null || return 1
+    result=$(jq -cn --argjson before "$result" --argjson values "$values" '$before + $values')
+  done
+  printf '%s\n' "$result"
+}
+
+current_derivations=$(derivation_map ".#packages.$SYSTEM" "$selected")
+jq -e --argjson selected "$selected" 'keys == ($selected | sort)' <<<"$current_derivations" >/dev/null
 base_derivations='{}'
 if [[ $base_available == true ]]; then
-  if ! base_derivations=$(nix eval --json \
-    "git+file://$PWD?rev=$BASE_SHA#packages.$SYSTEM" \
-    --no-write-lock-file --option allow-import-from-derivation false \
-    --apply 'builtins.mapAttrs (_: package: package.drvPath)'); then
+  if ! base_derivations=$(derivation_map "git+file://$PWD?rev=$BASE_SHA#packages.$SYSTEM" "$selected"); then
     echo '::notice::Base derivation comparison unavailable; rebuilding selected packages.'
     base_derivations='{}'
   fi
 fi
 
-application_checks=$(nix eval --option allow-import-from-derivation false --json ".#applicationChecks.$SYSTEM" \
-  --apply 'builtins.mapAttrs (_: check: check.drvPath)')
+# Discover contracts without evaluating any unselected contract derivations.
+contracts=$(nix eval --option allow-import-from-derivation false --json ".#applicationChecks.$SYSTEM" \
+  --apply builtins.attrNames)
+selected_contracts=$(jq -cn --argjson packages "$selected" --argjson contracts "$contracts" '
+  [$packages[] as $package | ["cli", "gui", "wayland", "licenses", "appstream", "wayland-clipboard", "server", "quit-state", "host-tests-artifact", "appimage-runtime"][] | $package + "-" + .] | map(select(. as $name | $contracts | index($name)))')
+application_checks=$(derivation_map ".#applicationChecks.$SYSTEM" "$selected_contracts")
+jq -e --argjson selected "$selected_contracts" 'keys == ($selected | sort)' <<<"$application_checks" >/dev/null
 base_application_checks='{}'
 if [[ $base_available == true ]]; then
-  if ! base_application_checks=$(nix eval --json \
-    "git+file://$PWD?rev=$BASE_SHA#applicationChecks.$SYSTEM" \
-    --no-write-lock-file --option allow-import-from-derivation false \
-    --apply 'builtins.mapAttrs (_: check: check.drvPath)'); then
+  if ! base_application_checks=$(derivation_map "git+file://$PWD?rev=$BASE_SHA#applicationChecks.$SYSTEM" "$selected_contracts"); then
     echo '::notice::Base application-check comparison unavailable; rebuilding selected contracts.'
     base_application_checks='{}'
   fi
@@ -91,12 +117,6 @@ fi
 while IFS= read -r package; do
   [[ -n $package ]] || continue
   echo "::group::Package: $package"
-  reason=$(jq -r --arg package "$package" '.[$package] // empty' "$policy")
-  if [[ -n $reason ]]; then
-    echo "$package: $reason"
-    echo "::endgroup::"
-    continue
-  fi
   base_drv=$(jq -r --arg package "$package" '.[$package] // empty' <<<"$base_derivations")
   current_drv=$(jq -er --arg package "$package" '.[$package]' <<<"$current_derivations")
   if [[ -n $base_drv && $base_drv == "$current_drv" ]]; then

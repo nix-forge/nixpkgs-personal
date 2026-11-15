@@ -46,8 +46,8 @@ class UpdateToolchainTests(unittest.TestCase):
                 "import os, sys\n"
                 "if sys.argv[1] == 'eval':\n"
                 "    print('/nix/store/locked-package-nixpkgs')\n"
-                "elif sys.argv[1:4] == ['develop', '--command', 'python']:\n"
-                "    os.execv(sys.executable, [sys.executable, *sys.argv[4:]])\n"
+                "elif sys.argv[1:5] == ['develop', '.#updater', '--command', 'python']:\n"
+                "    os.execv(sys.executable, [sys.executable, *sys.argv[5:]])\n"
                 "else:\n    raise SystemExit('unexpected Nix invocation')\n"
             )
             nix.chmod(0o755)

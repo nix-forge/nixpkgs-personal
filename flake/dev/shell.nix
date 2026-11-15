@@ -17,6 +17,18 @@
             ]))
           ];
         };
+        # Each package updater declares its own native tools in update.nix.
+        # The dispatcher needs only Python, Git and Nix, without developer hooks.
+        updater = pkgs.buildPackages.mkShellNoCC {
+          packages = with pkgs.buildPackages; [
+            (python3.withPackages (_: [
+              (callPackage ../../pkgs/by-name/no/notification-process/package.nix { })
+            ]))
+            git
+            nix
+            cacert
+          ];
+        };
         default = pkgs.buildPackages.mkShellNoCC {
           inherit shellHook;
           LIBRARY_PATH = lib.optionalString pkgs.buildPackages.stdenv.hostPlatform.isDarwin "${pkgs.buildPackages.libiconv}/lib";
