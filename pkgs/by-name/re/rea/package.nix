@@ -87,12 +87,7 @@ let
     else
       withReaNodeSource targetCompiler callPackage brotli nodejs-slim_24;
   targetNodejs =
-    if reuseUpstreamNode then
-      nodejs_24
-    else
-      nodejs_24.override {
-        nodejs-slim = targetNodejsSlim;
-      };
+    if reuseUpstreamNode then nodejs_24 else nodejs_24.override { nodejs-slim = targetNodejsSlim; };
   buildNodejs =
     if stdenv.buildPlatform == stdenv.hostPlatform then
       targetNodejs
