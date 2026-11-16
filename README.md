@@ -245,3 +245,10 @@ metadata, both binary versions, and the CLI workspace command interface. After
 copying, use macOS `codesign --verify --strict --deep` for native bundle verification. A consumer can run
 `modules/home/tests/rift.nix` with its Home Manager input for integration checks.
 The module is independent of any consumer's hostnames, workspace policy, or OCR.
+
+## Retired variants
+
+`hyprlock-personal` is retired. Select upstream `hyprlock` instead and remove
+variant-only click-submit, alignment and authentication-caption settings.
+This retires the optional UI and separate source pin; it does not claim that
+every independently tracked graphics-lifecycle issue is fixed upstream.
