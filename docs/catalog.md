@@ -505,8 +505,8 @@ Jellyfin and Emby client with Seerr discovery and requests.
 
 [Recipe](../pkgs/by-name/mo/moonfin/package.nix) · [Package guide](../pkgs/by-name/mo/moonfin/README.md) · [Upstream](https://github.com/Moonfin-Client/Moonfin-Core)
 
-- `aarch64-darwin`: 3.0.0; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html), [MIT](https://spdx.org/licenses/MIT.html), [BSD-3-Clause](https://spdx.org/licenses/BSD-3-Clause.html).
-- `x86_64-linux`: 3.0.0; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html), [MIT](https://spdx.org/licenses/MIT.html), [BSD-3-Clause](https://spdx.org/licenses/BSD-3-Clause.html).
+- `aarch64-darwin`: 3.1.0; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html), [MIT](https://spdx.org/licenses/MIT.html), [BSD-3-Clause](https://spdx.org/licenses/BSD-3-Clause.html).
+- `x86_64-linux`: 3.1.0; [GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html), [OFL-1.1](https://spdx.org/licenses/OFL-1.1.html), [MIT](https://spdx.org/licenses/MIT.html), [BSD-3-Clause](https://spdx.org/licenses/BSD-3-Clause.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#moonfin
