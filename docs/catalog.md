@@ -760,7 +760,7 @@ Music streaming client patched with SpotX-Bash and signed as a complete macOS bu
 
 [Recipe](../pkgs/by-name/sp/spotify-spotx/package.nix) · [Package guide](../pkgs/by-name/sp/spotify-spotx/README.md) · [Upstream](https://github.com/SpotX-Official/SpotX-Bash)
 
-- `aarch64-darwin`: 1.3.8.620; unfree; includes unfree terms.
+- `aarch64-darwin`: 1.3.9.2055; unfree; includes unfree terms.
 - `x86_64-linux`: 1.2.95.453.g0eeebbed; unfree; includes unfree terms.
 
 Hosted CI: Evaluation only: CI would execute Spotify modifications covered by the service's alteration and ad-blocking restrictions.
