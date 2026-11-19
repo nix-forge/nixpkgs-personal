@@ -1,12 +1,12 @@
 {
-  version = "3.0.0.0";
-  releaseTag = "3.0.0";
+  version = "3.1.0.0";
+  releaseTag = "3.1.0";
   targetAbi = "10.10.0.0";
-  pluginRev = "c3288b7bb6388b64e191a8d9126c47a99f609707";
-  pluginHash = "sha256-nK/czTbDXwoTOdF3LfPkvcMhaGfSN1pww2RTSjpmbqU=";
-  manifestRev = "c3288b7bb6388b64e191a8d9126c47a99f609707";
-  manifestHash = "sha256-Y3hdYdG9VsYWhAQU64gx2PaE2/A/vn/+adGhjn2Jaxo=";
-  webVersion = "2.8.0";
-  webRev = "d9f4bf241d6dfddf54338f21dcdfde05e75fafc8";
-  webHash = "sha256-dHY0qNToNSgHU6rv3RD3B8vsuHRh3vQq+a3JhzVcNkU=";
+  pluginRev = "9e05034f4e5ca5912d003b64b77ff43a8298a796";
+  pluginHash = "sha256-OdC/rRj5mf7SMAEgnTYgQq1CjMKgWJcyRuce8sWZuPM=";
+  manifestRev = "9e05034f4e5ca5912d003b64b77ff43a8298a796";
+  manifestHash = "sha256-udZVUvDmW9Qq701Levf/ySZduS6kPoFjpf0/jX3UYCw=";
+  webVersion = "3.1.0";
+  webRev = "0e8f94a32200508a4e213fde37bfc942147fe3da";
+  webHash = "sha256-UCqfnI+mwxWo09G/0egtbIGkHwZkgPcuhv85ZTGD27E=";
 }
