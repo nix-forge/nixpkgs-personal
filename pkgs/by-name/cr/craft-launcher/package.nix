@@ -131,6 +131,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./appimage-runtime-and-safe-refresh.patch
     ./nix-install-status.patch
     ./autostart-and-download-tests.patch
+    ./macos-install-test-fixtures.patch
     ./localization-and-cjk-collection.patch
     ./disable-unused-gtk-tray-features.patch
     ./offline-git-patches.patch

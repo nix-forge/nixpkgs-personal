@@ -145,6 +145,16 @@
           "removeWhen": "Remove when the selected launcher reports all store-backed installations as externally managed and rejects launcher-controlled updates and removal."
         },
         {
+          "file": "macos-install-test-fixtures.patch",
+          "sha256": "2f0e046363b2198749fc9c5973a431fab4d21500cf711542cc2472843d04ed11",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/craft-launcher/blob/9f950e01ef728a3d32d997d59607051dee98a51d/crates/native/src/install/macos_verify.rs"
+          ],
+          "reason": "Complete the macOS verifier test fixtures with the installation metadata required by the pinned Installed type.",
+          "removeWhen": "Remove when the selected source initializes the complete Installed type in the macOS verifier tests and the Darwin package suite passes."
+        },
+        {
           "file": "offline-git-patches.patch",
           "sha256": "7e51e762887eaf1b5f9a9728feae216f5a542b80da4fb01ccdefee02163e728a",
           "kind": "packaging-policy",
