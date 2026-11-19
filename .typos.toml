@@ -49,19 +49,29 @@ extend-glob = ["remove-restricted-marks.patch"]
 Alle = "Alle"
 Apparence = "Apparence"
 Deine = "Deine"
+Ordner = "Ordner"
 Sie = "Sie"
 Visiter = "Visiter"
 als = "als"
 atual = "atual"
+autorisation = "autorisation"
 complet = "complet"
+copie = "copie"
+cours = "cours"
 ein = "ein"
+existant = "existant"
+hace = "hace"
 ist = "ist"
 limite = "limite"
 manuell = "manuell"
-versiones = "versiones"
+mis = "mis"
 nowe = "nowe"
+oder = "oder"
+pris = "pris"
+reste = "reste"
 ser = "ser"
 sur = "sur"
+versiones = "versiones"
 
 [type.hyprlock-cleanup]
 extend-glob = ["ordered-graphics-cleanup.patch"]
@@ -96,6 +106,7 @@ flate2 = "flate2"
 
 [type.craft-archive.extend-words]
 caf = "caf" # Core Audio Format identifier in the upstream audio feature list.
+opf = "opf" # EPUB Open Packaging Format document and local variable.
 
 [type.deckcraft-symbol]
 extend-glob = ["symbol-font-unicode.patch"]

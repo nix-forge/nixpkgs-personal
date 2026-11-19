@@ -220,7 +220,7 @@ index 8ad1bb004d5a..8ed384941a95 100644
      let sheet_part = sheet_target(&mut zip, sheet)?;
      let sheet_xml = parse(&part(&mut zip, &sheet_part)?.ok_or_else(|| ImportError::Corrupt(format!("no {sheet_part} (not an Excel workbook)")))?)?;
      let shared: Vec<String> = part(&mut zip, "xl/sharedStrings.xml")?
-@@ -225,6 +226,7 @@ fn sheet_target(zip: &mut zip::ZipArchive<std::io::Cursor<&[u8]>>, wanted: Optio
+@@ -225,6 +226,7 @@
  
  pub fn import(bytes: &[u8]) -> Result<Imported, ImportError> {
      let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| ImportError::Corrupt(e.to_string()))?;

@@ -69,7 +69,6 @@ strict = true
 ]
 
 
-
 "pkgs/by-name/**/scripts/check_*.py" = [
   # Nix install checks deliberately fail assertions for invalid package artifacts.
   "magic-value-comparison",

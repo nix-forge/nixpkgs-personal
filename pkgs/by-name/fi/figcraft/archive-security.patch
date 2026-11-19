@@ -203,7 +203,7 @@ diff --git a/crates/format/src/library.rs b/crates/format/src/library.rs
 index 99047f2be6e7..37062cdabeee 100644
 --- a/crates/format/src/library.rs
 +++ b/crates/format/src/library.rs
-@@ -107,7 +107,7 @@ pub fn read_library<R: Read + Seek>(r: R) -> Result<Option<PublishedLibrary>, Fo
+@@ -107,7 +107,7 @@
  /// archive that would unpack to more is refused, or loses the images past it), for libraries from
  /// people the reader doesn't trust (a server).
  pub fn read_library_within<R: Read + Seek>(r: R, max_bytes: u64) -> Result<Option<PublishedLibrary>, FormatError> {

@@ -2,7 +2,7 @@ diff --git a/crates/native/src/detect.rs b/crates/native/src/detect.rs
 index 0b0bdf8af7a5..f7b86ead3709 100644
 --- a/crates/native/src/detect.rs
 +++ b/crates/native/src/detect.rs
-@@ -41,6 +41,10 @@ pub fn detect(app: &CraftApp, manifest: &Manifest, snapshot: &Snapshot) -> Optio
+@@ -41,6 +41,10 @@
      if let Some(found) = crate::nix::detect(app) {
          return Some(found);
      }
