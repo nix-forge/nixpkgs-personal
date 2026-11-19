@@ -169,7 +169,9 @@ jobs:
   build:
     name: ${{ matrix.name }}
     needs: [lint, flake, plan-build]
-    if: "!cancelled() && needs.lint.result == 'success' && needs.flake.result == 'success' && needs.plan-build.result == 'success'"
+    if: >-
+      !cancelled() && needs.lint.result == 'success' && needs.flake.result == 'success' && needs.plan-build.result
+      == 'success'
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan-build.outputs.matrix) }}
@@ -260,6 +262,7 @@ jobs:
       - flake-lock
       - lint
       - flake
+      - plan-build
       - build
       - build-complete
       - expensive-audiomuse-audit
