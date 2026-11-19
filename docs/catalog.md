@@ -479,9 +479,9 @@ Matt Pocock's Agent Skills catalog.
 
 [Recipe](../pkgs/by-name/ma/mattpocock-skills/package.nix) · [Package guide](../pkgs/by-name/ma/mattpocock-skills/README.md) · [Upstream](https://github.com/mattpocock/skills)
 
-- `aarch64-darwin`: unstable-2026-11-12; [MIT](https://spdx.org/licenses/MIT.html).
-- `aarch64-linux`: unstable-2026-11-12; [MIT](https://spdx.org/licenses/MIT.html).
-- `x86_64-linux`: unstable-2026-11-12; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-darwin`: unstable-2026-11-19; [MIT](https://spdx.org/licenses/MIT.html).
+- `aarch64-linux`: unstable-2026-11-19; [MIT](https://spdx.org/licenses/MIT.html).
+- `x86_64-linux`: unstable-2026-11-19; [MIT](https://spdx.org/licenses/MIT.html).
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#mattpocock-skills
