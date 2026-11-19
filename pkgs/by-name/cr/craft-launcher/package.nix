@@ -132,6 +132,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./nix-install-status.patch
     ./autostart-and-download-tests.patch
     ./localization-and-cjk-collection.patch
+    ./disable-unused-gtk-tray-features.patch
     ./offline-git-patches.patch
   ];
   nativeBuildInputs = [
