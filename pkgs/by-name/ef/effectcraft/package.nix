@@ -81,11 +81,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
   patches = [
     ./remove-restricted-marks.patch
+    ./update-candle-for-zip-security.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ ./system-font-fixture.patch ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./fontconfig-discovery.patch ];
 
   postPatch = ''
+    cp ${./Cargo.lock} Cargo.lock
     source ${
       replaceVars ./scripts/post-patch.sh {
         curl = lib.getExe curl;
