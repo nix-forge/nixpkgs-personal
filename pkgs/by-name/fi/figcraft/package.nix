@@ -72,6 +72,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./archive-security.patch
     ./embedded-font-fallbacks.patch
     ./home-recents-failure-context.patch
+    ./collaboration-test-ephemeral-port.patch
   ];
   cargoBuildFlags = [
     "-p"

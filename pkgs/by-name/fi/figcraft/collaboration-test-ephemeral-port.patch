@@ -1,0 +1,12 @@
+--- a/crates/collab-net/src/code_tests.rs
++++ b/crates/collab-net/src/code_tests.rs
+@@ -204,7 +204,8 @@
+ #[test]
+ fn a_share_on_every_interface_names_an_address_others_reach() {
+     let (mut host, mut viewer, mut editor) = (session("Hana"), session("Ada"), session("Bo"));
+-    let shared = host.execute("collab.share", &json!({"via": "local", "bind": "0.0.0.0", "access": "view"})).unwrap();
++    // Use a dedicated port even when other fixtures share on loopback.
++    let shared = host.execute("collab.share", &json!({"via": "local", "bind": "0.0.0.0", "port": 0, "access": "view"})).unwrap();
+     let Code::Local(viewing) = code::parse(shared["code"].as_str().unwrap()).unwrap() else { panic!("not a local code") };
+     let at = lan_ip().unwrap_or(Ipv4Addr::LOCALHOST.into());
+     assert_eq!(IpAddr::from(viewing.ip), at);

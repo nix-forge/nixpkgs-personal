@@ -314,6 +314,16 @@
           "removeWhen": "Remove when the selected ZIP release provides equivalent original-header identity, decoded-name uniqueness, flag-selected encoding and lookup semantics. Remove its local Cargo path and synchronized lock changes together; validate the upstream suites and representative legacy and Unicode documents manually."
         },
         {
+          "file": "collaboration-test-ephemeral-port.patch",
+          "sha256": "2dfd758e36643cea87820a5713d684abb2afdceaeed40dd294fae630c005d26d",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/figcraft/blob/4acc293c2ec941ac1400837ee7e3ab51780399f8/crates/collab-net/src/code_tests.rs"
+          ],
+          "reason": "Ask the OS for a dedicated port in the wildcard-bind collaboration fixture so parallel loopback sessions cannot intercept its test connections.",
+          "removeWhen": "Remove when the pinned upstream fixture uses a dedicated port and the native collaboration suite passes in parallel."
+        },
+        {
           "file": "home-recents-failure-context.patch",
           "sha256": "c37eb67c92e05ddb484da949da2a1ec9a463c826e0e7bb69991e37451559140c",
           "kind": "upstream-candidate",
