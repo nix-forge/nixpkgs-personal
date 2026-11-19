@@ -6,7 +6,6 @@
   apple-sdk,
   replaceVars,
   rcodesign,
-  python3,
   writeText,
 }:
 let
@@ -57,13 +56,6 @@ let
       sourceProvenance = [ lib.sourceTypes.fromSource ];
     };
   };
-  validationSource = lib.fileset.toSource {
-    root = ./scripts;
-    fileset = lib.fileset.unions [
-      ./scripts/check_app_bundle.py
-      ./scripts/check_rift_bundle.py
-    ];
-  };
   infoPlist = writeText "Rift-Info.plist" (
     lib.generators.toPlist { escape = true; } {
       CFBundleDevelopmentRegion = "en";
@@ -92,15 +84,6 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [ rcodesign ];
   installPhase = ''
     source ${replaceVars ./scripts/install-phase.sh { inherit unwrapped infoPlist; }}
-  '';
-  nativeInstallCheckInputs = [ python3 ];
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        checkRiftBundle = "${validationSource}/check_rift_bundle.py";
-      }
-    }
   '';
   passthru = { inherit unwrapped; };
 

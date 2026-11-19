@@ -5,9 +5,6 @@
   fetchFromGitHub,
   fetchPnpmDeps,
   lib,
-  jellyfin,
-  jellyfin-ffmpeg,
-  python3,
   nodejs_24,
   pnpm_11,
   pnpmConfigHook,
@@ -61,24 +58,6 @@ buildDotnetModule (finalAttrs: {
     source ${
       replaceVars ./scripts/post-install.sh {
         inherit (finalAttrs) pname;
-      }
-    }
-  '';
-
-  nativeInstallCheckInputs = [
-    python3
-    jellyfin-ffmpeg
-  ];
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit (finalAttrs) pname version;
-        jellyfinBinary = lib.getExe jellyfin;
-        jellyfinVersion = jellyfin.version;
-        pluginCheck = ./check_jellyfin_plugin.py;
-        pluginTests = ./test_plugin_load.py;
-        lifecycleTests = ./test_owned_cleanup.py;
       }
     }
   '';

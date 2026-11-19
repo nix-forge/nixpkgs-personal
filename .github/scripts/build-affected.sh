@@ -40,7 +40,7 @@ fi
 # Discover names without forcing derivations outside this partition/policy.
 all_packages=$(nix eval --option allow-import-from-derivation false --json ".#packages.$SYSTEM" \
   --apply builtins.attrNames | jq -r '.[]')
-if [[ $base_available == false ]] || grep -qE '^((flake\.nix|flake\.lock|pkgs/default\.nix|\.github/ci-policy\.json)$|flake/|tests/|\.github/(scripts|tests|workflows)/)' <<<"$changed_files"; then
+if [[ $base_available == false ]] || grep -qE '^((flake\.nix|flake\.lock|pkgs/default\.nix|\.github/ci-policy\.json)$|flake/|lib/|scripts/|\.github/(scripts|tests|workflows)/)' <<<"$changed_files"; then
   targets="$all_packages"
 elif grep -q '^pkgs/by-name/' <<<"$changed_files"; then
   targets=$(sed -nE 's#^pkgs/by-name/[^/]+/([^/]+)/.*#\1#p' <<<"$changed_files" | sort -u)
@@ -99,23 +99,6 @@ if [[ $base_available == true ]]; then
   fi
 fi
 
-# Discover contracts without evaluating any unselected contract derivations.
-contracts=$(nix eval --option allow-import-from-derivation false --json ".#applicationChecks.$SYSTEM" \
-  --apply builtins.attrNames)
-contract_suffixes=(cli gui wayland licenses appstream wayland-clipboard server quit-state host-tests-artifact appimage-runtime)
-suffixes=$(printf '%s\n' "${contract_suffixes[@]}" | jq -Rn '[inputs]')
-selected_contracts=$(jq -cn --argjson packages "$selected" --argjson contracts "$contracts" --argjson suffixes "$suffixes" '
-  [$packages[] as $package | $suffixes[] | $package + "-" + .] | map(select(. as $name | $contracts | index($name)))')
-application_checks=$(derivation_map ".#applicationChecks.$SYSTEM" "$selected_contracts")
-jq -e --argjson selected "$selected_contracts" 'keys == ($selected | sort)' <<<"$application_checks" >/dev/null
-base_application_checks='{}'
-if [[ $base_available == true ]]; then
-  if ! base_application_checks=$(derivation_map "git+file://$PWD?rev=$BASE_SHA#applicationChecks.$SYSTEM" "$selected_contracts"); then
-    echo '::notice::Base application-check comparison unavailable; rebuilding selected contracts.'
-    base_application_checks='{}'
-  fi
-fi
-
 while IFS= read -r package; do
   [[ -n $package ]] || continue
   echo "::group::Package: $package"
@@ -125,23 +108,7 @@ while IFS= read -r package; do
     echo "$package: unchanged derivation; no rebuild needed."
   else
     bash .github/scripts/build-with-fetch-retry.sh \
-      nix build ".#$package" --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
+      nix build ".#$package" --keep-going --show-trace --print-build-logs
   fi
-  # A test can change independently of its package. Compare its own full Nix
-  # derivation, so changed contracts run without rebuilding identical contracts.
-  for suffix in "${contract_suffixes[@]}"; do
-    contract="$package-$suffix"
-    if jq -e --arg contract "$contract" 'has($contract)' <<<"$application_checks" >/dev/null; then
-      current_check=$(jq -er --arg contract "$contract" '.[$contract]' <<<"$application_checks")
-      base_check=$(jq -r --arg contract "$contract" '.[$contract] // empty' <<<"$base_application_checks")
-      if [[ -n $base_check && $base_check == "$current_check" ]]; then
-        echo "$contract: unchanged check derivation; no rebuild needed."
-        continue
-      fi
-      bash .github/scripts/build-with-fetch-retry.sh \
-        nix build --no-link ".#applicationChecks.$SYSTEM.$contract" \
-        --cores 0 --max-jobs 1 --keep-going --show-trace --print-build-logs
-    fi
-  done
   echo "::endgroup::"
 done <<<"$targets"

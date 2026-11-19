@@ -1,6 +1,8 @@
+diff --git a/crates/native/src/process.rs b/crates/native/src/process.rs
+index ce762e21ad00..c32767f1e50f 100644
 --- a/crates/native/src/process.rs
 +++ b/crates/native/src/process.rs
-@@ -17,6 +17,12 @@
+@@ -19,6 +19,12 @@ pub fn command(program: impl AsRef<std::ffi::OsStr>) -> Command {
      }
      #[cfg(unix)]
      clean_appimage_env(&mut cmd);
@@ -13,18 +15,3 @@
      cmd
  }
  
-@@ -355,3 +361,14 @@
-         assert_eq!(arg.unwrap(), r#"/select,"C:\Users\A B\AppData\Local\ArtCraft Launcher\apps\photocraft.exe""#);
-     }
- }
-+
-+#[cfg(all(test, target_os = "linux"))]
-+mod nix_process_locale_tests {
-+    use super::*;
-+    #[test]
-+    fn only_pgrep_gets_a_utf8_matching_locale() {
-+        let pgrep = command("pgrep");
-+        assert!(pgrep.get_envs().any(|(key, value)| key == "LC_ALL" && value == Some(std::ffi::OsStr::new("C.UTF-8"))));
-+        assert!(!command("other-helper").get_envs().any(|(key, _)| key == "LC_ALL"));
-+    }
-+}

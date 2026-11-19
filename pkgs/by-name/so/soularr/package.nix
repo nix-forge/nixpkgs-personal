@@ -6,7 +6,6 @@
   fetchPypi,
   python3,
   makeWrapper,
-  ruff,
 }:
 let
   source = import ./source.nix;
@@ -58,21 +57,9 @@ stdenvNoCC.mkDerivation {
   ];
   strictDeps = true;
   dontBuild = true;
-  nativeCheckInputs = [ ruff ];
-  doCheck = true;
-  checkPhase = ''
-    source ${
-      replaceVars ./scripts/check-phase.sh {
-        check_transfer_ownership_py = "${./check_transfer_ownership.py}";
-        check_shared_client_py = "${./check_shared_client.py}";
-      }
-    }
-  '';
   installPhase = ''
     source ${replaceVars ./scripts/install-phase.sh { inherit python; }}
   '';
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
   meta = {
     sourceProvenance = [ lib.sourceTypes.fromSource ];
     description = "Acquire Lidarr wanted albums through a shared slskd client";

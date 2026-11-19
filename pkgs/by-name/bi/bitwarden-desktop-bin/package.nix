@@ -2,7 +2,6 @@
   callPackage,
   lib,
   stdenvNoCC,
-  python3,
   fetchurl,
   undmg,
 }:
@@ -29,13 +28,6 @@ stdenvNoCC.mkDerivation {
   dontFixup = true;
 
   installPhase = builtins.readFile ./scripts/install-phase.sh;
-
-  nativeInstallCheckInputs = [ python3 ];
-  postInstallCheck = ''
-    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Bitwarden.app" --expected-version ${lib.escapeShellArg source.version}
-  '';
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))

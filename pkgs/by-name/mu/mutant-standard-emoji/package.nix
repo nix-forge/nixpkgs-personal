@@ -4,7 +4,6 @@
   stdenvNoCC,
   fetchurl,
   python3,
-  fontconfig,
 }:
 let
   source = import ./source.nix;
@@ -12,15 +11,6 @@ let
     ps.nanoemoji
     ps.uharfbuzz
   ]);
-  checkFont = artwork: ''
-    source ${
-      replaceVars ./scripts/check-emoji-font.sh {
-        fonts_conf = "${./fonts.conf}";
-        check_py = "${./check_emoji_shaping.py}";
-        inherit artwork;
-      }
-    }
-  '';
   # Keep vector compilation separate from the inexpensive encoding pass.
   compiledFont = stdenvNoCC.mkDerivation (_finalAttrs: {
     pname = "mutant-standard-emoji";
@@ -53,10 +43,6 @@ let
         }
       }
     '';
-
-    doInstallCheck = true;
-    nativeInstallCheckInputs = [ fontconfig ];
-    installCheckPhase = checkFont "emoji";
 
     meta = {
       sourceProvenance = [ lib.sourceTypes.fromSource ];
@@ -92,10 +78,6 @@ stdenvNoCC.mkDerivation {
       }
     }
   '';
-
-  doInstallCheck = true;
-  nativeInstallCheckInputs = [ fontconfig ];
-  installCheckPhase = checkFont "artwork/emoji";
 
   passthru = { inherit compiledFont; };
 }

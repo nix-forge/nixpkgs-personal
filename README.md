@@ -72,37 +72,42 @@ for hosted-build exclusions and unresolved permission questions.
 
 ## Development and updates
 
-The `pre-commit` flake check runs portable hooks inside the Nix sandbox. Xcode
-formatting, SourceKit linting and native Swift quality suites remain in local
-Git hooks and required macOS CI jobs. Their definitions are grouped in
-`flake/dev/git-hooks.nix`, so adding a host-dependent hook does not require a
-second exclusion list. Portable hooks use the same commands in both environments.
+Load development dependencies from Nix with direnv:
 
-CI builds `lintChecks` once in the required Linux lint job. Native jobs discover
-`ciChecks`, which excludes that lint owner's inventory. The ordinary `checks`
-output retains all checks for local validation. New native checks enter CI by
-default; additions to the lint group run in its existing required job.
+```sh
+direnv allow
+javascript-check
+```
 
-Package jobs compare each selected package and application check with its base
-commit using the exact Nix derivation path. Identical derivations skip a rebuild;
-changed or newly added checks still run even when their package is unchanged.
+Without direnv, use `nix develop --command javascript-check`. Python imports and
+JavaScript tools come from the Nix shell; no npm install or virtual environment
+is needed. Root `pyproject.toml` contains tool configuration only.
+
+The `pre-commit` flake check runs static hooks inside the Nix sandbox. The
+library suite uses `nix-unit`; other project-owned checks cover formatting,
+lint, types, syntax, metadata, documentation and security analysis. See the
+[testing policy](docs/testing.md) for commands and scope.
+
+CI builds `lintChecks` in the required Linux lint job. Native jobs discover
+`ciChecks`, which excludes that lint inventory. Package jobs compare selected
+package derivations with their base commit; unchanged outputs skip a rebuild.
 Unavailable base history or evaluation triggers conservative rebuilding.
-
-The lint group is reserved for portable tooling. Platform-dependent tests belong
-in native checks or a required native job, so moving lint does not hide them.
+Upstream software's own tests and production safety checks remain enabled.
 
 Run `just check`, `just lint`, and `just update-packages`. The daily updater
 opens one pull request per changed package, so one failed build does not hold
 other package updates. Update scripts only change pinned source metadata and
 are checked by CI before automated merge. New
 packages follow the nixpkgs-style `pkgs/by-name/<prefix>/<name>` layout and must
-declare accurate metadata, platform support, tests where feasible, and an
+declare accurate metadata, platform support, and an
 updater when upstream can be safely discovered.
 
 All public packages have their own directory and can be instantiated with
-upstream Nixpkgs using `pkgs.callPackage ./package.nix { }`. Package build files,
-helpers, tests, and updaters stay within that directory. Upstream Nixpkgs
-libraries and tools remain normal dependencies.
+upstream Nixpkgs using `pkgs.callPackage ./package.nix { }`. Keep build files
+and build helpers within that directory. Updater entry points, tool
+declarations and generated copies of shared helpers stay beside the recipe.
+Edit the canonical helpers under `scripts/` and regenerate the package-local
+copies with `bash scripts/sync-updater-mirrors.sh --write`.
 
 Package small installed Bash commands with `writeShellApplication` and declare
 their command dependencies in `runtimeInputs`. Use `writers.writePython3Bin`
@@ -116,10 +121,10 @@ The overlay resolves direct and nested `callPackage` arguments against its
 incoming upstream scope. It does not inject this collection's outputs into
 another personal package. Explicit `.override` remains available.
 
-Run `just test` for package independence and Python tests. CI also evaluates all
-three systems and builds eligible affected packages on matching runners. The independence
-check copies each package directory into the store and rejects dependencies on
-any public personal package. Updater import checks run outside the checkout.
+Run `just test` for library functions. CI also evaluates all three systems
+and builds eligible affected packages on matching runners. Project-authored
+package independence, updater behavior and application regression suites have
+been removed.
 
 See the [package standard](docs/package-standard.md),
 [research and language decisions](docs/package-design-research.md), and
@@ -130,7 +135,7 @@ See the [package standard](docs/package-standard.md),
 `noctalia-dark-app-icons` is available on both Linux platforms and through the
 default overlay. It adds dark ChatGPT, Zen and VS Code artwork, with upstream
 Papirus-Dark as the fallback. It includes source attribution, license notices,
-an icon cache, desktop-entry aliases and rendering checks. Appearance switching
+an icon cache and desktop-entry aliases. Appearance switching
 belongs to the desktop configuration. See the
 [package notes](pkgs/by-name/no/noctalia-dark-app-icons/README.md) for coverage
 and the reviewed source update policy.
@@ -160,24 +165,21 @@ package was removed because upstream was archived. The explicit
 `emojione-legacy` name avoids overriding that removed alias or confusing this
 CC-BY-4.0/MIT release with later EmojiOne/JoyPixels licensing.
 
-Build and run the included font checks with:
+Build the optional font packages with:
 
 ```sh
 nix build .#firefox-emoji .#emojione-legacy
 ```
 
-The checks verify untouched source bytes, Fontconfig family identity, the 14
-EmojiTest face glyphs, and their COLR/CPAL or SVG color data. Both packages are
-also exposed as flake checks. Their `source.nix` files pin immutable upstream
-revisions and hashes for the fonts and licenses. These compatibility releases
-are intentionally excluded from automatic updates. Changing them requires
-reviewing the upstream license, family identity, color rendering, ordinary
-numeric text, and default emoji fallback again.
+Their `source.nix` files pin immutable upstream revisions and hashes for the
+fonts and licenses. These compatibility releases are intentionally excluded
+from automatic updates. Changes require review of upstream licensing and
+rendering compatibility; package-specific rendering tests are no longer shipped.
 
 `mutant-standard-emoji` builds the official 2024.06 codepoint SVG archive with
 upstream nanoemoji as a COLRv1 font. It keeps the family name
-`Mutant Standard Emoji` and installs no default-font policy. All 7,829 supplied
-encodings are checked with HarfBuzz against the final color table. Artwork is
+`Mutant Standard Emoji` and installs no default-font policy. Its encoding transformation uses the supplied artwork and retains invalid-input
+errors; the separate exhaustive shaping test has been removed. Artwork is
 by Caius Nocturne under CC BY-NC-SA 4.0; attribution and upstream credit files
 are included. See the [package notes](pkgs/by-name/mu/mutant-standard-emoji/README.md)
 for renderer requirements and coverage limits.
@@ -240,11 +242,11 @@ Accessibility permission. Optional capture features require a separate deliberat
 choice. Use built-in Rift key bindings with argument arrays for commands; string
 commands do not provide shell quoting or expansion.
 
-The package checks its authored plist identity/version, ad-hoc signature
-metadata, both binary versions, and the CLI workspace command interface. After
-copying, use macOS `codesign --verify --strict --deep` for native bundle verification. A consumer can run
-`modules/home/tests/rift.nix` with its Home Manager input for integration checks.
-The module is independent of any consumer's hostnames, workspace policy, or OCR.
+The package retains upstream unit tests. Project-authored bundle and command
+regression checks have been removed under the [testing policy](docs/testing.md).
+After copying, use macOS `codesign --verify --strict --deep` for native bundle
+verification when needed. The module remains independent of consumer hostnames,
+workspace policy, or OCR.
 
 ## Retired variants
 

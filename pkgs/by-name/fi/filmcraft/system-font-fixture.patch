@@ -1,6 +1,8 @@
+diff --git a/crates/text/src/fonts.rs b/crates/text/src/fonts.rs
+index 3b1a6ba7a22c..b4c7b38236ea 100644
 --- a/crates/text/src/fonts.rs
 +++ b/crates/text/src/fonts.rs
-@@ -530,13 +530,16 @@
+@@ -632,13 +632,16 @@ mod tests {
          let n = all_faces().iter().filter(|f| f.info.origin == "system").count();
          eprintln!("system fonts: {n} faces in {:?}", t.elapsed());
          assert_eq!(scan_system(), 0, "scans once");

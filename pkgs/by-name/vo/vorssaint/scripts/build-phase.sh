@@ -85,8 +85,8 @@ for icon in \
   icon_512x512@2x:1024; do
   name="${icon%%:*}"
   size="${icon##*:}"
-  magick @icon_svg@ -trim -resize "$size"x"$size" \
-    -gravity center -background '#f7f7f7' -extent "$size"x"$size" "$iconset/$name.png"
+  # Keep the SVG's transparent corners and inset for the macOS Dock tile.
+  magick -background none @icon_svg@ -resize "$size"x"$size" "$iconset/$name.png"
 done
 
 python @pythonCheck1@ "$iconset" "$buildDir/AppIcon.icns"
@@ -96,6 +96,9 @@ magick -background none @menu_icon_svg@ -resize 26x20 \
   "$buildDir/MenuBarIcon.png"
 magick -background none @menu_icon_svg@ -resize 52x40 \
   "$buildDir/MenuBarIcon@2x.png"
-magick @icon_svg@ -trim -resize 640x "$buildDir/BrandMark.png"
+# SwiftUI renders BrandMark as a tinted template, using only its alpha channel.
+# Share the unbacked monitor glyph, rather than the solid application tile.
+# Rasterize the small menu SVG at header resolution before resizing it.
+magick -density 2400 -background none @menu_icon_svg@ -resize 640x "$buildDir/BrandMark.png"
 
 runHook postBuild

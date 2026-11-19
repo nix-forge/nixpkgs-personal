@@ -18,10 +18,7 @@ from update_transaction import commit_files, preview
 PACKAGE = Path(__file__).resolve().parent
 VERSION = re.compile(r"\d+\.\d+\.\d+")
 REVISION = re.compile(r"[0-9a-f]{40}")
-NODE_VERSION = "24.22.1"
-NODE_HASH = "sha256-T1N5eWKAza6wwvNY/QS2oWzE+336g7WoyRqdljtDUjE="
-BROTLI_VERSION = "1.2.1"
-BROTLI_HASH = "sha256-llY72cYffDv0ugsH0p89xIPEbElV4L8u7U/Fe8hT3gI="
+NODE_VERSION = "24.22.2"
 HASH = re.compile(r"sha256-[A-Za-z0-9+/]{43}=")
 
 
@@ -175,10 +172,6 @@ def render(application: dict, native: dict, headers: dict) -> str:
         f'  rev = "{application["rev"]}";\n'
         f'  hash = "{checked_hash(application["hash"])}";\n'
         f'  npmDepsHash = "{checked_hash(application["npmDepsHash"])}";\n'
-        "  nodejs = {\n"
-        f'    version = "{NODE_VERSION}";\n'
-        f'    hash = "{checked_hash(NODE_HASH)}";\n'
-        "  };\n"
         "  nodePty = {\n"
         f'    version = "{native["version"]}";\n'
         f'    rev = "{native["rev"]}";\n'
@@ -187,10 +180,6 @@ def render(application: dict, native: dict, headers: dict) -> str:
         "  nodeAddonApi = {\n"
         f'    version = "{headers["version"]}";\n'
         f'    hash = "{checked_hash(headers["hash"])}";\n'
-        "  };\n"
-        "  brotli = {\n"
-        f'    version = "{BROTLI_VERSION}";\n'
-        f'    hash = "{checked_hash(BROTLI_HASH)}";\n'
         "  };\n"
         "}\n"
     )
@@ -222,7 +211,7 @@ def native_pins(version: str) -> tuple[dict, dict]:
 
 
 def check_runtime_requirements(manifest: dict) -> None:
-    """Require the reviewed optional provider and a compatible pinned Node.
+    """Require the reviewed optional provider and a compatible supported Node.
 
     Raises:
         ValueError: Optional dependencies or the Node engine range need review.
@@ -241,7 +230,7 @@ def check_runtime_requirements(manifest: dict) -> None:
         match = re.fullmatch(r"(\^|>=)(\d+)\.(\d+)\.(\d+)", alternative)
         if match is None:
             raise ValueError(
-                "Node engine syntax changed; review the pinned Node source"
+                "Node engine syntax changed; review the supported Node minimum"
             )
         operator, *numbers = match.groups()
         minimum = tuple(map(int, numbers))
@@ -255,7 +244,7 @@ def check_runtime_requirements(manifest: dict) -> None:
             compatible |= minimum <= current < (0, 0, minimum[2] + 1)
     if not compatible:
         raise ValueError(
-            "Release Node engine is incompatible with the pinned Node source"
+            "Release Node engine is incompatible with the supported Node minimum"
         )
 
 

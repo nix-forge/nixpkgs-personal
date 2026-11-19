@@ -2,33 +2,19 @@
 
 REA provides the `rea` and `rea-agents` commands and a stdio MCP server. This
 recipe builds the public stable TypeScript release and its matching native PTY
-addon from source with the upstream npm lockfile. It reuses the unmodified
-Nixpkgs Node 24 package when Node is at least 24.22.1 on Linux or 24.22.2 on
-Darwin, and Brotli is at least 1.2.1, allowing normal binary-cache substitution.
-Package install checks run upstream's unchanged memory-usage test and repeat its
-worker-memory growth regression three times with the exact selected runtime.
-The cached Darwin Node 24.22.2 runtime passed these tests and the full REA domain,
-CLI, MCP and PTY checks before selection was enabled. Otherwise it retains the
-pinned Node 24.22.1 source and scoped Brotli 1.2.1 without changing the collection's
-Nixpkgs input. Scoped Linux source builds use Clang. Native build tools and the
-installed runtime share one Node derivation; cross builds keep separate runtimes.
-Supply Node, slim Node and Brotli from the same package set when overriding the recipe.
-On Darwin it also compiles the process-ownership and native UI Swift helpers. A
-local patch selects those packaged helpers while preserving upstream's process
-validation and the source checkout's runtime compilation fallback.
+addon from source with the upstream npm lockfile. The recipe requires the
+unmodified Nixpkgs Node 24 package at version 24.22.2 or newer and Brotli 1.2.1
+or newer on both Linux and Darwin. Older package sets fail evaluation rather
+than selecting a private Node/Brotli source fallback. Native builds use the
+selected Node for build tools and the installed runtime; cross builds use a
+separate executable build-platform Node with the same minimums. Supply Node
+and Brotli from the same package set when overriding the recipe.
 
-Older Darwin fallback runtimes retain the resident-size reporting contract of
-Node 24's bundled libuv. The compatibility adapter covers Node's memory-usage
-APIs and diagnostic reports; shared libuv 1.53 and its physical-footprint
-regression tests remain unchanged. The original worker-memory assertion and
-threshold remain in place. The Node check runner uses its allocated compiler
-count and prints each test command without Python output buffering, so a stalled
-case is visible in the build log. Its blocked-address fixture uses a permitted loopback address for the
-successful reuse case, keeping both the block rejection and peer-address
-assertions. No additional tests are excluded. On hosts with an application
-firewall, allow the exact build executable while running the native network
-checks, then remove that temporary exception. The original inspector and scoped
-IPv6 echo assertions remain unchanged.
+On Darwin the recipe also compiles the process-ownership and native UI Swift
+helpers. A local patch selects those packaged helpers while preserving
+upstream's process validation and the source checkout's runtime compilation
+fallback. Earlier native Node memory, network, CLI, MCP and PTY check results
+are historical evidence; their retired package install checks no longer run.
 
 The locked EVMole npm dependency includes WASM bytecode. The package preserves
 upstream's engine and notice, and records that bytecode in `sourceProvenance`.
@@ -87,9 +73,10 @@ optional dependencies are not globally omitted.
 ## Updates and checks
 
 `source.nix` pins the release commit, recursive source hash, npm dependency
-cache, matching PTY fork source, locked Node-API headers, and the scoped Node
-fallback source and security minimum. The native `update.nix` command supports `--check` for a no-write
-preview and `--version` for an explicit stable release.
+cache, matching PTY fork source and locked Node-API headers. Node and Brotli
+come from the caller's Nixpkgs; the updater no longer writes private runtime or
+Brotli source pins. The native `update.nix` command supports `--check` for a
+no-write preview and `--version` for an explicit stable release.
 `python3 update.py --help` also works without network access. Use the native
 updater to provide Python's `sigstore` dependency along with `nix`, `git`, and
 `prefetch-npm-deps`. It uses `GH_TOKEN` or `GITHUB_TOKEN` when provided for
@@ -106,29 +93,21 @@ conflicting, or unverified provenance stops the update.
 It verifies the local Darwin patch and stops for changed licensing, command
 names, EVM provenance, optional runtime dependencies other than the exact
 reviewed Frida pin, incompatible or unfamiliar Node engine ranges, or ambiguous
-native header versions. A changed Node security minimum requires reviewing and
-updating the scoped Node source pin in both `source.nix` and `update.py`. Review
-and retain the scoped Brotli version and hash in both files as part of that
-runtime update.
+native header versions. A changed Node security minimum requires reviewing
+`package.nix` and the updater's `NODE_VERSION` engine-compatibility baseline
+together. The Brotli minimum belongs to `package.nix`; neither minimum introduces
+a separate source pin.
 
 Upstream's npm self-update command does not manage Nix installations. Refresh
 these pins and rebuild the consuming configuration instead.
 
-The build runs upstream domain tests and validates generated skill metadata.
-Install checks exercise both CLI names, static JavaScript analysis, a real PTY,
-the deliberately unavailable Frida provider, MCP initialization and tool
-enumeration, skill references, and setup preview in an isolated temporary home.
-Cross builds skip executable checks. Optional engines and interactive GUI
-behavior require their own upstream verification profiles. Darwin's Nix sandbox
-restricts the process visibility needed for static analysis workers, so its
-install check omits that operation. Run the complete installed check outside the
-sandbox on Darwin:
-
-```sh
-<rea-node-output>/bin/node scripts/check-install.mts <rea-output> <skills-output> <version> /bin/bash
-```
-
-Use the package's pinned Node runtime for that command.
+The native build runs upstream domain tests and validates generated skill
+metadata. Cross builds skip executable checks. The former package-owned CLI,
+MCP, PTY, setup-preview and memory install checks are retired; no
+`scripts/check-install.mts` command is supplied. Optional engines, process
+visibility and interactive GUI behavior require their own upstream verification
+profiles and manual native acceptance. A package build does not establish those
+runtime capabilities.
 
 The native addon is also exposed as `rea.nativeAddon` for focused cross-build
 coverage without compiling the entire target Node runtime. Native ARM executable

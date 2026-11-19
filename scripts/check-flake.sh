@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+bash scripts/sync-updater-mirrors.sh
+
 # Keep development-partition files available before evaluating check derivations.
 nix store add-path flake/dev
 # All per-system outputs share the flake's supportedSystems list. Release each

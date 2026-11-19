@@ -138,7 +138,7 @@ jobs:
             [[ "$changed" == true ]] || return 1
             # Stale validation contracts require a source branch refresh, not
             # copying CI files into the focused package update.
-            for workflow in ci.yml codeql.yml dependency-review.yml dco.yml fuzz.yml; do
+            for workflow in ci.yml codeql.yml dependency-review.yml dco.yml; do
               test "$(git rev-parse "${HEAD_SHA}:.github/workflows/$workflow")" = \
                 "$(git rev-parse "refs/remotes/origin/$DEFAULT_BRANCH:.github/workflows/$workflow")" || return 1
             done

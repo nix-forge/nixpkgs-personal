@@ -26,14 +26,6 @@
     "allowUnusedLabels": false,
     "noPropertyAccessFromIndexSignature": true
   },
-  "include": [
-    "pkgs/by-name/**/*.test.mts",
-    "tests/check_node_modules.mts",
-    "tests/javascript/**/*.d.ts",
-    "pkgs/by-name/**/scripts/*.mts",
-    "pkgs/by-name/ho/homebridge-samsung-tizen/strict-power-state.test.mts",
-    "tests/javascript/**/*.test.mts",
-    "tests/javascript/**/*.mts"
-  ],
+  "include": ["scripts/javascript/**/*.mts", "pkgs/by-name/**/scripts/*.mts"],
   "exclude": []
 }

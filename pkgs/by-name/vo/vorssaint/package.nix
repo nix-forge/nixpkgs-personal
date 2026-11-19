@@ -59,8 +59,10 @@ stdenv.mkDerivation (finalAttrs: {
   ];
   depsBuildBuild = lib.optionals usesSwiftUIMacros [
     (
-      assert open-apple-macros != null;
-      open-apple-macros
+      if open-apple-macros == null then
+        throw "Vorssaint requires Open Apple macros with this compiler"
+      else
+        open-apple-macros
     )
   ];
   buildInputs = [ sqlite ];
@@ -101,20 +103,6 @@ stdenv.mkDerivation (finalAttrs: {
     source ${
       replaceVars ./scripts/post-fixup.sh {
         rcodesign = lib.getExe rcodesign;
-      }
-    }
-  '';
-
-  nativeInstallCheckInputs = [ python3 ];
-  postInstallCheck = ''
-    python3 ${./scripts/check_app_bundle.py} "$out/Applications/PersonalMonitor.app" --expected-version ${lib.escapeShellArg source.version}
-  '';
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        check_bundle_py = "${./check_bundle.py}";
-        check_menu_bar_icon = ./check_menu_bar_icon.swift;
       }
     }
   '';

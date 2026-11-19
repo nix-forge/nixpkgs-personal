@@ -188,7 +188,6 @@ def fallback_sources() -> dict[str, str]:
         pypi("sqlalchemy"), {"typing-extensions", "greenlet"}
     )
     cython_version, cython_hash = python_source(pypi("cython"), set())
-    certifi_source = python_source(pypi("certifi"), set())
     requirement_type = importlib.import_module("packaging.requirements").Requirement
     arq = pypi("arq")
     arq_version, arq_hash = python_source(arq, {"redis", "click"})
@@ -206,8 +205,6 @@ def fallback_sources() -> dict[str, str]:
         pypi("redis", str(max(candidates))), {"pyjwt", "async-timeout"}
     )
     return {
-        "certifiVersion": certifi_source[0],
-        "certifiHash": certifi_source[1],
         "cythonVersion": cython_version,
         "cythonHash": cython_hash,
         "arqVersion": arq_version,
@@ -391,8 +388,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"source: {source_hash}; npm: {npm_hash}")
     print(
         f"fallbacks: ARQ {fallbacks['arqVersion']}, Redis {fallbacks['redisVersion']}, "
-        f"SQLAlchemy {fallbacks['sqlalchemyVersion']}, Cython {fallbacks['cythonVersion']}, "
-        f"certifi {fallbacks['certifiVersion']}"
+        f"SQLAlchemy {fallbacks['sqlalchemyVersion']}, Cython {fallbacks['cythonVersion']}"
     )
     for path, original in originals.items():
         print(f"{path.parent.name}: {field(original, 'version')} -> {version}")

@@ -1,0 +1,5 @@
+{
+  "scopes": ["scripts", "pkgs/by-name"],
+  "fixtures": {},
+  "application": {}
+}

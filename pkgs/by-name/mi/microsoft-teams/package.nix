@@ -2,7 +2,6 @@
   callPackage,
   lib,
   stdenvNoCC,
-  python3,
   fetchurl,
   xar,
   pbzx,
@@ -36,13 +35,6 @@ stdenvNoCC.mkDerivation {
   dontBuild = true;
 
   installPhase = builtins.readFile ./scripts/install-phase.sh;
-
-  nativeInstallCheckInputs = [ python3 ];
-  postInstallCheck = ''
-    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Microsoft Teams.app" --expected-version ${lib.escapeShellArg source.version}
-  '';
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))

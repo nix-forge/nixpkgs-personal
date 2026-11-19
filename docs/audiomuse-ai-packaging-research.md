@@ -123,7 +123,7 @@ Validation performed on 2026-09-15:
 
 - The updater's 21 stdlib-only tests pass, including stable-release selection, full-revision handling, managed Python source refreshes, contract rejection, per-Dockerfile model checks, atomic writes, no-write failures, and help without network access or Nix.
 - The live `--dry-run` path passed against the official AudioMuse-AI release API. The current `v3.6.0` contract was also checked against its resolved commit before hashing.
-- `workstation-task nix build .#audiomuse-ai --no-link --show-trace` passed. This built the independently pinned Transformers source and the final application install check.
+- `nix build .#audiomuse-ai --no-link --show-trace` passed. This built the independently pinned Transformers source and the final application install check.
 - The package repository's `audiomuse-ai-python` and `package-unit-tests` derivations passed. Ruff and ty passed for the updater and its tests.
 - `just os-build desktop` passed for the full `nixosConfigurations.desktop` closure without activating it.
 

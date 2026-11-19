@@ -39,18 +39,18 @@ on pull requests and merge-group refs.
 All workflows start with empty default permissions. Jobs grant only the scopes
 they need, checkout does not persist credentials, and actions use full commit
 SHAs. Pull requests and merge groups run lockfile validation, dependency
-review, CodeQL for supported source languages, NUR checks, and package tests
+review, CodeQL for supported source languages, NUR checks, and package builds
 before protected main can advance.
 
-Use [CONTRIBUTING.md](../CONTRIBUTING.md) and the package test commands for the
+Use [CONTRIBUTING.md](../CONTRIBUTING.md) and the static and library check commands for the
 affected recipe. The baseline evidence set is:
 
     just check
-    python3 tests/test_nur_check.py
-    python3 tests/run_package_tests.py
+    just test
+    just lint
 
-Package changes include an evaluation or runtime assertion where the package
-has behavior to test. Source hashes and license metadata are reviewed with
+Library changes include focused Nix cases; other project-owned checks are static.
+Upstream test defaults and production safety validation remain. Source hashes and license metadata are reviewed with
 updates. Never commit credentials, private source archives, or generated
 secrets.
 

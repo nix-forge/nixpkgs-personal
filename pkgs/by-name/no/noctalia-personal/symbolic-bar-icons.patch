@@ -1,6 +1,8 @@
+diff --git a/src/config/config_types.cpp b/src/config/config_types.cpp
+index 556a1e96dbd2..6b94d94f8f61 100644
 --- a/src/config/config_types.cpp
 +++ b/src/config/config_types.cpp
-@@ -593,6 +593,10 @@
+@@ -622,6 +622,10 @@ CommonWidgetOptions resolveCommonWidgetOptions(
      return options;
    }
  
@@ -11,9 +13,11 @@
    options.enabled = widget->getBool("enabled", true);
    options.anchor = widget->getBool("anchor", false);
    options.interactive = widget->getBool("interactive", options.interactive);
+diff --git a/src/config/config_types.h b/src/config/config_types.h
+index 44e32d189373..29803a51f997 100644
 --- a/src/config/config_types.h
 +++ b/src/config/config_types.h
-@@ -418,6 +418,8 @@
+@@ -444,6 +444,8 @@ struct WidgetBarCapsuleSpec {
  };
  
  struct CommonWidgetOptions {
@@ -22,9 +26,11 @@
    bool enabled = true;
    bool anchor = false;
    bool interactive = true;
+diff --git a/src/shell/bar/widget.cpp b/src/shell/bar/widget.cpp
+index b26cc0371302..508ab98f80b7 100644
 --- a/src/shell/bar/widget.cpp
 +++ b/src/shell/bar/widget.cpp
-@@ -191,6 +191,8 @@
+@@ -340,6 +340,8 @@ void Widget::applyCommonOptions(
      const CommonWidgetOptions& options, FontWeight barFontWeight, const std::string& barFontFamily,
      std::string_view logContext
  ) {
@@ -33,18 +39,20 @@
    setAnchor(options.anchor);
    setNonInteractive(!options.interactive);
    m_showTooltip = options.showTooltip;
+diff --git a/src/shell/bar/widget.h b/src/shell/bar/widget.h
+index a3d6b71c2e64..690397926d38 100644
 --- a/src/shell/bar/widget.h
 +++ b/src/shell/bar/widget.h
-@@ -147,6 +147,8 @@
+@@ -160,6 +160,8 @@ public:
    // Resolved icon color: `[widget.*] icon_color` when set, else the foreground chain
    // (`color` → `capsule_foreground` → `fallback`), so a bare `color` still tints icons.
-   [[nodiscard]] ColorSpec widgetIconColorOr(const ColorSpec& fallback) const noexcept;
+   ColorSpec widgetIconColorOr(const ColorSpec& fallback) const noexcept;
 +  [[nodiscard]] bool symbolicIcons() const noexcept { return m_symbolicIcons; }
 +  [[nodiscard]] const auto& iconOverrides() const noexcept { return m_iconOverrides; }
  
  protected:
    void requestUpdate();
-@@ -188,6 +190,8 @@
+@@ -222,6 +224,8 @@ protected:
    WidgetBarCapsuleSpec m_barCapsuleSpec{};
    std::optional<ColorSpec> m_widgetForeground;
    std::optional<ColorSpec> m_widgetIconColor;
@@ -53,6 +61,8 @@
    bool m_nonInteractive = false;
    bool m_barPointerSuppressed = false;
    Node* m_capsuleShell = nullptr;
+diff --git a/src/shell/bar/widgets/active_window_widget.cpp b/src/shell/bar/widgets/active_window_widget.cpp
+index abf97fb214b0..0adaa9810617 100644
 --- a/src/shell/bar/widgets/active_window_widget.cpp
 +++ b/src/shell/bar/widgets/active_window_widget.cpp
 @@ -1,4 +1,5 @@
@@ -61,22 +71,22 @@
  
  #include "compositors/compositor_platform.h"
  #include "config/config_service.h"
-@@ -241,7 +242,13 @@
+@@ -245,7 +246,13 @@ void ActiveWindowWidget::syncState(Renderer& renderer) {
    applyTitleScrollMode(m_title->visible());
    m_title->measure(renderer);
  
--  m_icon->setAppIconColorization(effectiveShellAppIconColorizationTint(m_config.config().shell));
+-  m_icon->setAppIconColorization(effectiveShellAppIconColorizationTint(m_config.config().shell, m_colorizeIcons));
 +  const bool symbolic = symbolicIcons() && bar_icons::isSymbolicPath(iconPath);
 +  if (symbolic) {
 +    m_icon->setForegroundTint(widgetIconColorOr(colorSpecFromRole(ColorRole::OnSurface)));
 +  } else {
 +    m_icon->setForegroundTint(std::nullopt);
-+    m_icon->setAppIconColorization(effectiveShellAppIconColorizationTint(m_config.config().shell));
++    m_icon->setAppIconColorization(effectiveShellAppIconColorizationTint(m_config.config().shell, m_colorizeIcons));
 +  }
    if (iconPath != m_lastIconPath) {
      m_lastIconPath = iconPath;
      if (!m_lastIconPath.empty()) {
-@@ -273,7 +280,9 @@
+@@ -277,7 +284,9 @@ std::string ActiveWindowWidget::resolveIconPath(const std::string& appId, float
  
    if (const auto entry = app_identity::findDesktopEntry(appId, desktopEntries());
        entry.has_value() && !entry->icon.empty()) {
@@ -87,7 +97,7 @@
      if (!resolved.empty()) {
        return resolved;
      }
-@@ -283,7 +292,9 @@
+@@ -287,7 +296,9 @@ std::string ActiveWindowWidget::resolveIconPath(const std::string& appId, float
      if (name.empty()) {
        return {};
      }
@@ -98,6 +108,8 @@
    };
  
    if (auto it = m_appIcons.find(appId); it != m_appIcons.end()) {
+diff --git a/src/shell/bar/widgets/taskbar_widget.cpp b/src/shell/bar/widgets/taskbar_widget.cpp
+index b1ca2ccf6dfd..2e7e175c0a9b 100644
 --- a/src/shell/bar/widgets/taskbar_widget.cpp
 +++ b/src/shell/bar/widgets/taskbar_widget.cpp
 @@ -1,4 +1,5 @@
@@ -106,7 +118,7 @@
  
  #include "compositors/compositor_detect.h"
  #include "compositors/hyprland/hyprland_window_id.h"
-@@ -3448,6 +3449,12 @@
+@@ -3465,6 +3466,12 @@ ResolvedIcon TaskbarWidget::resolveIcon(const std::string& appId, const std::str
      if (name.empty()) {
        return {};
      }
@@ -119,6 +131,8 @@
      if (m_configOptions.preferSymbolicIcons) {
        return m_iconResolver.resolveSymbolicPreferred(name, iconTargetSize);
      }
+diff --git a/src/shell/bar/widgets/tray_widget.cpp b/src/shell/bar/widgets/tray_widget.cpp
+index c06910c1466d..36de55f61465 100644
 --- a/src/shell/bar/widgets/tray_widget.cpp
 +++ b/src/shell/bar/widgets/tray_widget.cpp
 @@ -1,4 +1,5 @@
@@ -127,7 +141,7 @@
  
  #include "config/config_service.h"
  #include "core/log.h"
-@@ -80,7 +81,7 @@
+@@ -81,7 +82,7 @@ namespace {
      return name.contains("symbolic") || name.ends_with("-panel") || name.ends_with("_panel");
    }
  
@@ -136,7 +150,7 @@
  
    bool isSvgPath(std::string_view path) { return path.ends_with(".svg") || path.ends_with(".SVG"); }
  
-@@ -580,8 +581,8 @@
+@@ -664,8 +665,8 @@ void TrayWidget::rebuild(Renderer& renderer) {
            .width = iconSize,
            .height = iconSize,
        });
@@ -147,7 +161,7 @@
        if (!symbolicPath && appIconTint.has_value()) {
          image->setAppIconColorization(appIconTint);
        }
-@@ -629,7 +630,7 @@
+@@ -713,7 +714,7 @@ void TrayWidget::rebuild(Renderer& renderer) {
              .width = iconSize,
              .height = iconSize,
          });
@@ -156,7 +170,7 @@
          if (pixmapTint.has_value()) {
            image->setAppIconColorization(pixmapTint);
          }
-@@ -860,6 +861,29 @@
+@@ -966,6 +967,30 @@ void TrayWidget::buildDesktopIconIndex() {
  }
  
  std::string TrayWidget::resolveIconPath(const TrayItemInfo& item) {
@@ -175,7 +189,7 @@
 +  // Attention icons and overlays keep their original status information.
 +  if (!item.needsAttention) {
 +    for (const auto& [identity, icon] : iconOverrides()) {
-+      if (tray::tokenMatchesItem(identity, item)) {
++      if (tray::pinnedTokenMatchesItem(identity, item)) {
 +        const auto resolved = resolveThemed(icon);
 +        if (!resolved.empty()) {
 +          return resolved;
@@ -183,10 +197,11 @@
 +      }
 +    }
 +  }
-   const bool hasNamedIcon = item.needsAttention ? !item.attentionIconName.empty() : !item.iconName.empty();
-   // Some indicators publish pixmaps late (after startup) that are monochrome
-   // or stale. Keep using named-icon resolution when available.
-@@ -885,20 +909,16 @@
++
+   if (!isIconOverrideBlacklisted(item)) {
+     if (m_iconType == TrayIconType::Desktop) {
+       if (const auto desktopIcon = resolveDesktopIconPath(item); !desktopIcon.empty()) {
+@@ -1004,21 +1029,17 @@ std::string TrayWidget::resolveIconPath(const TrayItemInfo& item) {
      return themed;
    }
  
@@ -200,7 +215,7 @@
    if (tray::looksGenericStatusItemName(preferred)) {
      preferred.clear();
    }
--
+ 
 -  const float logicalSize = m_customItemSize.value_or(Style::baseGlyphSize) * m_contentScale;
 -  const int iconSize = std::max(1, static_cast<int>(std::round(logicalSize)));
 -  // Match the on-screen request size used when the icon is loaded (see rebuild).
@@ -211,17 +226,19 @@
 -    }
 -    return m_iconResolver.resolve(name, rasterSize);
 -  };
- 
+-
    auto resolveMapped = [this, &resolveThemed](const std::string& name) -> std::string {
      if (name.empty()) {
+       return {};
+diff --git a/src/shell/settings/widget_settings_registry.cpp b/src/shell/settings/widget_settings_registry.cpp
+index d6aa270b8fb6..df46b3975503 100644
 --- a/src/shell/settings/widget_settings_registry.cpp
 +++ b/src/shell/settings/widget_settings_registry.cpp
-@@ -651,6 +651,12 @@
-     auto fontScale = withGroup(doubleSpec("font_scale", 1.0, 0.2, 2.5, 0.01), "presentation");
-     auto widgetColor = withGroup(colorSpec("color", {}, true), "presentation");
-     auto widgetIconColor = withGroup(colorSpec("icon_color", {}, true), "presentation");
-+    // The bar icon policy reads these common options without exposing them as
-+    // controls on widgets that do not use application or tray icons.
+@@ -651,6 +651,11 @@ namespace settings {
+     auto fontScale = withGroup(doubleSpec("font_scale", 1.0, 0.2, 2.5, 0.01), "size-text");
+     auto widgetColor = withGroup(colorSpec("color", {}, true), "colors");
+     auto widgetIconColor = withGroup(colorSpec("icon_color", {}, true), "colors");
++    // Icon overrides are common options, hidden on unrelated widgets.
 +    auto symbolicIcons = boolSpec("symbolic_icons", false);
 +    symbolicIcons.visibleInInspector = false;
 +    auto iconOverrides = stringMapSpec("icon_overrides");
@@ -229,13 +246,11 @@
      std::vector<WidgetSettingSelectOption> fontWeightOptions;
      if (populateFontCatalogs) {
        fontWeightOptions =
-@@ -723,7 +729,8 @@
-     return {
-         std::move(enabled),           std::move(anchor),          std::move(interactive),
-         std::move(showTooltip),       std::move(scale),           std::move(fontScale),
--        std::move(widgetColor),       std::move(widgetIconColor), std::move(fontFamily),
-+        std::move(widgetColor),       std::move(widgetIconColor), std::move(symbolicIcons),
-+        std::move(iconOverrides),     std::move(fontFamily),
-         std::move(fontWeight),        std::move(capsuleToggle),   std::move(capsuleRadius),
-         std::move(capsuleFill),       std::move(capsuleBorder),   std::move(capsuleBorderWidth),
-         std::move(capsuleForeground), std::move(capsulePadding),  std::move(capsuleOpacity),
+@@ -733,6 +738,7 @@ namespace settings {
+         std::move(capsulePadding), std::move(capsuleOpacity),     std::move(anchor),
+         std::move(interactive),    std::move(showTooltip),        std::move(scrollRepeat),
+         std::move(actions),
++        std::move(symbolicIcons), std::move(iconOverrides),
+     };
+   }
+ 

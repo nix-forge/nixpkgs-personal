@@ -35,9 +35,9 @@ def entries(fonts: Path) -> list[tuple[str, str, str]]:
             if not (fonts / notice).read_bytes():
                 raise ValueError(f"Empty font notice: {notice}")
             records.append((file, notice, digest))
-    if len(records) != 57 or len({record[0] for record in records}) != 57:
+    if len(records) != 72 or len({record[0] for record in records}) != 72:
         raise ValueError(
-            "Expected the complete release collection of 57 distinct fonts"
+            "Expected the complete release collection of 72 distinct fonts"
         )
     return records
 

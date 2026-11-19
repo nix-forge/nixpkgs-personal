@@ -1,6 +1,6 @@
 # EffectCraft
 
-Source build of [EffectCraft 0.10.0](https://github.com/storytold/effectcraft/releases/tag/v0.10.0) at `05955c08b4fd025f1a09882df72e6dbff1a8148a`.
+Source build of [EffectCraft 0.24.1](https://github.com/storytold/effectcraft/releases/tag/v0.24.1) at `582344dd4ef462362c02e56e3094de7af01847ab`.
 Installs `effectcraft` and `effectcraft-cli`, retaining the default automation/plugin capabilities.
 Restricted ArtCraft logo artwork is replaced with plain text; app icons, file types and functionality remain from upstream.
 

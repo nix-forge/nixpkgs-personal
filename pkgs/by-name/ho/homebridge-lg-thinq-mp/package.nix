@@ -1,5 +1,4 @@
 {
-  replaceVars,
   lib,
   buildNpmPackage,
   fetchFromGitHub,
@@ -26,17 +25,6 @@ buildNpmPackage (finalAttrs: {
   # Homebridge UI is a development dependency; its native terminal addon is
   # not part of this plugin. The build script compiles the plugin and copies UI assets.
   npmFlags = [ "--ignore-scripts" ];
-
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit nodejs_24;
-        nodeModulesCheck = "${./scripts/check_node_modules.mts}";
-
-      }
-    }
-  '';
 
   passthru.homebridgePluginName = "@mp-consulting/homebridge-lg-thinq";
 

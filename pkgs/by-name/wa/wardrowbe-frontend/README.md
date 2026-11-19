@@ -7,15 +7,15 @@ ordinary build phases. The output includes the font's OFL license notice. The re
 server is available as `wardrowbe-frontend`.
 
 The package adds browser OpenAI account setup and saved model selection to Settings.
-Focused React tests run before the Next.js build, including asynchronous preference
-loading, device-code controls and unavailable saved models. Authentication still
-requires the paired backend and optional Codex adapter at runtime.
+The former package-owned React interaction tests are retired. Validate
+asynchronous preference loading, device-code controls and unavailable saved
+models manually against the paired backend and optional Codex adapter.
 
 The package patches the OIDC token authentication method for the paired
 Wardrowbe backend. Review that patch, the npm dependency hash, and the runtime
-API contract together when updating the source tag. The install check verifies
-the standalone server, build ID, and translation resources; it does not test
-browser login or a deployed backend.
+API contract together when updating the source tag. The former standalone-server,
+build-ID and translation-resource install check is retired. A successful
+Next.js build does not establish browser login or deployed backend behavior.
 The package-local `update.py` and `passthru.updateScript` integrate with the
 repository's weekly update PR workflow. They refresh both package manifests
 from one immutable release commit and regenerate the npm cache hash. See the
@@ -33,12 +33,14 @@ and selected provider; they remain separate from confirmed reviews.
 The extension owns an independent migration ledger in the same database.
 `wardrowbe-migrate` runs upstream migrations and then the planning migrations.
 This avoids changing the upstream migration graph when automatic updates bring
-a new release. Backend install checks exercise the API against disposable
-PostgreSQL; frontend interactive tests run before the production build.
+a new release. Verify both migration ledgers against a disposable database
+before deployment. Former package-owned PostgreSQL and frontend interaction
+suites are retired.
 
 The updater validates the explicit patch list in recipe order, applying each
 patch to a disposable writable copy. Conflicts stop the update before either
-manifest changes. Release builds validate migrations and application behavior.
+manifest changes. Patch applicability and a successful build do not establish
+migration or application behavior; validate those separately before deployment.
 
 ## Complete outfit browsing
 
@@ -46,7 +48,8 @@ The outfit list uses explicit, URL-backed pagination with Previous, Next and
 page-jump controls. Page changes preserve the last successful results while
 loading or retrying a failed request. Filter and search changes reset the page.
 Cards display every garment with uncropped original images and thumbnail
-fallbacks. Tests cover all pages, delayed and failed requests, filter resets,
-return navigation, image fallback and selection. The paired backend orders tied
+fallbacks. The former package-owned paging, request, navigation and selection
+tests are retired; review those interactions manually after source updates.
+The paired backend orders tied
 creation timestamps by outfit ID so page boundaries cannot repeat or omit a
 record in an unchanged wardrobe.

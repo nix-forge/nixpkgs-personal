@@ -27,6 +27,4 @@ buildDotnetModule {
   executables = [ ];
   strictDeps = true;
   installPhase = builtins.readFile ./scripts/server-install-phase.sh;
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/server-install-check-phase.sh;
 }

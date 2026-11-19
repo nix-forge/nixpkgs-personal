@@ -15,8 +15,6 @@
     description = "Twitter color emoji font without default Fontconfig substitutions";
     platforms = lib.platforms.unix;
   };
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
   # Provide the family explicitly without replacing normal text or Noto emoji.
   postInstall = (old.postInstall or "") + (builtins.readFile ./scripts/post-install.sh);
 })

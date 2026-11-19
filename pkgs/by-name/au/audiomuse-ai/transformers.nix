@@ -56,7 +56,22 @@ python313Packages.buildPythonPackage (finalAttrs: {
   # This relaxes wheel metadata; the generated runtime table above still
   # enforces the reviewed range at import time.
   pythonRelaxDeps = [ "tokenizers" ];
-  doCheck = false;
+  # Model and trainer suites require optional frameworks, accelerators and Hub
+  # downloads. Run the existing offline configuration/utility tests against the
+  # actual selected Hub, Safetensors and Tokenizers dependencies instead.
+  doCheck = true;
+  nativeCheckInputs = with python313Packages; [
+    pytestCheckHook
+    parameterized
+  ];
+  enabledTestPaths = [
+    "tests/utils/test_model_output.py"
+    "tests/utils/test_deprecation.py"
+    "tests/utils/test_versions_utils.py"
+    "tests/utils/test_hf_argparser.py"
+    "tests/utils/test_logging.py"
+  ];
+  env.HF_HUB_OFFLINE = "1";
   pythonImportsCheck = [ "transformers" ];
 
   meta = {

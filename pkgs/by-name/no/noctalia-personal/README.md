@@ -14,7 +14,7 @@ If IPv4 and IPv6 prefer different links, the bar keeps the IWD connection view
 instead of claiming that either link is the sole uplink. This behavior does not
 change routes, Wi-Fi association, or NetworkManager systems.
 
-The pin is Noctalia 5.4.1, whose Hyprland backend supports both the legacy
+The pin is Noctalia 5.5.0, whose Hyprland backend supports both the legacy
 numeric workspace IDs and the stable `address`/`type` workspace identities
 used by newer Hyprland revisions. Keep that compatibility when updating the
 source pin. Current Hyprland also includes a numeric `id` with `address` and

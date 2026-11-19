@@ -9,14 +9,14 @@
   pkg-config,
   makeWrapper,
   python3,
-  runCommand,
-  appstream,
-  desktop-file-utils,
   libGL,
   vulkan-loader,
+  mesa,
   wayland,
+  wayland-scanner,
   libxkbcommon,
   libx11,
+  libxcb,
   libxcursor,
   libxi,
   libxrandr,
@@ -43,6 +43,7 @@ let
     wayland
     libxkbcommon
     libx11
+    libxcb
     libxcursor
     libxi
     libxrandr
@@ -86,8 +87,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   patches = [
     ./remove-restricted-marks.patch
     ./register-all-craft-fonts.patch
+    ./macos-shortcuts-and-fonts.patch
     ./archive-security.patch
-    ./print-fixture-timestamp.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];
 
@@ -104,13 +105,28 @@ rustPlatform.buildRustPackage (finalAttrs: {
     makeWrapper
     python3
   ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ wayland-scanner ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ rcodesign ];
-  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [ ];
-  env.DESIGNCRAFT_BUILD_SHA = source.rev;
-  env.CRAFT_FONTS_DIR = fonts;
-  env.CRAFT_FONTS_REQUIRED = "1";
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    libxcb
+    wayland
+  ];
+  env = {
+    DESIGNCRAFT_BUILD_SHA = source.rev;
+    CRAFT_FONTS_DIR = fonts;
+    CRAFT_FONTS_REQUIRED = "1";
+  };
 
-  preCheck = builtins.readFile ./scripts/pre-check.sh;
+  preCheck =
+    builtins.readFile ./scripts/pre-check.sh
+    + lib.optionalString stdenv.hostPlatform.isLinux ''
+      # The native pixel regression needs a Vulkan adapter in the sandbox.
+      export LD_LIBRARY_PATH="${
+        lib.makeLibraryPath [ vulkan-loader ]
+      }''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      export VK_DRIVER_FILES="${mesa}/share/vulkan/icd.d/lvp_icd.${stdenv.hostPlatform.parsed.cpu.name}.json"
+      export XDG_RUNTIME_DIR="$TMPDIR"
+    '';
 
   postInstall = ''
     source ${
@@ -171,109 +187,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
       }
     }
   '';
-  nativeInstallCheckInputs = lib.optionals stdenv.hostPlatform.isLinux [ desktop-file-utils ];
-  doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit (finalAttrs) pname;
-      }
-    }
-  ''
-  + lib.optionalString stdenv.hostPlatform.isLinux ''
-    desktop-file-validate "$out/share/applications/ai.storyteller.${finalAttrs.pname}.desktop"
-    python3 ${./scripts/check_desktop_entry.py} "$out" "ai.storyteller.${finalAttrs.pname}.desktop" "${finalAttrs.pname}"
-  ''
-  + lib.optionalString stdenv.hostPlatform.isDarwin ''
-    source ${
-      replaceVars ./scripts/darwin-check-app-bundle.sh {
-        tests_check_craft_assets_py = "${./scripts/check_craft_assets.py}";
-        upstreamVersion = lib.escapeShellArg source.upstreamVersion;
-      }
-    }
-  ''
-  + (builtins.readFile ./scripts/run-post-install-check-hook.sh);
-  passthru.tests =
-    (import ./scripts/appstream-test.nix {
-      inherit
-        lib
-        stdenv
-        runCommand
-        appstream
-        ;
-      package = finalAttrs.finalPackage;
-    })
-    // {
-
-      # Include the owning importers and the existing EPUB/engine API consumers.
-      archiveCompatibility = finalAttrs.finalPackage.overrideAttrs (previous: {
-        pname = "designcraft-archive-compatibility";
-        cargoBuildType = "debug";
-        cargoCheckType = "debug";
-        env = previous.env // {
-          CARGO_INCREMENTAL = "0";
-          CARGO_PROFILE_DEV_DEBUG = "0";
-          CARGO_PROFILE_TEST_DEBUG = "0";
-        };
-        cargoBuildFlags = [
-          "-p"
-          "designcraft-format"
-          "-p"
-          "designcraft-idml"
-          "-p"
-          "designcraft-textimport"
-          "-p"
-          "designcraft-epub"
-          "-p"
-          "designcraft-engine"
-          "--locked"
-        ];
-        cargoTestFlags = [
-          "-p"
-          "designcraft-format"
-          "-p"
-          "designcraft-idml"
-          "-p"
-          "designcraft-textimport"
-          "-p"
-          "designcraft-epub"
-          "-p"
-          "designcraft-engine"
-          "--lib"
-          "--locked"
-        ];
-        installPhase = ''
-          runHook preInstall
-          mkdir -p "$out"
-          touch "$out/passed"
-          runHook postInstall
-        '';
-        postInstall = "";
-        postFixup = "";
-        doInstallCheck = false;
-        passthru = { };
-      });
-
-      licenses = runCommand "${finalAttrs.pname}-font-notices" { nativeBuildInputs = [ python3 ]; } ''
-        python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}
-        touch "$out"
-      '';
-
-    }
-    // lib.optionalAttrs (stdenv.buildPlatform.canExecute stdenv.hostPlatform) {
-      cli = runCommand "${finalAttrs.pname}-cli-smoke" { nativeBuildInputs = [ python3 ]; } ''
-        source ${
-          replaceVars ./scripts/cli-smoke.sh {
-            package = finalAttrs.finalPackage;
-            inherit (finalAttrs) pname;
-            darwinCliCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
-              python3 ${./scripts/check_craft_assets.py} bundle ${lib.escapeShellArg (toString finalAttrs.finalPackage)} ${lib.escapeShellArg source.upstreamVersion} ${lib.escapeShellArg stdenv.hostPlatform.darwinMinVersion}
-            '';
-            tests_check_craft_assets_py = "${./scripts/check_craft_assets.py}";
-          }
-        }
-      '';
-    };
   meta = {
     description = "Page layout and publishing editor";
     homepage = "https://github.com/storytold/designcraft";

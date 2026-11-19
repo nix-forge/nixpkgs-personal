@@ -21,24 +21,24 @@ for the reuse policy and official sources.
 
 The [OIDC patch](../wardrowbe-frontend/oidc-token-auth-method.patch) lets the caller select HTTP Basic or form body client authentication at runtime. The default remains NextAuth's Basic method. Providers such as Pocket ID that require form body credentials can select `client_secret_post` without a provider-specific package. It also keeps the ID token in NextAuth's encrypted server session cookie so logout can send an `id_token_hint` to a configured provider end-session endpoint.
 
-Build both on Linux with `nix build --no-link .#wardrowbe-backend .#wardrowbe-frontend`. The backend install check imports every entry point and the Unix socket parser,
-and checks rembg and ONNX CPU provider availability on x86_64 Linux. Upstream
-ONNX cannot import in the aarch64 Linux sandbox without CPU information, so that
-ML import check follows the same platform exception as nixpkgs. A local Valkey
-instance also verifies ARQ can enqueue and execute a job through a Unix socket.
-ARM runtime
-inference still requires verification on an ARM host. The install check also authenticates the browser OpenAI management routes,
-checks private socket forwarding, and sends fixture text and image requests through
-the selected user models. It verifies upstream runtime requirement constraints against installed libraries,
-so unavailable or incompatible new dependencies fail the release build. The frontend install check verifies the standalone server, build ID and translation messages. Neither package embeds application secrets or host policy.
+Build both on Linux with `nix build --no-link .#wardrowbe-backend .#wardrowbe-frontend`.
+The former package-owned entry-point, ONNX, queue/socket, browser-provider,
+runtime-requirement and frontend install checks are retired. Historical results
+from those checks do not describe current build gates. Retained dependency import
+checks and upstream suites cover their own packages; a release build does not
+establish database migration, queue execution, browser authentication or model
+inference. Verify those operations against the consuming service, including
+native ARM inference when selecting that platform. Neither package embeds
+application secrets or host policy.
 
 ## Automated updates
 
 The existing weekly package update workflow discovers both `update.py` entry
-points. Either script updates both package manifests together in this checkout;
+points. The repository dispatcher uses paired mode to update both manifests;
 the second invocation sees the same pins and exits without rewriting them.
 Each package also exposes a Nixpkgs-compatible `passthru.updateScript` with its
-required tools. Copied package directories can update independently.
+required tools. Direct invocations update their own directory unless `--paired`
+is selected, so copied package directories can update independently.
 
 The updater selects stable `wardrowbe-vX.Y.Z` releases, resolves the exact Git
 commit, refreshes its source hash and npm lockfile cache with `prefetch-npm-deps`,
@@ -79,26 +79,30 @@ and selected provider; they remain separate from confirmed reviews.
 The extension owns an independent migration ledger in the same database.
 `wardrowbe-migrate` runs upstream migrations and then the planning migrations.
 This avoids changing the upstream migration graph when automatic updates bring
-a new release. Backend install checks exercise the API against disposable
-PostgreSQL; frontend interactive tests run before the production build.
+a new release. Verify the upstream and extension migrations against a
+disposable database before deployment. Former package-owned PostgreSQL and
+frontend interaction suites are retired.
 
 The updater validates the explicit patch list in recipe order, applying each
 patch to a disposable writable copy. Conflicts stop the update before either
-manifest changes. Release builds validate migrations and application behavior.
+manifest changes. Patch applicability and a successful build do not establish
+migration or application behavior; validate those separately before deployment.
 
 ## Stable outfit pagination
 
 Upstream 1.11 sorts filtered outfit lists by descending creation time and then
 ascending outfit ID. Its unique tie-breaker replaces the local pagination patch.
 The unique tie-breaker prevents duplicate and omitted records when timestamps
-match. The install check exercises chronological order, unique page boundaries
-and owner isolation against its disposable PostgreSQL database. No schema
-change or deployment migration is required for this correction.
+match in an unchanged wardrobe. The former disposable-PostgreSQL pagination
+check is retired; its historical results do not establish current owner
+isolation or paging behavior. No schema change or deployment migration is
+required for this source correction.
 
 The 1.11 release requires SQLAlchemy 2.1. When the incoming Python set is older,
 the package uses a scoped stable source pin while preserving Nixpkgs' compiler,
-dependencies and tests. The paired updater refreshes that pin and the runtime
-requirement check verifies the installed version. The override retires itself
+dependencies and tests. The paired updater refreshes that pin. The former
+application runtime-requirement check is retired; review the selected versions
+against the release requirements when updating. The override retires itself
 when Nixpkgs provides the pinned version or newer.
 
 The scoped compiler drops only Nixpkgs' Cython 3.3.0 backport of
@@ -114,14 +118,11 @@ dependencies of Cython's otherwise-disabled full suite. SQLAlchemy then builds
 with the installed compiler. Other inherited compiler patches and
 SQLAlchemy's upstream tests remain enabled.
 
-Wardrowbe 1.12 also requires certifi 2026.10.19 or newer. A scoped source pin
-supplies the newer Mozilla bundle until the incoming Python set catches up.
-The application environment replaces the flattened certificate module and its
-distribution metadata once, so HTTP clients share the selected bundle while
-unchanged dependency builds remain reusable. The source package preserves the
-explicit host CA-file support and upstream tests;
-it retains the release bundle instead of replacing it with an older NSS bundle.
-The runtime check verifies that the removed emSign ECC Root CA-G3 is absent
-and a retained trust root remains. See the
-[certifi advisory](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2).
-The paired updater refreshes this source pin with its other Python dependencies.
+Wardrowbe 1.12 also requires Certifi 2026.10.19 or newer. The recipe requires
+the caller's Nixpkgs Certifi to be at least the reviewed 2026.10.23 version and
+uses its normal certificate module throughout the application environment.
+The private Certifi source pin and flattened-module replacement are retired;
+the updater no longer refreshes that pin. The former application trust-root
+check is also retired. Review certificate-bundle changes and dependency
+requirements with future input updates. See the
+[Certifi advisory](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2).

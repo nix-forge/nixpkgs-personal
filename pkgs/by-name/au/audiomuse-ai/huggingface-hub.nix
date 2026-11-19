@@ -27,8 +27,23 @@ python313Packages.huggingface-hub.overridePythonAttrs (_old: {
   ];
   optional-dependencies = { };
   pythonRelaxDeps = [ ];
-  doCheck = false;
-  nativeCheckInputs = [ ];
+  # The full suite needs authenticated Hub services and optional ML frameworks.
+  # Retain upstream's offline validation, auth-header, path and utility cases
+  # against this Transformers 4-compatible source without those service clients.
+  doCheck = true;
+  nativeCheckInputs = with python313Packages; [
+    pytestCheckHook
+    pytest-mock
+    pytest-env
+  ];
+  enabledTestPaths = [
+    "tests/test_utils_validators.py"
+    "tests/test_utils_headers.py"
+    "tests/test_utils_paths.py"
+    "tests/test_utils_chunks.py"
+    "tests/test_utils_datetime.py"
+  ];
+  env.HF_HUB_OFFLINE = "1";
   pythonImportsCheck = [ "huggingface_hub" ];
 
   meta = {

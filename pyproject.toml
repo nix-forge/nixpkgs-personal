@@ -1,15 +1,5 @@
-[tool.pytest.ini_options]
-minversion = "9.0"
-testpaths = [".github/tests", "tests"]
-python_files = ["test_*.py"]
-addopts = [
-  "--import-mode=importlib",
-  "--strict-config",
-  "--strict-markers",
-  "-ra",
-]
-xfail_strict = true
-
+# Tool configuration only. Development dependencies belong in flake/dev/quality-python.nix
+# and the Nix development shell; this repository is not an installable Python project.
 [tool.ruff]
 fix = false
 preview = true
@@ -73,52 +63,17 @@ ban-relative-imports = "all"
 strict = true
 
 [tool.ruff.lint.per-file-ignores]
-
-
-"flake/dev/scripts/check_audiomuse_python_contract.py" = [
-  # Import smoke tests fail the build on an incompatible packaged runtime.
-  "assert",
-]
-"pkgs/by-name/wa/wardrowbe-backend/scripts/check_*.py" = [
-  # Native install checks fail immediately on incompatible application imports.
-  "assert",
-]
-"pkgs/by-name/gr/gridcraft/scripts/check_*.py" = [
-  # Installed artifacts must match the fixed independent fixture expectations.
-  "assert",
-  "magic-value-comparison",
-]
-
-"pkgs/by-name/**/scripts/check_*.py" = [
-  # Nix install checks deliberately fail assertions for invalid package artifacts.
-  "assert",
-  "magic-value-comparison",
-]
-
 "fuzz/*.py" = [
   # Fuzzer properties deliberately use assertions to signal a crash.
   "assert",
 ]
-"**/test_*.py" = [
-  # Retained unittest suites exercise real updater scripts and private adapter
-  # state in disposable trees. Commands use argument lists without a shell.
-  "assert",
-  "complex-structure",
-  "docstring-missing-returns",
-  "import-outside-top-level",
-  "no-self-use",
-  "private-member-access",
-  "pytest-unittest-assertion",
-  "pytest-unittest-raises-assertion",
-  "start-process-with-partial-path",
-  "subprocess-run-without-check",
-  "subprocess-without-shell-equals-true",
-  "suspicious-subprocess-import",
-  "too-many-branches",
-  "too-many-locals",
-  "too-many-statements",
-  "unused-function-argument",
+
+
+"pkgs/by-name/**/scripts/check_*.py" = [
+  # Nix install checks deliberately fail assertions for invalid package artifacts.
+  "magic-value-comparison",
 ]
+
 "pkgs/by-name/**/update.py" = [
   # Updaters fetch vendor metadata and invoke fixed Nix/package tools without a
   # shell. URLs are constrained by each package's source implementation.
@@ -127,7 +82,7 @@ strict = true
   "suspicious-subprocess-import",
   "suspicious-url-open-usage",
 ]
-"pkgs/by-name/**/skills_updater.py" = [
+"**/skills_updater.py" = [
   # Skill catalog updaters fetch known repositories and invoke fixed Git tools.
   "print",
   "start-process-with-partial-path",
@@ -160,14 +115,6 @@ strict = true
   "docstring-missing-returns",
   "print",
 ]
-"pkgs/by-name/ap/apple-color-emoji/check_emoji_artwork.py" = [
-  "complex-structure",
-  "magic-value-comparison",
-  "print",
-  "too-many-branches",
-  "too-many-locals",
-  "too-many-statements",
-]
 "pkgs/by-name/ap/apple-color-emoji/repair_missing_artwork.py" = [
   "complex-structure",
   "too-many-locals",
@@ -185,7 +132,7 @@ strict = true
   "suspicious-xml-etree-import",
 ]
 "pkgs/by-name/mu/mutant-standard-emoji/normalize_shaping.py" = [
-  "assert",
+  "too-many-branches",
   "complex-structure",
   "magic-value-comparison",
   "print",
@@ -193,7 +140,6 @@ strict = true
 ]
 "pkgs/by-name/**/check*.py" = [
   # These files are Nix build-time assertions over installed package outputs.
-  "assert",
   "magic-value-comparison",
   "print",
 ]
@@ -224,20 +170,6 @@ strict = true
   "suspicious-xml-etree-import",
   "too-many-locals",
 ]
-"tests/*.py" = [
-  # Nix check entrypoints run fixed local commands and report their outcome.
-  "assert",
-  "print",
-  "subprocess-without-shell-equals-true",
-  "suspicious-subprocess-import",
-]
-
-"pkgs/by-name/so/soularr/check_*.py" = [
-  # These package checks use unittest without requiring pytest at build time.
-  "pytest-unittest-assertion",
-  "pytest-unittest-raises-assertion",
-]
-
 [tool.ruff.format]
 docstring-code-format = true
 line-ending = "lf"
@@ -253,14 +185,7 @@ python-platform = "all"
 
 [tool.ty.src]
 include = ["**/*.py", "**/*.pyi"]
-exclude = [
-  ".git",
-  ".direnv",
-  ".ruff_cache",
-  ".pytest_cache",
-  "**/__pycache__",
-  "result",
-]
+exclude = [".git", ".direnv", ".ruff_cache", "**/__pycache__", "result"]
 
 [tool.ty.terminal]
 error-on-warning = true

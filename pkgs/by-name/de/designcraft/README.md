@@ -1,6 +1,6 @@
 # DesignCraft
 
-Source build of [DesignCraft 0.8.0](https://github.com/storytold/designcraft/releases/tag/v0.8.0) at `11a51d5b665aec8d6e675bd107a8a01514f10d00`.
+Source build of [DesignCraft 0.20.1](https://github.com/storytold/designcraft/releases/tag/v0.20.1) at `33a467872268c98536231491865b4011b0275b17`.
 Installs `designcraft` and `designcraft-cli`, retaining the default automation/plugin capabilities.
 The pinned craft-fonts collection is embedded with required-input checking for multilingual text.
 Restricted ArtCraft logo artwork is replaced with plain text; app icons, file types and functionality remain from upstream.

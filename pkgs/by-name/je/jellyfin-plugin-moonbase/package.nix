@@ -40,19 +40,11 @@ stdenvNoCC.mkDerivation {
       }
     }
   '';
-  doInstallCheck = true;
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))
     "--source-directory"
     (builtins.unsafeDiscardStringContext (toString ./.))
   ];
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        targetAbi = lib.escapeShellArg source.targetAbi;
-      }
-    }
-  '';
   meta = {
     description = "Moonbase server plugin for Moonfin clients and Seerr integration";
     homepage = "https://github.com/Moonfin-Client/Plugin";

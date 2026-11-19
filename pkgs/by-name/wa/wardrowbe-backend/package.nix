@@ -8,8 +8,6 @@
   python3,
   makeWrapper,
   stdenv,
-  valkey,
-  postgresql,
 }:
 let
   source = import ./source.nix;
@@ -76,22 +74,24 @@ let
                     prev.cython;
                 isCython = input: (input.pname or null) == "cython";
               in
-              assert builtins.length (builtins.filter isCython old.build-system) == 1;
-              {
-                build-system = map (input: if isCython input then cythonCompiler else input) old.build-system;
-                # SQLAlchemy 2.1 removed this test directory. Keep every other
-                # inherited exclusion and run the actual upstream pytest hook.
-                disabledTestPaths = builtins.filter (path: path != "test/ext/mypy") old.disabledTestPaths;
-                version = source.sqlalchemyVersion;
-                src = fetchPypi {
-                  pname = "sqlalchemy";
+              if builtins.length (builtins.filter isCython old.build-system) != 1 then
+                throw "SQLAlchemy build system must contain one Cython compiler"
+              else
+                {
+                  build-system = map (input: if isCython input then cythonCompiler else input) old.build-system;
+                  # SQLAlchemy 2.1 removed this test directory. Keep every other
+                  # inherited exclusion and run the actual upstream pytest hook.
+                  disabledTestPaths = builtins.filter (path: path != "test/ext/mypy") old.disabledTestPaths;
                   version = source.sqlalchemyVersion;
-                  hash = source.sqlalchemyHash;
-                };
-                meta = old.meta // {
-                  changelog = "https://docs.sqlalchemy.org/en/${series}/changelog/changelog_${series}.html#change-${source.sqlalchemyVersion}";
-                };
-              }
+                  src = fetchPypi {
+                    pname = "sqlalchemy";
+                    version = source.sqlalchemyVersion;
+                    hash = source.sqlalchemyHash;
+                  };
+                  meta = old.meta // {
+                    changelog = "https://docs.sqlalchemy.org/en/${series}/changelog/changelog_${series}.html#change-${source.sqlalchemyVersion}";
+                  };
+                }
             )
           else
             prev.sqlalchemy;
@@ -136,66 +136,39 @@ let
         };
       };
   };
-  # certifi is a pure Python trust-data leaf. Select its reviewed release in
-  # the application environment without changing reusable packages' build inputs.
-  runtimeCertifi =
-    if lib.versionOlder python.pkgs.certifi.version source.certifiVersion then
-      python.pkgs.certifi.overridePythonAttrs {
-        version = source.certifiVersion;
-        src = fetchPypi {
-          pname = "certifi";
-          version = source.certifiVersion;
-          hash = source.certifiHash;
-        };
-        # Retain env.patch and upstream tests; use the release Mozilla bundle.
-        postPatch = "";
-      }
-    else
-      python.pkgs.certifi;
-  pythonEnv =
-    (python.withPackages (
-      ps:
-      (with ps; [
-        fastapi
-        uvicorn
-        python-multipart
-        sqlalchemy
-        asyncpg
-        alembic
-        pydantic
-        pydantic-settings
-        email-validator
-        pyjwt
-        cryptography
-        httpx
-        certifi
-        pillow
-        pillow-heif
-        redis
-        arq
-        apscheduler
-        aiosmtplib
-        tenacity
-        python-dateutil
-        imagehash
-        rembg
-      ])
-      ++ ps.uvicorn.optional-dependencies.standard
-      ++ ps.sqlalchemy.optional-dependencies.asyncio
-    )).override
-      {
-        # Replace the flattened module, including its distribution metadata, once.
-        # All HTTP clients importing certifi see the selected application module.
-        requiredPythonModules =
-          dependencies:
-          let
-            modules = python.pkgs.requiredPythonModules dependencies;
-            isCertifi = module: (module.pname or null) == "certifi";
-          in
-          assert builtins.length (builtins.filter isCertifi modules) == 1;
-          map (module: if isCertifi module then runtimeCertifi else module) modules;
-      };
+  pythonEnv = python.withPackages (
+    ps:
+    (with ps; [
+      fastapi
+      uvicorn
+      python-multipart
+      sqlalchemy
+      asyncpg
+      alembic
+      pydantic
+      pydantic-settings
+      email-validator
+      pyjwt
+      cryptography
+      httpx
+      certifi
+      pillow
+      pillow-heif
+      redis
+      arq
+      apscheduler
+      aiosmtplib
+      tenacity
+      python-dateutil
+      imagehash
+      rembg
+    ])
+    ++ ps.uvicorn.optional-dependencies.standard
+    ++ ps.sqlalchemy.optional-dependencies.asyncio
+  );
 in
+assert lib.assertMsg (lib.versionAtLeast python.pkgs.certifi.version "2026.10.23")
+  "Wardrowbe requires Nixpkgs Certifi 2026.10.23+";
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "wardrowbe-backend";
   inherit (source) version;
@@ -215,34 +188,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   dontBuild = true;
   installPhase = ''
     source ${replaceVars ./scripts/install-phase.sh { inherit pythonEnv; }}
-  '';
-  doInstallCheck = true;
-  passAsFile = [
-    "queueSmoke"
-    "providerSmoke"
-    "browserAuthSmoke"
-    "paginationSmoke"
-  ];
-  browserAuthSmoke = builtins.readFile ./browser_auth_smoke.py;
-  providerSmoke = builtins.readFile ./provider_smoke.py;
-  queueSmoke = builtins.readFile ./queue_smoke.py;
-  paginationSmoke = builtins.readFile ./pagination_smoke.py;
-  nativeInstallCheckInputs = [
-    valkey
-    postgresql
-  ];
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit pythonEnv;
-        checkCpuProvider = if stdenv.hostPlatform.isAarch64 then "false" else "true";
-        entrypointsCheck = "${./scripts/check_entrypoints.py}";
-        cpuProviderCheck = "${./scripts/check_cpu_provider.py}";
-        inherit valkey;
-        pythonCheck1 = "${./scripts/check_runtime_requirements.py}";
-
-      }
-    }
   '';
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))

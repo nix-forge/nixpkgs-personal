@@ -1,17 +1,22 @@
 # shellcheck shell=bash
 set -euo pipefail
+
+prettier --check "scripts/javascript/**/*.{mts,json}" "pkgs/by-name/**/*.{cts,ts,mts,tsx,cjs,mjs,js,jsx}" "pkgs/by-name/**/{tsconfig,.oxlintrc}.json" tsconfig.json
+# Mirror maintained sources so type-aware linting can use immutable declarations
+# through typeRoots, without a dependency directory in the checkout or mirror.
 lint_directory=$(mktemp -d)
 trap 'rm -rf "$lint_directory"' EXIT
-cp .oxlintrc.json tsconfig.json package.json package-lock.json "$lint_directory/"
-# Mirror sources beside pinned typings without installing into the checkout.
-find tests pkgs/by-name \
+cp .oxlintrc.json tsconfig.json "$lint_directory/"
+find scripts/javascript pkgs/by-name \
   -type d \( -name node_modules -o -name dist -o -name build \) -prune -o \
   -type f \( -name '*.ts' -o -name '*.mts' -o -name '*.cts' -o -name '*.tsx' \
   -o -name '*.js' -o -name '*.mjs' -o -name '*.cjs' -o -name '*.jsx' -o -name '*.json' \) \
   -exec cp --parents --target-directory="$lint_directory" {} +
-ln -s @javascript_tools@/lib/node_modules "$lint_directory/node_modules"
+while IFS= read -r -d '' project; do
+  jq --arg typings @typings@ '.compilerOptions.typeRoots = [$typings]' "$project" >"$project.tmp"
+  mv "$project.tmp" "$project"
+done < <(find "$lint_directory" -type f -name tsconfig.json -print0)
 cd "$lint_directory"
-@npm@ run typecheck
-@npm@ run lint
-# Lint maintained trees rather than the pinned dependency symlink.
-@oxlint@ --config .oxlintrc.json --deny-warnings tests pkgs/by-name
+node scripts/javascript/check-projects.mts
+oxlint --type-aware --deny-warnings --config scripts/javascript/.oxlintrc.json scripts/javascript pkgs/by-name/*/*/scripts/*.mts pkgs/by-name/me/metabrainz-spicetify-extension/*.ts
+oxlint --type-aware --deny-warnings --config pkgs/by-name/ho/homelab-iot-scripts/.oxlintrc.json pkgs/by-name/ho/homelab-iot-scripts/*.cts

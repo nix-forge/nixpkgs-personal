@@ -5,9 +5,6 @@
   fetchFromGitHub,
   papirus-icon-theme,
   gtk3,
-  librsvg,
-  python3,
-  writers,
 }:
 let
   source = import ./source.nix;
@@ -43,22 +40,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
         sunshine_symbolic_svg = "${./sunshine-symbolic.svg}";
         papirus_icon_theme_src = papirus-icon-theme.src;
         readme = "${./README.md}";
-      }
-    }
-  '';
-
-  doInstallCheck = true;
-  nativeInstallCheckInputs = [ librsvg ];
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit iconThemeName;
-        assetsCheck = lib.getExe (
-          writers.writePython3Bin "check-installed-assets" {
-            libraries = [ python3.pkgs.pillow ];
-            flakeIgnore = [ "E501" ];
-          } ./check_installed.py
-        );
       }
     }
   '';

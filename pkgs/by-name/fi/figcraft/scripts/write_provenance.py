@@ -27,9 +27,9 @@ provenance = {
         ],
     },
     "patches": [
-        "ruzstd 0.9.1: bounded decompression (RUSTSEC-2026-0344)",
-        "Nix fontconfig discovery and native desktop application identity",
-        "Compact credits columns and native-platform rename regression fixture",
+        "Validate ZIP header consistency across the supported import formats",
+        "Register embedded regional fonts for text fallback",
+        "Report contextual errors when reopening recent files",
     ],
 }
 (output / "SOURCE-PROVENANCE.json").write_text(json.dumps(provenance, indent=2) + "\n")

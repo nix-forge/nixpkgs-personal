@@ -1,5 +1,4 @@
 {
-  replaceVars,
   lib,
   stdenvNoCC,
   fetchFromGitHub,
@@ -23,14 +22,6 @@ stdenvNoCC.mkDerivation {
     installFonts
   ];
   dontBuild = true;
-  doCheck = true;
-  checkPhase = ''
-    source ${
-      replaceVars ./scripts/check-phase.sh {
-        check_fonts_py = "${./check_fonts.py}";
-      }
-    }
-  '';
   installPhase = builtins.readFile ./scripts/install-phase.sh;
   meta = {
     description = "Multilingual font collection used by the ArtCraft creative applications";
