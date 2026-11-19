@@ -221,7 +221,7 @@ jobs:
               *) gh workflow run "$workflow" --repo "$REPOSITORY" --ref "$branch" ;;
             esac
           }
-          for workflow in ci.yml codeql.yml dependency-review.yml dco.yml; do
+          for workflow in ci.yml codeql.yml dependency-review.yml dco.yml fuzz.yml; do
             dispatch_missing_validation "$workflow"
           done
           gh pr merge "$pr_url" --repo "$REPOSITORY" --auto --match-head-commit "$head_sha"
