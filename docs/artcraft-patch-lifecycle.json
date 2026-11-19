@@ -334,6 +334,16 @@
           "removeWhen": "Remove when the pinned upstream home-screen test waits for asynchronous recent-file metadata with equivalent assertions, then run the original full native workspace suite without this patch."
         },
         {
+          "file": "synthetic-input-macos-modifiers.patch",
+          "sha256": "12ed24a3574ffbcfa9cda9615a39e643b49e146d02902d09e591d50de8cfccc1",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/figcraft/blob/4acc293c2ec941ac1400837ee7e3ab51780399f8/crates/ui-egui/src/control.rs"
+          ],
+          "reason": "Keep Command and Control distinct for synthetic macOS shortcuts and held modifiers. The existing clipboard fence test verifies that the copy command runs while writes stay blocked.",
+          "removeWhen": "Remove when the pinned upstream input path maps Command and Control correctly and its clipboard fence tests pass on macOS."
+        },
+        {
           "file": "embedded-font-fallbacks.patch",
           "sha256": "61dab25475a33842e63ba5c9624018982052685ee7eeb7949414e7b456c7561e",
           "kind": "packaging-policy",

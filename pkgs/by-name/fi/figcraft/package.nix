@@ -73,6 +73,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./embedded-font-fallbacks.patch
     ./home-recents-failure-context.patch
     ./collaboration-test-ephemeral-port.patch
+    ./synthetic-input-macos-modifiers.patch
   ];
   cargoBuildFlags = [
     "-p"
