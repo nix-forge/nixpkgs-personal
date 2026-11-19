@@ -18,7 +18,7 @@ index 0b0bdf8af7a5..f7b86ead3709 100644
      /// Finds an installed `.app` bundle for `app` in the standard Applications folders.
      pub fn detect(app: &CraftApp) -> Option<Installed> {
 -        candidates(app).iter().find_map(|p| read_bundle(app, p))
-+        prefer_nix_installation(candidates(app).iter().filter_map(|p| read_bundle(app, p)).collect())
++        super::prefer_nix_installation(candidates(app).iter().filter_map(|p| read_bundle(app, p)).collect())
      }
  
      /// Reads a bundle's `Info.plist`; `None` unless it's really this app.

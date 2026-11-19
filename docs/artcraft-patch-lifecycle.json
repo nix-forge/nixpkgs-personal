@@ -69,7 +69,7 @@
         },
         {
           "file": "nix-discovery-priority.patch",
-          "sha256": "0c5139ac76c5fbd7e876ddea537aca3c705b1f04a77fbec7ba46738199d13d61",
+          "sha256": "71205b3f88d634da350d94a8c067925c26522d161aa8d1c06636e9e5d5c263d6",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/craft-launcher/blob/cbae640688c5fa3daa120a7f5e050f8e24148a47/AGENTS.md",
