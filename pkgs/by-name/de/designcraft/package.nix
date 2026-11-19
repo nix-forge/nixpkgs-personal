@@ -87,6 +87,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   patches = [
     ./remove-restricted-marks.patch
     ./register-all-craft-fonts.patch
+    ./macos-shortcuts-and-fonts.patch
     ./archive-security.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ ./appstream-screenshot.patch ];

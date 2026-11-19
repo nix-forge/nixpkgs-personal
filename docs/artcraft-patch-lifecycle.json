@@ -170,6 +170,17 @@
       "sourceRevision": "33a467872268c98536231491865b4011b0275b17",
       "patches": [
         {
+          "file": "macos-shortcuts-and-fonts.patch",
+          "sha256": "6475aa30cf866dd951c3e3592c7dcb522e0c3b3f2b573a610c0c9a3c39588bb0",
+          "kind": "upstream-candidate",
+          "upstream": [
+            "https://github.com/storytold/designcraft/blob/33a467872268c98536231491865b4011b0275b17/crates/ui-egui/src/theme.rs",
+            "https://github.com/storytold/designcraft/blob/33a467872268c98536231491865b4011b0275b17/crates/ui-egui/src/menus/tests.rs"
+          ],
+          "reason": "Use native Command modifiers in shortcut fixtures and supply the existing Inter face for missing keyboard glyphs. Initialize style-panel fixtures with the application font definitions.",
+          "removeWhen": "Remove when the pinned upstream source renders its keyboard shortcut symbols and passes the native macOS shortcut and style-panel fixtures."
+        },
+        {
           "file": "zip-header-identity.patch",
           "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
           "kind": "upstream-candidate",
