@@ -91,6 +91,14 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "xtask"
     "--locked"
   ];
+  # These assertions need Apple's installed fonts. The sandbox suite uses
+  # only embedded fonts, even when the system font files are visible.
+  checkFlags = lib.optionals stdenv.hostPlatform.isDarwin [
+    "--skip"
+    "sketch_import_tests::sketch_text_gets_sketchs_natural_line"
+    "--skip"
+    "sketch_import_tests::sketch_text_keeps_the_platform_tracking"
+  ];
   nativeBuildInputs = [
     pkg-config
     makeWrapper
