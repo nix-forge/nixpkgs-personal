@@ -140,104 +140,39 @@ jobs:
           nix eval --option allow-import-from-derivation false --json ".#checks.$TARGET_SYSTEM" \
             --apply 'builtins.mapAttrs (_: check: check.drvPath)' > /dev/null
           nix flake check --keep-going --show-trace --print-build-logs --no-build --option allow-import-from-derivation false --system "$TARGET_SYSTEM"
+  plan-build:
+    name: Plan native builds
+    needs: [source-start]
+    if: "!cancelled()"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      base-sha: ${{ steps.plan.outputs.base-sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: nix-forge/ci/actions/setup-nix@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
+        with:
+          cache: 'false'
+          cache-scope: ci-build-plan
+      - id: plan
+        env:
+          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha
+            || github.event.before }}
+        run: |
+          python3 .github/scripts/partition_packages.py >> "$GITHUB_OUTPUT"
   build:
     name: ${{ matrix.name }}
-    needs: [lint, flake]
-    if: "!cancelled() && needs.lint.result == 'success' && needs.flake.result == 'success'"
+    needs: [lint, flake, plan-build]
+    if: "!cancelled() && needs.lint.result == 'success' && needs.flake.result == 'success' && needs.plan-build.result == 'success'"
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - system: x86_64-linux
-            runner: ubuntu-24.04
-            name: Build (x86_64-linux 1/6)
-            partition-count: 6
-            partition-index: 0
-          - system: x86_64-linux
-            runner: ubuntu-24.04
-            name: Build (x86_64-linux 2/2)
-            partition-count: 6
-            partition-index: 1
-          - system: x86_64-linux
-            runner: ubuntu-24.04
-            name: Build (x86_64-linux 3/6)
-            partition-count: 6
-            partition-index: 2
-          - system: x86_64-linux
-            runner: ubuntu-24.04
-            name: Build (x86_64-linux 4/6)
-            partition-count: 6
-            partition-index: 3
-          - system: x86_64-linux
-            runner: ubuntu-24.04
-            name: Build (x86_64-linux 5/6)
-            partition-count: 6
-            partition-index: 4
-          - system: x86_64-linux
-            runner: ubuntu-24.04
-            name: Build (x86_64-linux 6/6)
-            partition-count: 6
-            partition-index: 5
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
-            name: Build (aarch64-linux 1/6)
-            partition-count: 6
-            partition-index: 0
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
-            name: Build (aarch64-linux 2/2)
-            partition-count: 6
-            partition-index: 1
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
-            name: Build (aarch64-linux 3/6)
-            partition-count: 6
-            partition-index: 2
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
-            name: Build (aarch64-linux 4/6)
-            partition-count: 6
-            partition-index: 3
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
-            name: Build (aarch64-linux 5/6)
-            partition-count: 6
-            partition-index: 4
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
-            name: Build (aarch64-linux 6/6)
-            partition-count: 6
-            partition-index: 5
-          - system: aarch64-darwin
-            runner: macos-26
-            name: Build (aarch64-darwin 1/6)
-            partition-count: 6
-            partition-index: 0
-          - system: aarch64-darwin
-            runner: macos-26
-            name: Build (aarch64-darwin 2/2)
-            partition-count: 6
-            partition-index: 1
-          - system: aarch64-darwin
-            runner: macos-26
-            name: Build (aarch64-darwin 3/6)
-            partition-count: 6
-            partition-index: 2
-          - system: aarch64-darwin
-            runner: macos-26
-            name: Build (aarch64-darwin 4/6)
-            partition-count: 6
-            partition-index: 3
-          - system: aarch64-darwin
-            runner: macos-26
-            name: Build (aarch64-darwin 5/6)
-            partition-count: 6
-            partition-index: 4
-          - system: aarch64-darwin
-            runner: macos-26
-            name: Build (aarch64-darwin 6/6)
-            partition-count: 6
-            partition-index: 5
+      matrix: ${{ fromJSON(needs.plan-build.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     # Stable aggregate jobs below gate every shard. Six shards per system
     # bound cold application batches that exceeded the six-hour hosted limit.
@@ -264,18 +199,17 @@ jobs:
           sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /opt/ghc
           df -h /
       - name: Build every declared native CI check
-        if: matrix.partition-index == 0
+        if: matrix.native-checks
         uses: nix-forge/ci/actions/flake-checks@1a6dfe0b851c69ad30169977e014bd45029e9c55 # v2.13.0
         with:
           system: ${{ matrix.system }}
           checks-output: ciChecks
       - name: Build affected packages
+        if: matrix.packages != '[]'
         env:
-          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha
-            || github.event.before }}
+          BASE_SHA: ${{ needs.plan-build.outputs.base-sha }}
           SYSTEM: ${{ matrix.system }}
-          PARTITION_COUNT: ${{ matrix.partition-count }}
-          PARTITION_INDEX: ${{ matrix.partition-index }}
+          PACKAGES: ${{ matrix.packages }}
         shell: bash
         run: bash .github/scripts/build-affected.sh
   build-complete:
