@@ -414,9 +414,7 @@
           "file": "japanese-font-test-system-fallbacks.patch",
           "sha256": "b0e72b919d7624f64daca6bcfe172210f5f1f48d972df24dcea98fb8e20f044b",
           "kind": "upstream-candidate",
-          "upstream": [
-            "https://github.com/storytold/filmcraft/pull/1944"
-          ],
+          "upstream": ["https://github.com/storytold/filmcraft/pull/1944"],
           "reason": "Exclude only named optional CJK and RTL system faces from Japanese-specific ordering assertions while retaining Japanese precedence, glyph and layout checks.",
           "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
