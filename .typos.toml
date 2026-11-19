@@ -25,6 +25,8 @@ UPnP = "UPnP"             # Universal Plug and Play protocol name.
 UPnPClient = "UPnPClient" # Upstream Samsung client API identity.
 EnableUPnP = "EnableUPnP" # Jellyfin configuration element.
 PNGs = "PNGs"             # Plural of the PNG image format.
+# FigCraft upstream test name, used verbatim in the Darwin test filter.
+sketch_text_gets_sketchs_natural_line = "sketch_text_gets_sketchs_natural_line"
 
 [type.wardrowbe-translations]
 extend-glob = ["outfit-browsing.patch"]
