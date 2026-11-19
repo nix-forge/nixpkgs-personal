@@ -1,0 +1,227 @@
+diff --git a/crates/ui-egui/src/app.rs b/crates/ui-egui/src/app.rs
+index a003de2667e9..3da0eb062b69 100644
+--- a/crates/ui-egui/src/app.rs
++++ b/crates/ui-egui/src/app.rs
+@@ -754,7 +754,7 @@ impl LauncherUi {
+         }
+         self.settings.tray_hint_shown = true;
+         host.notify(
+-            tl!("ArtCraft Launcher is still running"),
++            tl!("Craft Launcher is still running"),
+             tl!("It's in the tray: open it or quit it from the tray icon, or turn this off in the settings."),
+         );
+     }
+diff --git a/crates/ui-egui/src/cjk_font.rs b/crates/ui-egui/src/cjk_font.rs
+index e57bd747129a..6ddddf6cf28f 100644
+--- a/crates/ui-egui/src/cjk_font.rs
++++ b/crates/ui-egui/src/cjk_font.rs
+@@ -303,6 +303,9 @@ const NOTO_TC_FILES: [(&str, &str); 10] = [
+ fn traditional_chinese_candidates() -> Vec<Candidate> {
+     let mut out = Vec::new();
+     let mut add = |path: PathBuf, family: &'static str| out.push(Candidate { path, family });
++    if let Some(path) = option_env!("CRAFT_LAUNCHER_CJK_COLLECTION") {
++        add(path.into(), "Noto Sans CJK TC");
++    }
+     // A Noto installed by hand or by the system's font manager. The `NotoSansCJKtc` subdirectory
+     // lets a user keep an updated file apart from an older installed face.
+     for dir in user_font_dirs() {
+@@ -356,7 +359,7 @@ fn traditional_chinese_candidates() -> Vec<Candidate> {
+ fn japanese_candidates() -> Vec<Candidate> {
+     let mut out = Vec::new();
+     let mut add = |path: PathBuf, family: &'static str| out.push(Candidate { path, family });
+-    if let Some(path) = option_env!("CRAFT_LAUNCHER_JAPANESE_FONT") {
++    if let Some(path) = option_env!("CRAFT_LAUNCHER_CJK_COLLECTION") {
+         add(path.into(), "Noto Sans CJK JP");
+     }
+     #[cfg(target_os = "macos")]
+@@ -435,6 +438,9 @@ fn japanese_candidates() -> Vec<Candidate> {
+ fn georgian_candidates() -> Vec<Candidate> {
+     let mut out = Vec::new();
+     let mut add = |path: PathBuf, family: &'static str| out.push(Candidate { path, family });
++    if let Some(path) = option_env!("CRAFT_LAUNCHER_GEORGIAN_FONT") {
++        add(path.into(), "Noto Sans Georgian");
++    }
+     #[cfg(target_os = "macos")]
+     {
+         // SF Georgian is the system UI face for Georgian; its family name starts with a dot, as
+diff --git a/crates/ui-egui/src/i18n/ka.tsv b/crates/ui-egui/src/i18n/ka.tsv
+index 2715c58dfa3b..78656d175e3c 100644
+--- a/crates/ui-egui/src/i18n/ka.tsv
++++ b/crates/ui-egui/src/i18n/ka.tsv
+@@ -55,7 +55,7 @@
+ 	Open	გახსნა
+ 	Open {version}	{version} ვერსიის გახსნა
+ 	Open {installed} without updating. {latest} stays available.	{installed} ვერსიის გახსნა განახლების გარეშე. {latest} ვერსია ხელმისაწვდომი რჩება.
+-	{latest} is out, but ArtCraft Launcher can't install it over this copy.	{latest} უკვე გამოვიდა, მაგრამ ArtCraft Launcher ვერ დააინსტალირებს მას ამ ასლის ნაცვლად.
++	{latest} is out, but Craft Launcher can't install it over this copy.	{latest} უკვე გამოვიდა, მაგრამ Craft Launcher ვერ დააინსტალირებს მას ამ ასლის ნაცვლად.
+ 	ArtCraft Launcher can't install version {version} over this copy.	ArtCraft Launcher ვერ დააინსტალირებს {version} ვერსიას ამ ასლის ნაცვლად.
+ 	Download for {os}	ჩამოტვირთვა {os}-ისთვის
+ 	Download	ჩამოტვირთვა
+@@ -81,7 +81,7 @@
+ 	Reinstall	ხელახლა ინსტალაცია
+ 	Uninstall…	დეინსტალაცია…
+ 	All releases	ყველა გამოშვება
+-	ArtCraft Launcher {version} is available.	ხელმისაწვდომია ArtCraft Launcher {version}.
++	Craft Launcher {version} is available.	ხელმისაწვდომია Craft Launcher {version}.
+ 	Dismiss	უგულებელყოფა
+ 	Update and restart	განახლება და გადატვირთვა
+ 	A new version is available. Would you like to relaunch with the updated version?	ხელმისაწვდომია ახალი ვერსია. გსურთ განახლებული ვერსიით ხელახლა გაშვება?
+@@ -105,14 +105,14 @@
+ 	Updates always use the format an app was installed with.	განახლება ყოველთვის იმ ფორმატს იყენებს, რომლითაც აპლიკაცია დაინსტალირდა.
+ 	Running in the background	ფონურ რეჟიმში მუშაობა
+ 	Keep running in the tray when the window is closed	ფანჯრის დახურვის შემდეგ მუშაობის გაგრძელება შეტყობინებების არეში
+-	ArtCraft Launcher is still running	ArtCraft Launcher კვლავ მუშაობს
++	Craft Launcher is still running	ArtCraft Launcher კვლავ მუშაობს
+ 	It's in the tray: open it or quit it from the tray icon, or turn this off in the settings.	ის შეტყობინებების არეშია: გახსენით ან დახურეთ მისი ხატულით, ან გამორთეთ ეს ფუნქცია პარამეტრებში.
+ 	Show the window on the current desktop	ფანჯრის ჩვენება მიმდინარე სამუშაო მაგიდაზე
+-	Start ArtCraft Launcher when I log in	ArtCraft Launcher-ის გაშვება სისტემაში შესვლისას
++	Start Craft Launcher when I log in	ArtCraft Launcher-ის გაშვება სისტემაში შესვლისას
+ 	Community	საზოგადოება
+ 	Questions, ideas and news from the ArtCraft team	კითხვები, იდეები და სიახლეები ArtCraft-ის გუნდისგან
+ 	Appearance	იერსახე
+-	Quit ArtCraft Launcher	ArtCraft Launcher-იდან გასვლა
++	Quit Craft Launcher	ArtCraft Launcher-იდან გასვლა
+ 	Done	მზადაა
+ 	Uninstall {name}?	{name}-ის დეინსტალაცია?
+ 	The app will be moved to the Trash. Your documents and settings stay.	აპლიკაცია ნაგავში გადავა. თქვენი დოკუმენტები და პარამეტრები შენარჩუნდება.
+@@ -279,7 +279,7 @@ month	Dec	დეკ
+ 	Full changelog	ცვლილებების სრული სია
+ 	link	ბმული
+ 	No apps match	შესაბამისი აპლიკაცია ვერ მოიძებნა
+-	Open ArtCraft Launcher to update.	განახლებისთვის გახსენით ArtCraft Launcher.
++	Open Craft Launcher to update.	განახლებისთვის გახსენით Craft Launcher.
+ 	{name} {v} is available	ხელმისაწვდომია {name} {v}
+ 	{count} updates are available	ხელმისაწვდომია {count} განახლება
+ 	These notes weren't fetched (GitHub's request limit was reached). They're on the release page.	ეს შენიშვნები ვერ ჩაიტვირთა (GitHub-ის მოთხოვნების ლიმიტი ამოიწურა). ისინი გამოშვების გვერდზეა.
+@@ -377,12 +377,12 @@ filter	Installed	დაინსტალირებული
+ @id	appearance.theme	იერსახე
+ 
+ # Tray (menu bar) menu and tooltip
+-	Show ArtCraft Launcher	ArtCraft Launcher-ის ჩვენება
++	Show Craft Launcher	Craft Launcher-ის ჩვენება
+ 	Check for Updates	განახლებების შემოწმება
+ 	Visit getartcraft.com	getartcraft.com-ის გახსნა
+ 	ArtCraft on GitHub	ArtCraft GitHub-ზე
+ 	Join the ArtCraft Discord	შემოუერთდით ArtCraft-ის Discord-ს
+-@plural	ArtCraft Launcher · {n} update available|ArtCraft Launcher · {n} updates available	ArtCraft Launcher · ხელმისაწვდომია {n} განახლება|ArtCraft Launcher · ხელმისაწვდომია {n} განახლება
++@plural	Craft Launcher · {n} update available|Craft Launcher · {n} updates available	Craft Launcher · ხელმისაწვდომია {n} განახლება|Craft Launcher · ხელმისაწვდომია {n} განახლება
+ 	Install folder	ინსტალაციის საქაღალდე
+ 	Default install folder	ნაგულისხმევი ინსტალაციის საქაღალდე
+ 	System default	სისტემის ნაგულისხმევი
+diff --git a/crates/ui-egui/src/i18n/zh-CN.tsv b/crates/ui-egui/src/i18n/zh-CN.tsv
+index abf55663b65c..4ac35276feb7 100644
+--- a/crates/ui-egui/src/i18n/zh-CN.tsv
++++ b/crates/ui-egui/src/i18n/zh-CN.tsv
+@@ -37,7 +37,7 @@
+ 	Open	打开
+ 	Open {version}	打开 {version}
+ 	Open {installed} without updating. {latest} stays available.	打开 {installed}，不更新。{latest} 仍可稍后安装。
+-	{latest} is out, but ArtCraft Launcher can't install it over this copy.	{latest} 已发布，但 ArtCraft Launcher 无法用它替换此副本。
++	{latest} is out, but Craft Launcher can't install it over this copy.	{latest} 已发布，但 Craft Launcher 无法用它替换此副本。
+ 	ArtCraft Launcher can't install version {version} over this copy.	ArtCraft Launcher 无法用版本 {version} 替换此副本。
+ 	Download for {os}	下载 {os} 版
+ 	Download	下载
+@@ -91,7 +91,7 @@
+ 	Updates always use the format an app was installed with.	更新时始终使用应用原来的安装格式。
+ 	Running in the background	后台运行
+ 	Keep running in the tray when the window is closed	关闭窗口后继续在系统托盘中运行
+-	ArtCraft Launcher is still running	ArtCraft Launcher 仍在运行
++	Craft Launcher is still running	ArtCraft Launcher 仍在运行
+ 	It's in the tray: open it or quit it from the tray icon, or turn this off in the settings.	它已进入系统托盘：可通过托盘图标打开或退出，也可在设置中关闭此行为。
+ 	Show the window on the current desktop	在当前桌面显示窗口
+ 	Start Craft Launcher when I log in	登录时启动 Craft Launcher
+diff --git a/crates/ui-egui/src/i18n/zh-TW.tsv b/crates/ui-egui/src/i18n/zh-TW.tsv
+index 80a636dc061a..665b29d11734 100644
+--- a/crates/ui-egui/src/i18n/zh-TW.tsv
++++ b/crates/ui-egui/src/i18n/zh-TW.tsv
+@@ -38,7 +38,7 @@
+ 	Open	開啟
+ 	Open {version}	開啟 {version}
+ 	Open {installed} without updating. {latest} stays available.	開啟 {installed}，不更新。{latest} 仍可稍後安裝。
+-	{latest} is out, but ArtCraft Launcher can't install it over this copy.	{latest} 已發布，但 ArtCraft Launcher 無法用它取代此副本。
++	{latest} is out, but Craft Launcher can't install it over this copy.	{latest} 已發布，但 Craft Launcher 無法用它取代此副本。
+ 	ArtCraft Launcher can't install version {version} over this copy.	ArtCraft Launcher 無法用版本 {version} 取代此副本。
+ 	Download for {os}	下載 {os} 版
+ 	Download	下載
+@@ -61,7 +61,7 @@
+ 	Reinstall	重新安裝
+ 	Uninstall…	解除安裝…
+ 	All releases	所有版本
+-	ArtCraft Launcher {version} is available.	ArtCraft Launcher {version} 已推出。
++	Craft Launcher {version} is available.	Craft Launcher {version} 已推出。
+ 	Dismiss	關閉
+ 	Update and restart	更新並重新啟動
+ 	A new version is available. Would you like to relaunch with the updated version?	有新版本可以使用。要使用更新後的版本重新啟動嗎？
+@@ -85,14 +85,14 @@
+ 	Updates always use the format an app was installed with.	更新一律沿用應用程式安裝時的格式。
+ 	Running in the background	在背景執行
+ 	Keep running in the tray when the window is closed	關閉視窗後仍在系統匣中執行
+-	ArtCraft Launcher is still running	ArtCraft Launcher 仍在執行
++	Craft Launcher is still running	ArtCraft Launcher 仍在執行
+ 	It's in the tray: open it or quit it from the tray icon, or turn this off in the settings.	它位於系統匣中：請從系統匣圖示開啟或結束，或在設定中關閉此功能。
+ 	Show the window on the current desktop	在目前的桌面顯示視窗
+-	Start ArtCraft Launcher when I log in	登入時啟動 ArtCraft Launcher
++	Start Craft Launcher when I log in	登入時啟動 ArtCraft Launcher
+ 	Community	社群
+ 	Questions, ideas and news from the ArtCraft team	來自 ArtCraft 團隊的提問、想法與最新消息
+ 	Appearance	外觀
+-	Quit ArtCraft Launcher	結束 ArtCraft Launcher
++	Quit Craft Launcher	結束 ArtCraft Launcher
+ 	Done	完成
+ 	Uninstall {name}?	要解除安裝 {name} 嗎？
+ 	The app will be moved to the Trash. Your documents and settings stay.	應用程式會移到垃圾桶，你的文件與設定會保留。
+@@ -181,7 +181,7 @@ month	Dec	12月
+ 	Full changelog	完整變更記錄
+ 	link	連結
+ 	No apps match	沒有符合的應用程式
+-	Open ArtCraft Launcher to update.	開啟 ArtCraft Launcher 以進行更新。
++	Open Craft Launcher to update.	開啟 Craft Launcher 以進行更新。
+ 	{name} {v} is available	{name} {v} 已推出
+ 	{count} updates are available	有 {count} 項更新可用
+ 	These notes weren't fetched (GitHub's request limit was reached). They're on the release page.	無法擷取這些說明（已達到 GitHub 的請求上限）。請至發行頁面查看。
+@@ -246,12 +246,12 @@ filter	Installed	已安裝
+ 	Restore	還原
+ 	Show in Finder	在 Finder 中顯示
+ 	Show in Explorer	在檔案總管中顯示
+-	Show ArtCraft Launcher	顯示 ArtCraft Launcher
++	Show Craft Launcher	顯示 Craft Launcher
+ 	Check for Updates	檢查更新
+ 	Visit getartcraft.com	前往 getartcraft.com
+ 	ArtCraft on GitHub	GitHub 上的 ArtCraft
+ 	Join the ArtCraft Discord	加入 ArtCraft Discord
+-@plural	ArtCraft Launcher · {n} update available|ArtCraft Launcher · {n} updates available	ArtCraft Launcher · {n} 個更新可用
++@plural	Craft Launcher · {n} update available|Craft Launcher · {n} updates available	Craft Launcher · {n} 個更新可用
+ @plural	{n} app|{n} apps	{n} 個應用程式
+ artcraft	AI image and video creation	AI 影像與影片創作
+ photocraft	Image editing	影像編輯
+diff --git a/crates/ui-egui/src/settings_dialog.rs b/crates/ui-egui/src/settings_dialog.rs
+index 4ac740eb5b8a..4c682b6810d4 100644
+--- a/crates/ui-egui/src/settings_dialog.rs
++++ b/crates/ui-egui/src/settings_dialog.rs
+@@ -58,7 +58,7 @@ impl LauncherUi {
+             |_| {},
+         );
+ 
+-        let quit_width = widgets::button_width(ui, tl!("Quit ArtCraft Launcher"), 0.0);
++        let quit_width = widgets::button_width(ui, tl!("Quit Craft Launcher"), 0.0);
+         let done_width = widgets::button_width(ui, tl!("Done"), 90.0);
+         let stack_actions = self.caps.manage_apps && quit_width + done_width + ui.spacing().item_spacing.x + 48.0 > size.x;
+         let footer_h = if stack_actions { 2.0 * theme::CONTROL_H + ui.spacing().item_spacing.y } else { theme::CONTROL_H } + 32.0;
+@@ -80,7 +80,7 @@ impl LauncherUi {
+         egui::Frame::new().inner_margin(egui::Margin::symmetric(theme::PAD as i8, 16)).show(ui, |ui| {
+             ui.set_width(ui.available_width());
+             let quit = |ui: &mut Ui, host: &mut dyn Host| {
+-                if self.caps.manage_apps && widgets::button(ui, tl!("Quit ArtCraft Launcher"), Kind::Secondary, 0.0).clicked() {
++                if self.caps.manage_apps && widgets::button(ui, tl!("Quit Craft Launcher"), Kind::Secondary, 0.0).clicked() {
+                     host.quit();
+                 }
+             };
+@@ -324,7 +324,7 @@ impl LauncherUi {
+                 ));
+             }
+             if let Some(mut on) = host.login_item()
+-                && ui.checkbox(&mut on, tl!("Start ArtCraft Launcher when I log in")).changed()
++                && ui.checkbox(&mut on, tl!("Start Craft Launcher when I log in")).changed()
+                 && let Err(e) = host.set_login_item(on)
+             {
+                 self.toast_from_ui(fmt(tl!("Couldn't change the login item: {e}"), &[("e", &e)]), true);

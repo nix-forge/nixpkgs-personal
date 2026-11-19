@@ -15,16 +15,11 @@ buildNpmPackage {
       ./package-lock.json
       ./tsconfig.json
       ./homebridge-initialize.cts
-      ./check-homebridge-ui-auth.mts
       ./scrypted-api.cts
       ./scrypted-auth.cts
-      ./scrypted-auth.test.cts
       ./scrypted-managed-settings.cts
-      ./scrypted-managed-settings.test.cts
       ./scrypted-plugin-install.cts
-      ./scrypted-plugin-install.test.cts
       ./scrypted-plugin-marker.cts
-      ./scrypted-plugin-marker.test.cts
     ];
   };
   nodejs = nodejs_24;

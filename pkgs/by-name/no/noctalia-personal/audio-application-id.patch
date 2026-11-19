@@ -1,6 +1,8 @@
+diff --git a/src/shell/control_center/tabs/audio_tab.cpp b/src/shell/control_center/tabs/audio_tab.cpp
+index 6c502ea4fc9c..9f7f75930644 100644
 --- a/src/shell/control_center/tabs/audio_tab.cpp
 +++ b/src/shell/control_center/tabs/audio_tab.cpp
-@@ -446,6 +446,20 @@
+@@ -448,6 +448,20 @@ namespace {
    DesktopEntryMatch lookupDesktopEntryForProgramStream(const AudioNode& node, std::string_view resolvedBeforeDesktop) {
      DesktopEntryMatch out;
      const bool waydroidStream = isWaydroidProgramStream(node);
@@ -21,7 +23,7 @@
      const std::string binary = lowerIdentifier(StringUtils::trim(node.applicationBinary));
      // Wine/Proton streams report wine64-preloader etc.; matching desktop entries by that binary (or
      // the shared Icon=wine) incorrectly picks unrelated apps (e.g. Protontricks) before app/node name.
-@@ -457,7 +471,6 @@
+@@ -459,7 +473,6 @@ namespace {
          return out;
        }
      }

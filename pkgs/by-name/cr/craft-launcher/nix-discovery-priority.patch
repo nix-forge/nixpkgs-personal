@@ -1,6 +1,46 @@
+diff --git a/crates/native/src/detect.rs b/crates/native/src/detect.rs
+index 0b0bdf8af7a5..f7b86ead3709 100644
+--- a/crates/native/src/detect.rs
++++ b/crates/native/src/detect.rs
+@@ -41,6 +41,10 @@ pub fn detect(app: &CraftApp, manifest: &Manifest, snapshot: &Snapshot) -> Optio
+     if let Some(found) = crate::nix::detect(app) {
+         return Some(found);
+     }
++    #[cfg(target_os = "macos")]
++    if let Some(found) = macos::detect(app).filter(|found| found.source == InstallSource::Nix) {
++        return Some(found);
++    }
+     if let Some(found) = from_manifest(app, manifest) {
+         return Some(found);
+     }
+@@ -198,7 +202,7 @@ pub mod macos {
+ 
+     /// Finds an installed `.app` bundle for `app` in the standard Applications folders.
+     pub fn detect(app: &CraftApp) -> Option<Installed> {
+-        candidates(app).iter().find_map(|p| read_bundle(app, p))
++        prefer_nix_installation(candidates(app).iter().filter_map(|p| read_bundle(app, p)).collect())
+     }
+ 
+     /// Reads a bundle's `Info.plist`; `None` unless it's really this app.
+@@ -1188,3 +1192,13 @@ mod tests {
+         assert_eq!(install_dir_keys(photo), [r"SOFTWARE\PhotoCraft".to_string()]);
+     }
+ }
++
++#[cfg(any(test, target_os = "macos"))]
++fn prefer_nix_installation(mut installations: Vec<Installed>) -> Option<Installed> {
++    if let Some(index) = installations.iter().position(|installed| installed.source == InstallSource::Nix) {
++        Some(installations.swap_remove(index))
++    } else {
++        installations.into_iter().next()
++    }
++}
++
+diff --git a/crates/native/src/nix.rs b/crates/native/src/nix.rs
+index 84696c3f6a48..2ca5ec9ee7a4 100644
 --- a/crates/native/src/nix.rs
 +++ b/crates/native/src/nix.rs
-@@ -7,11 +7,16 @@
+@@ -7,11 +7,16 @@ pub fn is_store_path(path: &Path) -> bool {
      path.strip_prefix("@nixStoreDir@").is_ok_and(|relative| relative.components().count() >= 2)
  }
  
@@ -20,70 +60,3 @@
      let cli = executable.parent()?.join(format!("{}-cli", app.id));
      let current = if cli.is_file() {
          crate::process::capture(cli.to_str()?, &["--version"], Duration::from_secs(5))
-@@ -28,6 +33,19 @@
- #[cfg(test)]
- mod tests {
-     use super::*;
-+    #[test]
-+    fn unmanaged_path_entries_do_not_hide_later_nix_installations() {
-+        let dir = tempfile::tempdir().unwrap();
-+        let unmanaged = dir.path().join("photocraft");
-+        std::fs::write(&unmanaged, "unmanaged").unwrap();
-+        let managed = dir.path().join("profile-photocraft");
-+        let store_file = Path::new(env!("CRAFT_LAUNCHER_CJK_FONT"));
-+        std::os::unix::fs::symlink(store_file, &managed).unwrap();
-+        let selected = first_store_executable(vec![unmanaged, managed.clone()].into_iter()).unwrap();
-+        assert_eq!(selected.0, managed);
-+        assert_eq!(selected.1, store_file.canonicalize().unwrap());
-+    }
-+
-     #[test]
-     fn immutable_store_paths_have_an_output_and_a_file() {
-         assert!(is_store_path(Path::new("@nixStoreDir@/hash-photocraft/bin/photocraft")));
---- a/crates/native/src/detect.rs
-+++ b/crates/native/src/detect.rs
-@@ -39,6 +39,10 @@
-     let _ = snapshot;
-     #[cfg(unix)]
-     if let Some(found) = crate::nix::detect(app) {
-+        return Some(found);
-+    }
-+    #[cfg(target_os = "macos")]
-+    if let Some(found) = macos::detect(app).filter(|found| found.source == InstallSource::Nix) {
-         return Some(found);
-     }
-     if let Some(found) = from_manifest(app, manifest) {
-@@ -164,7 +168,7 @@
-     }
- 
-     pub fn detect(app: &CraftApp) -> Option<Installed> {
--        candidates(app).iter().find_map(|p| read_bundle(app, p))
-+        prefer_nix_installation(candidates(app).iter().filter_map(|p| read_bundle(app, p)).collect())
-     }
- 
-     /// Reads a bundle's `Info.plist`; `None` unless it's really this app.
-@@ -620,3 +624,24 @@
-         }
-     }
- }
-+
-+#[cfg(any(test, target_os = "macos"))]
-+fn prefer_nix_installation(mut installations: Vec<Installed>) -> Option<Installed> {
-+    if let Some(index) = installations.iter().position(|installed| installed.source == InstallSource::Nix) {
-+        Some(installations.swap_remove(index))
-+    } else {
-+        installations.into_iter().next()
-+    }
-+}
-+
-+#[cfg(test)]
-+mod nix_priority_tests {
-+    use super::*;
-+    #[test]
-+    fn unmanaged_bundles_do_not_hide_later_nix_installations() {
-+        let installed = |source| Installed { version: None, source, location: String::new(), package: None };
-+        let selected = prefer_nix_installation(vec![installed(InstallSource::MacApp), installed(InstallSource::Nix)]).unwrap();
-+        assert_eq!(selected.source, InstallSource::Nix);
-+        assert_eq!(prefer_nix_installation(vec![installed(InstallSource::MacApp)]).unwrap().source, InstallSource::MacApp);
-+    }
-+}

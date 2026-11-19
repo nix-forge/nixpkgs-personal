@@ -1,0 +1,234 @@
+diff --git a/crates/native/src/http.rs b/crates/native/src/http.rs
+index a763d15eeffd..c62572be7429 100644
+--- a/crates/native/src/http.rs
++++ b/crates/native/src/http.rs
+@@ -965,7 +965,11 @@ pub(crate) mod tests {
+         // A directory cannot be removed as a file on Unix. On Windows, hold a file open
+         // without delete sharing: metadata remains readable, but removing it is refused.
+         #[cfg(unix)]
+-        std::fs::create_dir(&part).unwrap();
++        {
++            std::fs::create_dir(&part).unwrap();
++            // Some filesystems report zero bytes for an empty directory.
++            std::fs::write(part.join("retained entry"), b"fixture").unwrap();
++        }
+         #[cfg(windows)]
+         let _locked_partial = {
+             use std::os::windows::fs::OpenOptionsExt;
+diff --git a/crates/native/src/login.rs b/crates/native/src/login.rs
+index c2b8753c4fdb..a14078e0a849 100644
+--- a/crates/native/src/login.rs
++++ b/crates/native/src/login.rs
+@@ -14,6 +14,8 @@ use std::path::{Path, PathBuf};
+ const ID: &str = "io.github.nix-forge.craft-launcher";
+ #[cfg_attr(any(target_os = "macos", windows), allow(dead_code))]
+ const DESKTOP_ID: &str = "io.github.nix_forge.craft-launcher";
++#[cfg_attr(any(target_os = "macos", windows), allow(dead_code))]
++const FLATPAK_ID: &str = "ai.storyteller.artcraft-launcher";
+ /// The command-line flag a login start passes.
+ pub const HIDDEN_FLAG: &str = "--hidden";
+ /// The command the Flatpak exports (`command:` in `packaging/linux/flatpak/*.yml`).
+@@ -213,14 +215,14 @@ fn autostart_entry(program: &Path) -> Option<String> {
+     // Quote the executable path per the Desktop Entry spec, rejecting one that can't be
+     // represented as a single argument (e.g. a path with a line break, which could otherwise
+     // introduce a second Exec= key that the desktop runs at login instead of us) (CWE-74).
+-    Some(entry_text(&crate::desktop_entry::exec_quote(program)?, ""))
++    Some(entry_text(&crate::desktop_entry::exec_quote(program)?, DESKTOP_ID, ""))
+ }
+ 
+ /// Inside the Flatpak this program's path (/app/bin/…) exists only in the sandbox, so the entry
+ /// starts the app through `flatpak run` on the host, as Flatpak's own exported entries do.
+ #[cfg_attr(any(target_os = "macos", windows), allow(dead_code))]
+ fn flatpak_autostart_entry(app_id: &str) -> String {
+-    entry_text(&flatpak_exec(app_id), &format!("X-Flatpak={app_id}\n"))
++    entry_text(&flatpak_exec(app_id), app_id, &format!("X-Flatpak={app_id}\n"))
+ }
+ 
+ /// The command that starts the Flatpak `app_id` from the host (the entry adds `--hidden`).
+@@ -230,9 +232,9 @@ fn flatpak_exec(app_id: &str) -> String {
+ }
+ 
+ #[cfg_attr(any(target_os = "macos", windows), allow(dead_code))]
+-fn entry_text(exec: &str, extra: &str) -> String {
++fn entry_text(exec: &str, icon: &str, extra: &str) -> String {
+     format!(
+-        "[Desktop Entry]\nType=Application\nName=Craft Launcher\nComment=Install and update the Craft App Suite\nExec={exec} {HIDDEN_FLAG}\nIcon={DESKTOP_ID}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n{extra}"
++        "[Desktop Entry]\nType=Application\nName=Craft Launcher\nComment=Install and update the Craft App Suite\nExec={exec} {HIDDEN_FLAG}\nIcon={icon}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n{extra}"
+     )
+ }
+ 
+@@ -248,7 +250,7 @@ fn flatpak_id(from_env: Option<&str>) -> &str {
+                     && part.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+             })
+     };
+-    from_env.filter(|id| valid(id)).unwrap_or(ID)
++    from_env.filter(|id| valid(id)).unwrap_or(FLATPAK_ID)
+ }
+ 
+ #[cfg(not(windows))]
+@@ -264,7 +266,7 @@ fn remove(path: &std::path::Path) -> Result<(), String> {
+ mod tests {
+     use super::*;
+ 
+-    const ENTRY: &str = "/home/u/.config/autostart/io.github.nix-forge.craft-launcher.desktop";
++    const ENTRY: &str = "/home/u/.config/autostart/ai.storyteller.artcraft-launcher.desktop";
+     const SANDBOX_CONFIG: &str = "/home/u/.var/app/ai.storyteller.artcraft-launcher/config";
+ 
+     fn env<'a>(vars: &'a [(&str, &str)]) -> impl Fn(&str) -> Option<OsString> + 'a {
+@@ -283,19 +285,19 @@ mod tests {
+     #[test]
+     fn flatpak_entry_goes_in_the_hosts_config_folder() {
+         let vars = [("HOME", "/home/u"), ("XDG_CONFIG_HOME", SANDBOX_CONFIG)];
+-        assert_eq!(autostart_path(Some(ID), env(&vars), home), Some(PathBuf::from(ENTRY)));
++        assert_eq!(autostart_path(Some(FLATPAK_ID), env(&vars), home), Some(PathBuf::from(ENTRY)));
+         // No usable home folder: no entry rather than a relative path.
+-        assert_eq!(autostart_path(Some(ID), env(&vars), || Some(PathBuf::from("u"))), None);
+-        assert_eq!(autostart_path(Some(ID), env(&vars), || None), None);
++        assert_eq!(autostart_path(Some(FLATPAK_ID), env(&vars), || Some(PathBuf::from("u"))), None);
++        assert_eq!(autostart_path(Some(FLATPAK_ID), env(&vars), || None), None);
+     }
+ 
+     #[test]
+     fn flatpak_entry_follows_host_xdg_config_home() {
+         let vars = [("HOME", "/home/u"), ("XDG_CONFIG_HOME", SANDBOX_CONFIG), ("HOST_XDG_CONFIG_HOME", "/home/u/cfg")];
+-        assert_eq!(autostart_path(Some(ID), env(&vars), home), Some(PathBuf::from("/home/u/cfg/autostart/io.github.nix-forge.craft-launcher.desktop")));
++        assert_eq!(autostart_path(Some(FLATPAK_ID), env(&vars), home), Some(PathBuf::from("/home/u/cfg/autostart/ai.storyteller.artcraft-launcher.desktop")));
+         // A relative one isn't allowed by the XDG spec: ~/.config.
+         let vars = [("HOME", "/home/u"), ("XDG_CONFIG_HOME", SANDBOX_CONFIG), ("HOST_XDG_CONFIG_HOME", "cfg")];
+-        assert_eq!(autostart_path(Some(ID), env(&vars), home), Some(PathBuf::from(ENTRY)));
++        assert_eq!(autostart_path(Some(FLATPAK_ID), env(&vars), home), Some(PathBuf::from(ENTRY)));
+     }
+ 
+     /// A renamed build beside the stable one keeps its own entry; outside a Flatpak the name stays.
+@@ -307,7 +309,7 @@ mod tests {
+             Some(PathBuf::from("/home/u/.config/autostart/ai.storyteller.artcraft-launcher.Devel.desktop"))
+         );
+         let host = autostart_path(None, env(&[("FLATPAK_ID", devel)]), home);
+-        assert_eq!(host, dirs::config_dir().map(|c| c.join("autostart").join("ai.storyteller.artcraft-launcher.desktop")));
++        assert_eq!(host, dirs::config_dir().map(|c| c.join("autostart").join(format!("{ID}.desktop"))));
+     }
+ 
+     /// An entry left by the host build doesn't count in the Flatpak, and turning the setting on
+@@ -315,69 +317,69 @@ mod tests {
+     #[test]
+     fn flatpak_replaces_the_host_builds_entry() {
+         let dir = tempfile::tempdir().unwrap();
+-        let path = dir.path().join("autostart").join(format!("{ID}.desktop"));
++        let path = dir.path().join("autostart").join(format!("{FLATPAK_ID}.desktop"));
+         assert!(!is_enabled_at(&path, None));
+-        assert!(!is_enabled_at(&path, Some(ID)));
++        assert!(!is_enabled_at(&path, Some(FLATPAK_ID)));
+ 
+         enable_at(&path, None, || Ok(PathBuf::from("/usr/bin/artcraft-launcher"))).unwrap();
+         assert!(is_enabled_at(&path, None));
+-        assert!(!is_enabled_at(&path, Some(ID)));
++        assert!(!is_enabled_at(&path, Some(FLATPAK_ID)));
+ 
+-        enable_at(&path, Some(ID), || Err("the Flatpak form doesn't name this program".into())).unwrap();
+-        assert!(is_enabled_at(&path, Some(ID)));
+-        assert_eq!(std::fs::read_to_string(&path).unwrap(), flatpak_autostart_entry(ID));
++        enable_at(&path, Some(FLATPAK_ID), || Err("the Flatpak form doesn't name this program".into())).unwrap();
++        assert!(is_enabled_at(&path, Some(FLATPAK_ID)));
++        assert_eq!(std::fs::read_to_string(&path).unwrap(), flatpak_autostart_entry(FLATPAK_ID));
+     }
+ 
+     #[test]
+     fn flatpak_entry_is_recognised_only_for_its_own_app_id() {
+-        let entry = flatpak_autostart_entry(ID);
+-        assert!(is_flatpak_entry(&entry, ID));
+-        assert!(is_flatpak_entry(&entry.replace('\n', " \r\n"), ID));
++        let entry = flatpak_autostart_entry(FLATPAK_ID);
++        assert!(is_flatpak_entry(&entry, FLATPAK_ID));
++        assert!(is_flatpak_entry(&entry.replace('\n', " \r\n"), FLATPAK_ID));
+         assert!(!is_flatpak_entry(&entry, "ai.storyteller.artcraft-launcher.Devel"));
+-        assert!(!is_flatpak_entry(&autostart_entry(Path::new("/usr/bin/artcraft-launcher")).unwrap(), ID));
++        assert!(!is_flatpak_entry(&autostart_entry(Path::new("/usr/bin/artcraft-launcher")).unwrap(), FLATPAK_ID));
+         // Flatpak-looking id but a host Exec line: not ours.
+         let host_exec = entry.replace("Exec=flatpak run --command=artcraft-launcher", "Exec=/usr/bin/artcraft-launcher");
+-        assert!(!is_flatpak_entry(&host_exec, ID));
++        assert!(!is_flatpak_entry(&host_exec, FLATPAK_ID));
+     }
+ 
+     /// A startup manager turns an entry off by hiding it; the desktop then skips it.
+     #[test]
+     fn hidden_flatpak_entry_is_off() {
+-        let entry = flatpak_autostart_entry(ID);
+-        assert!(!is_flatpak_entry(&format!("{entry}Hidden=true\n"), ID));
+-        assert!(!is_flatpak_entry(&format!("{entry}Hidden = true\n"), ID));
+-        assert!(!is_flatpak_entry(&entry.replace("X-GNOME-Autostart-enabled=true", "X-GNOME-Autostart-enabled=false"), ID));
+-        assert!(is_flatpak_entry(&format!("{entry}Hidden=false\n"), ID));
+-        assert!(is_flatpak_entry(&format!("{entry}#Hidden=true\n"), ID));
++        let entry = flatpak_autostart_entry(FLATPAK_ID);
++        assert!(!is_flatpak_entry(&format!("{entry}Hidden=true\n"), FLATPAK_ID));
++        assert!(!is_flatpak_entry(&format!("{entry}Hidden = true\n"), FLATPAK_ID));
++        assert!(!is_flatpak_entry(&entry.replace("X-GNOME-Autostart-enabled=true", "X-GNOME-Autostart-enabled=false"), FLATPAK_ID));
++        assert!(is_flatpak_entry(&format!("{entry}Hidden=false\n"), FLATPAK_ID));
++        assert!(is_flatpak_entry(&format!("{entry}#Hidden=true\n"), FLATPAK_ID));
+         // The last value is the one that counts.
+-        assert!(is_flatpak_entry(&format!("{entry}Hidden=true\nHidden=false\n"), ID));
++        assert!(is_flatpak_entry(&format!("{entry}Hidden=true\nHidden=false\n"), FLATPAK_ID));
+     }
+ 
+     /// Our X-Flatpak isn't enough: the Exec has to start this app, hidden.
+     #[test]
+     fn flatpak_entry_must_start_this_app() {
+-        let entry = flatpak_autostart_entry(ID);
++        let entry = flatpak_autostart_entry(FLATPAK_ID);
+         let other = entry.replace(
+             "Exec=flatpak run --command=artcraft-launcher ai.storyteller.artcraft-launcher --hidden",
+             "Exec=flatpak run --command=other com.example.Other --hidden",
+         );
+-        assert!(!is_flatpak_entry(&other, ID));
+-        assert!(!is_flatpak_entry(&entry.replace(" --hidden", ""), ID));
+-        assert!(!is_flatpak_entry(&format!("{entry}Exec=flatpak run com.example.Other --hidden\n"), ID));
++        assert!(!is_flatpak_entry(&other, FLATPAK_ID));
++        assert!(!is_flatpak_entry(&entry.replace(" --hidden", ""), FLATPAK_ID));
++        assert!(!is_flatpak_entry(&format!("{entry}Exec=flatpak run com.example.Other --hidden\n"), FLATPAK_ID));
+     }
+ 
+     /// Only the [Desktop Entry] group's keys count.
+     #[test]
+     fn keys_in_other_groups_dont_count() {
+-        let flatpak = flatpak_autostart_entry(ID);
++        let flatpak = flatpak_autostart_entry(FLATPAK_ID);
+         let in_action = format!(
+             "{}[Desktop Action flatpak]\n{}",
+             autostart_entry(Path::new("/usr/bin/artcraft-launcher")).unwrap(),
+             flatpak.replace("[Desktop Entry]\n", "")
+         );
+-        assert!(!is_flatpak_entry(&in_action, ID));
+-        assert!(is_flatpak_entry(&format!("{flatpak}[X-Other]\nHidden=true\nExec=/usr/bin/other\n"), ID));
+-        assert!(!is_flatpak_entry(&format!("[X-Other]\n{}", flatpak.replace("[Desktop Entry]\n", "")), ID));
++        assert!(!is_flatpak_entry(&in_action, FLATPAK_ID));
++        assert!(is_flatpak_entry(&format!("{flatpak}[X-Other]\nHidden=true\nExec=/usr/bin/other\n"), FLATPAK_ID));
++        assert!(!is_flatpak_entry(&format!("[X-Other]\n{}", flatpak.replace("[Desktop Entry]\n", "")), FLATPAK_ID));
+         assert_eq!(desktop_entry_key("[A]\nExec=a\n[Desktop Entry]\n# Exec=b\nExec[de]=c\n Exec = d \n", "Exec"), Some("d"));
+     }
+ 
+@@ -388,7 +390,7 @@ mod tests {
+         assert_eq!(flatpak_app(false, Some("com.example.Ide")), None);
+         assert_eq!(flatpak_app(false, None), None);
+         assert_eq!(flatpak_app(true, Some("ai.storyteller.artcraft-launcher.Devel")), Some("ai.storyteller.artcraft-launcher.Devel"));
+-        assert_eq!(flatpak_app(true, None), Some(ID));
++        assert_eq!(flatpak_app(true, None), Some(FLATPAK_ID));
+     }
+ 
+     /// #1204: /app/bin/artcraft-launcher exists only inside the sandbox.
+@@ -407,7 +409,7 @@ mod tests {
+     fn flatpak_id_is_the_sandboxes_when_it_is_a_valid_one() {
+         assert_eq!(flatpak_id(Some("ai.storyteller.artcraft-launcher.Devel")), "ai.storyteller.artcraft-launcher.Devel");
+         for bad in [None, Some(""), Some("-a.b"), Some("a b.c"), Some("a.b\nExec=evil"), Some("a.b%u"), Some("nodot")] {
+-            assert_eq!(flatpak_id(bad), ID, "{bad:?}");
++            assert_eq!(flatpak_id(bad), FLATPAK_ID, "{bad:?}");
+         }
+     }
+ 
+@@ -416,7 +418,7 @@ mod tests {
+         assert_eq!(
+             autostart_entry(Path::new("/usr/bin/artcraft-launcher")).as_deref(),
+             Some(
+-                "[Desktop Entry]\nType=Application\nName=Craft Launcher\nComment=Install and update the Craft App Suite\nExec=\"/usr/bin/artcraft-launcher\" --hidden\nIcon=ai.storyteller.artcraft-launcher\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
++                "[Desktop Entry]\nType=Application\nName=Craft Launcher\nComment=Install and update the Craft App Suite\nExec=\"/usr/bin/artcraft-launcher\" --hidden\nIcon=io.github.nix_forge.craft-launcher\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
+             )
+         );
+     }

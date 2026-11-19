@@ -1,0 +1,28 @@
+diff --git a/crates/text/src/fontdb.rs b/crates/text/src/fontdb.rs
+index 3c82cd26179a..c0a74143c908 100644
+--- a/crates/text/src/fontdb.rs
++++ b/crates/text/src/fontdb.rs
+@@ -550,7 +550,7 @@ fn names(f: &skrifa::FontRef) -> (Option<String>, Option<String>) {
+ /// document: the browser has no other fonts. The symbol fonts come last: Apple Symbols (macOS),
+ /// Segoe UI Symbol (Windows) and the Noto symbol and math fonts (Linux), for signs such as ⌖ and ⤒
+ /// that no text face has.
+-const FALLBACK_FAMILIES: [&str; 32] = [
++const FALLBACK_FAMILIES: [&str; 40] = [
+     "Inter",
+     "Helvetica Neue",
+     "Arial",
+@@ -577,6 +577,14 @@ const FALLBACK_FAMILIES: [&str; 32] = [
+     "Noto Sans Hebrew",
+     "Noto Sans Devanagari",
+     "Noto Sans Georgian",
++    "Noto Sans Bengali",
++    "Noto Sans Gujarati",
++    "Noto Sans Gurmukhi",
++    "Noto Sans Kannada",
++    "Noto Sans Malayalam",
++    "Noto Sans Oriya",
++    "Noto Sans Tamil",
++    "Noto Sans Telugu",
+     "Apple Symbols",
+     "Segoe UI Symbol",
+     "Noto Sans Symbols",

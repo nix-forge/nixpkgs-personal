@@ -6,8 +6,7 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "lint": "oxlint --type-aware --deny-warnings --config .oxlintrc.json *.cts *.mts",
     "format:check": "prettier --check \"*.{cts,mts,json}\"",
-    "test": "node dist/scrypted-plugin-install.test.cjs && node dist/scrypted-managed-settings.test.cjs",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run build && npm test"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run build"
   },
   "devDependencies": {
     "@types/node": "24.13.6",

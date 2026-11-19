@@ -14,6 +14,10 @@ for dependency in "${dependencies[@]}"; do
       install -Dm644 "$notice" "$destination/$(basename "$notice")"
     fi
   done
-  test -s "$destination/LICENSE-MIT"
-  test -s "$destination/LICENSE-APACHE"
+  if [[ $dependency == *-winit-* ]]; then
+    test -s "$destination/LICENSE"
+  else
+    test -s "$destination/LICENSE-MIT"
+    test -s "$destination/LICENSE-APACHE"
+  fi
 done

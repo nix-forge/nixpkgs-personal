@@ -11,24 +11,12 @@
     let
       checkPython = import ./quality-python.nix { pkgs = pkgs.buildPackages; };
       javascriptTools = import ./javascript-tools.nix { pkgs = pkgs.buildPackages; };
-      javascriptLint = pkgs.buildPackages.writeShellApplication {
-        name = "package-typescript-lint";
-        runtimeInputs = [
-          pkgs.buildPackages.coreutils
-          pkgs.buildPackages.findutils
-          pkgs.buildPackages.nodejs_24
-        ];
-        text = (import ../../lib/render-text.nix) ./scripts/javascript-lint.sh.in {
-          javascript_tools = javascriptTools;
-          npm = lib.getExe' pkgs.buildPackages.nodejs_24 "npm";
-          oxlint = lib.getExe javascriptTools;
-        };
-      };
       evaluationCheck = pkgs.buildPackages.writeShellApplication {
         name = "package-evaluation-check";
         runtimeInputs = [
           pkgs.buildPackages.jq
           pkgs.buildPackages.bash
+          pkgs.buildPackages.python3
         ];
         text = builtins.readFile ./scripts/package-evaluation-check.sh;
       };
@@ -62,7 +50,7 @@
           oxlint = {
             enable = true;
             name = "TypeScript and Oxlint";
-            entry = lib.getExe javascriptLint;
+            entry = lib.getExe javascriptTools;
             language = "system";
             extraPackages = [ javascriptTools ];
             files = "(\\.[cm]?[jt]sx?$|(^|/)(tsconfig|application-types|projects|\\.oxlintrc|package(-lock)?)\\.json$)";
@@ -95,7 +83,7 @@
           };
           python-compile = {
             enable = true;
-            # Compile every package updater, CI helper, and Python test.
+            # Compile every package updater, CI helper, and Python helper.
             # compileall writes bytecode even with -B; use a temporary cache.
             entry = lib.getExe pythonCompile;
             language = "system";

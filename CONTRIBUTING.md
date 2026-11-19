@@ -6,8 +6,7 @@ silently depend on private files, credentials, or local paths.
 
 Before a larger change, open an issue describing the package, upstream source,
 license, supported systems, and maintenance plan. Keep pull requests focused.
-Explain behavior changes, update package metadata and documentation, and add a
-test or check when the package supports one.
+Explain behavior changes, update package metadata and documentation, and update relevant library tests or static checks.
 
 Run the relevant commands from the README and confirm that the repository's CI
 passes. At minimum, run `just check` for changes that affect the flake,
@@ -15,13 +14,19 @@ package definitions, overlays, or update tooling. This recipe materializes the
 development partition, evaluates checks and validates every exported system in
 separate evaluator processes. This preserves coverage while bounding peak memory.
 
-Pull requests and merge groups run formatting, repository hooks, dependency
-review, CodeQL, flake-lock health, NUR compatibility checks, and the package
-test or evaluation matrix. Every major package, overlay, source, metadata, or
-update-tool change must add or update an automated test or check. If an
-automated test is not practical, record the reason, manual evidence, and a
-follow-up plan in the pull request. Security and dependency findings follow
-the [dependency-management policy](docs/dependency-management.md).
+Pull requests and merge groups run static formatting, lint, type, syntax,
+dependency/security and documentation checks, Nix library tests, and ordinary
+package builds. Add focused `nix-unit` cases for reusable functions under `lib/`.
+Tests compare named expressions with expected values or expected errors; do not
+add standalone assertion wrappers, module snapshots, behavioral suites, native
+runtime checks or project-authored package install tests. Keep module setting
+validation in the owning module's `assertions` block.
+
+Preserve upstream software's own test defaults and production safety checks.
+Package build phases that execute upstream tests may remain. A successful static
+check or library test does not establish runtime, recovery or installation
+behavior. See [testing](docs/testing.md) for commands. Security and dependency
+findings follow the [dependency-management policy](docs/dependency-management.md).
 
 Do not commit secrets, generated credentials, or large binary artifacts. Use
 full immutable references for GitHub Actions and preserve the repository's
@@ -32,6 +37,12 @@ to the [Developer Certificate of Origin](https://developercertificate.org/).
 
 Submit changes as pull requests against `main`. The maintainer decides whether
 the review is sufficient; passing checks and the merge queue are required.
+
+Development dependencies belong in the Nix shell, loaded with direnv or
+`nix develop`. Do not install repository tooling with npm, pnpm, Bun, pip or uv,
+or create local dependency directories or virtual environments. Keep root
+`pyproject.toml` files limited to tool configuration. Application package recipes
+retain their own upstream build dependencies inside Nix builds.
 
 ## Source filenames
 

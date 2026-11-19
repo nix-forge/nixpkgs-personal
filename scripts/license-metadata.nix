@@ -26,8 +26,9 @@ let
     );
   isFree =
     license:
-    assert valid license;
-    if kind license == "compound" then
+    if !(valid license) then
+      throw "Invalid package license metadata"
+    else if kind license == "compound" then
       (if license.operator == "OR" then any else all) isFree license.licenses
     else if kind license == "exception" then
       isFree license.license && isFree license.exception
@@ -37,8 +38,9 @@ let
       license.free;
   name =
     license:
-    assert valid license;
-    if kind license == "compound" then
+    if !(valid license) then
+      throw "Invalid package license metadata"
+    else if kind license == "compound" then
       builtins.concatStringsSep " ${license.operator} " (map bracket license.licenses)
     else if kind license == "exception" then
       "${bracket license.license} WITH ${bracket license.exception}"

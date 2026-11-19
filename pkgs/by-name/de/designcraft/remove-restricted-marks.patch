@@ -1,16 +1,18 @@
+diff --git a/crates/ui-egui/src/about.rs b/crates/ui-egui/src/about.rs
+index 90d6eb70f547..c21b9241b07d 100644
 --- a/crates/ui-egui/src/about.rs
 +++ b/crates/ui-egui/src/about.rs
-@@ -13,9 +13,6 @@
- pub const BRAND: Color32 = Color32::from_rgb(0x4e, 0x7b, 0xfb);
+@@ -14,9 +14,6 @@ pub const BRAND: Color32 = Color32::from_rgb(0x4e, 0x7b, 0xfb);
  /// Discord's brand colour, used for the "Join our Discord" buttons (colour only; no Discord artwork).
  pub const DISCORD: Color32 = Color32::from_rgb(0x58, 0x65, 0xf2);
--
+ 
 -/// The ArtCraft mark outline (viewBox -10 -19.42 136.34 136.34), from `docs/brand/artcraft-mark.svg`.
 -const MARK_PATH: &str = "M104.28,49.49L81.55,0h-31.23l-3.17,4.76L14.75,53.63,0,75.85l21.55,21.55,63.79-36.94,16.99,37.04,14.01-21.74-12.06-26.27ZM32.89,65.66l32.42-48.87,10.91,23.77-43.32,25.09Z";
- 
+-
  /// The other ArtCraft apps (app-page slug, name, what it is) — same list as the README.
  pub const SIBLINGS: &[(&str, &str, &str)] = &[
-@@ -30,35 +27,10 @@
+     ("photocraft", "PhotoCraft", "image editing"),
+@@ -30,35 +27,10 @@ pub const SIBLINGS: &[(&str, &str, &str)] = &[
  /// The About window's tabs, in `UiState::about_tab` order (`help.about {tab}` names them in lowercase).
  pub const ABOUT_TABS: [&str; 3] = ["About", "Contributors", "Models"];
  
@@ -21,7 +23,7 @@
 -    let ctx = ui.ctx();
 -    let ppp = ctx.pixels_per_point();
 -    let px = ((rect.width().min(rect.height()) * ppp).round() as u32).clamp(8, 1024);
--    let key = egui::Id::new(("artcraft_mark", px, color.to_array()));
+-    let key = egui::Id::unique(("artcraft_mark", px, color.to_array()));
 -    let tex: Option<egui::TextureHandle> = ctx.data(|d| d.get_temp(key));
 -    let tex = tex.unwrap_or_else(|| {
 -        let mut rc = vello_cpu::RenderContext::new_with(px as u16, px as u16, vello_cpu::RenderSettings { num_threads: 0, ..Default::default() });
@@ -37,7 +39,7 @@
 -        let mut res = vello_cpu::Resources::new();
 -        rc.render(&mut pm, &mut res);
 -        let ci = egui::ColorImage::from_rgba_premultiplied([px as usize, px as usize], pm.data_as_u8_slice());
--        let t = ctx.load_texture("artcraft_mark", ci, egui::TextureOptions::LINEAR);
+-        let t = crate::widgets::load_texture(ctx, "artcraft_mark", ci, egui::TextureOptions::LINEAR);
 -        ctx.data_mut(|d| d.insert_temp(key, t.clone()));
 -        t
 -    });

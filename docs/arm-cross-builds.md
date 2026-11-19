@@ -19,15 +19,6 @@ just linux-build x86_64-linux default nix-seal
 just arm-build cadcraft
 ```
 
-The selector reads the actual Nix build platform, chooses native compilation if
-it matches the target, and cross-compilation otherwise. It accepts any exported
-package and project repository. Linux work requires a Linux build machine; the
-Mac does not start Linux builds. On the desktop it uses `workstation-task`, one
-derivation, the host compiler budget and the existing CPU/memory limits. Invoke once
-per package so the queue is released between builds. The command freezes its
-launcher, archives and roots source inputs after queue admission, and retains
-outputs and a private status record for cache reuse and accurate retries.
-
 The platform factory is available in the root project, package repository,
 configuration framework, nix-seal and nix-homelab. NixOS and Home Manager targets
 remain native by default; the framework accepts an explicit host `buildSystem`

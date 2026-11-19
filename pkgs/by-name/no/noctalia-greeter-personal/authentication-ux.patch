@@ -1,4 +1,3 @@
-diff --git a/examples/greeter.toml b/examples/greeter.toml
 --- a/examples/greeter.toml
 +++ b/examples/greeter.toml
 @@ -35,6 +35,16 @@
@@ -18,30 +17,6 @@ diff --git a/examples/greeter.toml b/examples/greeter.toml
  
  # Required for a declarative Synced look (same keys Sync writes under [appearance.palette]).
  # When complete, this wins over Sync's sync.toml appearance.
-diff --git a/meson.build b/meson.build
---- a/meson.build
-+++ b/meson.build
-@@ -520,3 +520,19 @@
-   wallpaper_program_pixel_test,
-   env: ['LIBGL_ALWAYS_SOFTWARE=1'],
- )
-+
-+# Confirmation must never execute an action before explicit acceptance.
-+power_confirmation_test = executable('power-confirmation-test',
-+  'tests/power_confirmation_test.cpp',
-+  include_directories: include_directories('src'),
-+  install: false,
-+)
-+test('power-confirmation', power_confirmation_test)
-+
-+# Font preferences must not shrink pointer targets or accept invalid scales.
-+style_test = executable('style-test',
-+  'tests/style_test.cpp', 'src/ui/style.cpp',
-+  include_directories: include_directories('src'),
-+  install: false,
-+)
-+test('style', style_test)
-diff --git a/src/greeter/greeter.cpp b/src/greeter/greeter.cpp
 --- a/src/greeter/greeter.cpp
 +++ b/src/greeter/greeter.cpp
 @@ -156,6 +156,7 @@
@@ -52,7 +27,6 @@ diff --git a/src/greeter/greeter.cpp b/src/greeter/greeter.cpp
        if (view.surface->updateClock()) {
          view.surface->requestLayout();
        }
-diff --git a/src/greeter/greeter_config_io.cpp b/src/greeter/greeter_config_io.cpp
 --- a/src/greeter/greeter_config_io.cpp
 +++ b/src/greeter/greeter_config_io.cpp
 @@ -66,6 +66,11 @@
@@ -110,7 +84,6 @@ diff --git a/src/greeter/greeter_config_io.cpp b/src/greeter/greeter_config_io.c
      if (config.appearanceHideLogo.has_value()) {
        appearance.insert_or_assign("hide_logo", *config.appearanceHideLogo);
      }
-diff --git a/src/greeter/greeter_config_store.h b/src/greeter/greeter_config_store.h
 --- a/src/greeter/greeter_config_store.h
 +++ b/src/greeter/greeter_config_store.h
 @@ -46,6 +46,11 @@
@@ -125,7 +98,6 @@ diff --git a/src/greeter/greeter_config_store.h b/src/greeter/greeter_config_sto
      // UI element positioning: "hidden", "bottom-left", "bottom-right", "top-left", "top-right"
      std::optional<std::string> appearancePowerButtonsPosition;
      std::optional<std::string> appearanceSchemeSelectorPosition;
-diff --git a/src/greeter/greeter_preferences.cpp b/src/greeter/greeter_preferences.cpp
 --- a/src/greeter/greeter_preferences.cpp
 +++ b/src/greeter/greeter_preferences.cpp
 @@ -430,6 +430,15 @@
@@ -144,7 +116,6 @@ diff --git a/src/greeter/greeter_preferences.cpp b/src/greeter/greeter_preferenc
      prefs.powerButtonsPosition = file.appearancePowerButtonsPosition;
      prefs.schemeSelectorPosition = file.appearanceSchemeSelectorPosition;
      if (file.clockEnabled.has_value()) {
-diff --git a/src/greeter/greeter_preferences.h b/src/greeter/greeter_preferences.h
 --- a/src/greeter/greeter_preferences.h
 +++ b/src/greeter/greeter_preferences.h
 @@ -33,6 +33,9 @@
@@ -157,7 +128,6 @@ diff --git a/src/greeter/greeter_preferences.h b/src/greeter/greeter_preferences
      // UI element positioning: "hidden", "bottom-left", "bottom-right", "top-left", "top-right"
      std::optional<std::string> powerButtonsPosition;
      std::optional<std::string> schemeSelectorPosition;
-diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
 --- a/src/greeter/greeter_surface.cpp
 +++ b/src/greeter/greeter_surface.cpp
 @@ -40,7 +40,9 @@
@@ -840,7 +810,6 @@ diff --git a/src/greeter/greeter_surface.cpp b/src/greeter/greeter_surface.cpp
 +    button->layout(*m_renderContext);
 +  }
 +}
-diff --git a/src/greeter/greeter_surface.h b/src/greeter/greeter_surface.h
 --- a/src/greeter/greeter_surface.h
 +++ b/src/greeter/greeter_surface.h
 @@ -4,6 +4,7 @@
@@ -898,7 +867,6 @@ diff --git a/src/greeter/greeter_surface.h b/src/greeter/greeter_surface.h
    bool m_statusIsError = false;
    bool m_authenticating = false;
    bool m_greetdUnavailable = false;
-diff --git a/src/greeter/power_confirmation.h b/src/greeter/power_confirmation.h
 --- /dev/null
 +++ b/src/greeter/power_confirmation.h
 @@ -0,0 +1,22 @@
@@ -924,7 +892,6 @@ diff --git a/src/greeter/power_confirmation.h b/src/greeter/power_confirmation.h
 +    std::optional<PowerAction> m_pending;
 +  };
 +} // namespace greeter
-diff --git a/src/render/scene/input_dispatcher.cpp b/src/render/scene/input_dispatcher.cpp
 --- a/src/render/scene/input_dispatcher.cpp
 +++ b/src/render/scene/input_dispatcher.cpp
 @@ -124,10 +124,11 @@
@@ -940,7 +907,6 @@ diff --git a/src/render/scene/input_dispatcher.cpp b/src/render/scene/input_disp
          area->m_onClick(data);
        m_capturedArea = nullptr;
      }
-diff --git a/src/render/text/cairo_text_renderer.cpp b/src/render/text/cairo_text_renderer.cpp
 --- a/src/render/text/cairo_text_renderer.cpp
 +++ b/src/render/text/cairo_text_renderer.cpp
 @@ -175,10 +175,10 @@
@@ -956,7 +922,6 @@ diff --git a/src/render/text/cairo_text_renderer.cpp b/src/render/text/cairo_tex
    cairo_font_options_set_hint_metrics(fontOptions, CAIRO_HINT_METRICS_ON);
    pango_cairo_context_set_font_options(m_pangoContext, fontOptions);
    cairo_font_options_destroy(fontOptions);
-diff --git a/src/ui/controls/button.cpp b/src/ui/controls/button.cpp
 --- a/src/ui/controls/button.cpp
 +++ b/src/ui/controls/button.cpp
 @@ -672,11 +672,11 @@
@@ -973,7 +938,6 @@ diff --git a/src/ui/controls/button.cpp b/src/ui/controls/button.cpp
      targetLabel = resolveColorSpec(m_palette.hover.label);
    } else if (isHovered || isSelected) {
      targetBg = resolveColorSpec(m_palette.hover.bg);
-diff --git a/src/ui/controls/input.cpp b/src/ui/controls/input.cpp
 --- a/src/ui/controls/input.cpp
 +++ b/src/ui/controls/input.cpp
 @@ -25,7 +25,7 @@
@@ -1170,7 +1134,6 @@ diff --git a/src/ui/controls/input.cpp b/src/ui/controls/input.cpp
                .fillMode = FillMode::Solid,
                .radius = 2.0f,
            }
-diff --git a/src/ui/controls/input.h b/src/ui/controls/input.h
 --- a/src/ui/controls/input.h
 +++ b/src/ui/controls/input.h
 @@ -49,6 +49,8 @@
@@ -1198,7 +1161,6 @@ diff --git a/src/ui/controls/input.h b/src/ui/controls/input.h
    InputArea* m_revealArea = nullptr;
  
    std::string m_value;
-diff --git a/src/ui/style.cpp b/src/ui/style.cpp
 --- a/src/ui/style.cpp
 +++ b/src/ui/style.cpp
 @@ -1,8 +1,10 @@
@@ -1240,7 +1202,6 @@ diff --git a/src/ui/style.cpp b/src/ui/style.cpp
  
  float Style::borderWidth() noexcept { return borderWidthBase * s_uiScale; }
  
-diff --git a/src/ui/style.h b/src/ui/style.h
 --- a/src/ui/style.h
 +++ b/src/ui/style.h
 @@ -35,8 +35,12 @@
@@ -1264,7 +1225,6 @@ diff --git a/src/ui/style.h b/src/ui/style.h
 +  static float s_fontScale;
    static float s_cornerRadiusScale;
  };
-diff --git a/src/wayland/wayland_client.h b/src/wayland/wayland_client.h
 --- a/src/wayland/wayland_client.h
 +++ b/src/wayland/wayland_client.h
 @@ -75,6 +75,8 @@
@@ -1276,7 +1236,6 @@ diff --git a/src/wayland/wayland_client.h b/src/wayland/wayland_client.h
    [[nodiscard]] xdg_wm_base* xdgWmBase() const noexcept { return m_xdgWmBase; }
    [[nodiscard]] wp_fractional_scale_manager_v1* fractionalScaleManager() const noexcept {
      return m_fractionalScaleManager;
-diff --git a/tests/legacy_staging_compatibility_test.cpp b/tests/legacy_staging_compatibility_test.cpp
 --- a/tests/legacy_staging_compatibility_test.cpp
 +++ b/tests/legacy_staging_compatibility_test.cpp
 @@ -249,6 +249,34 @@
@@ -1314,53 +1273,3 @@ diff --git a/tests/legacy_staging_compatibility_test.cpp b/tests/legacy_staging_
        std::ofstream(fixture.runtimeDirectory / "greeter.toml") << R"toml(
  [clock]
  enabled = false
-diff --git a/tests/power_confirmation_test.cpp b/tests/power_confirmation_test.cpp
---- /dev/null
-+++ b/tests/power_confirmation_test.cpp
-@@ -0,0 +1,20 @@
-+#include "greeter/power_confirmation.h"
-+
-+#undef NDEBUG
-+#include <cassert>
-+#include <initializer_list>
-+
-+int main() {
-+  greeter::PowerConfirmation dialog;
-+  assert(!dialog.accept());
-+  for (auto action : {greeter::PowerAction::Shutdown, greeter::PowerAction::Reboot, greeter::PowerAction::Firmware}) {
-+    dialog.request(action);
-+    assert(dialog.active());
-+    dialog.cancel();
-+    assert(!dialog.active());
-+    assert(!dialog.accept());
-+    dialog.request(action);
-+    assert(dialog.accept() == action);
-+    assert(!dialog.accept());
-+  }
-+}
-diff --git a/tests/style_test.cpp b/tests/style_test.cpp
---- /dev/null
-+++ b/tests/style_test.cpp
-@@ -0,0 +1,22 @@
-+#include "ui/style.h"
-+
-+#undef NDEBUG
-+#include <cassert>
-+#include <cmath>
-+#include <limits>
-+#include <initializer_list>
-+
-+int main() {
-+  Style::setUiScale(1.0f);
-+  const float control = Style::controlHeight();
-+  const float icon = Style::scaled(64.0f);
-+  Style::setFontScale(20.0f / 21.0f);
-+  assert(std::abs(Style::fontSizeBody() - 40.0f / 3.0f) < 0.0001f);
-+  assert(std::abs(Style::fontSizeCaption() - 260.0f / 21.0f) < 0.0001f);
-+  assert(Style::controlHeight() == control);
-+  assert(Style::scaled(64.0f) == icon);
-+  for (float invalid : {0.0f, -1.0f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
-+    Style::setFontScale(invalid);
-+    assert(Style::fontSizeBody() == 14.0f);
-+  }
-+}

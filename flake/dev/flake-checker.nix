@@ -10,7 +10,6 @@ in
 if fixed then
   package
 else
-  assert package.version == "0.2.15";
   package.overrideAttrs (old: {
     nativeBuildInputs = pkgs.lib.unique ((old.nativeBuildInputs or [ ]) ++ [ pkgs.pkg-config ]);
     buildInputs = pkgs.lib.unique ((old.buildInputs or [ ]) ++ [ pkgs.zstd ]);

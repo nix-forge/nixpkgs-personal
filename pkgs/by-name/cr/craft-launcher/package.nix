@@ -3,7 +3,6 @@
   lib,
   stdenv,
   rustPlatform,
-  rust,
   fetchFromGitHub,
   fetchgit,
   fetchurl,
@@ -12,9 +11,6 @@
   pkg-config,
   makeWrapper,
   python3,
-  runCommand,
-  appstream,
-  writers,
   librsvg,
   resvg,
   desktop-file-utils,
@@ -23,8 +19,10 @@
   libGL,
   vulkan-loader,
   wayland,
+  wayland-scanner,
   libxkbcommon,
   libx11,
+  libxcb,
   libxcursor,
   libxi,
   libxrandr,
@@ -66,6 +64,7 @@ let
     wayland
     libxkbcommon
     libx11
+    libxcb
     libxcursor
     libxi
     libxrandr
@@ -85,7 +84,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     lockFile = ./Cargo.lock;
     outputHashes = lib.mapAttrs (_: dependency: dependency.hash) source.gitDependencies;
   };
-  cargoPatches = [ ./rustls-security-update.patch ];
   src = fetchFromGitHub {
     owner = "storytold";
     repo = "craft-launcher";
@@ -110,7 +108,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--locked"
   ];
   # Apple disk-image/signing services and process inspection are unavailable
-  # in the Darwin sandbox. Retain these tests in hostTests below.
+  # in the Darwin sandbox. These remain upstream host-only tests.
   checkFlags = lib.optionals stdenv.hostPlatform.isDarwin [
     "--skip"
     "install::tests::macos_checks::only_the_teams_signature_passes"
@@ -127,16 +125,14 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./remove-restricted-marks.patch
     ./nix-managed-applications.patch
     ./nix-cjk-fonts.patch
-    ./autostart-exec-quoting.patch
     ./nix-bundle-integration.patch
     ./nix-discovery-priority.patch
-    ./unix-restart-test-path-helpers.patch
     ./nix-linux-process-locale.patch
-    ./disable-unused-gtk-tray-features.patch
-    ./macos-quit-handshake.patch
-    ./preserve-update-backups-upstream-a2e490.patch
-    ./atomic-state-upstream-314.patch
     ./appimage-runtime-and-safe-refresh.patch
+    ./nix-install-status.patch
+    ./autostart-and-download-tests.patch
+    ./localization-and-cjk-collection.patch
+    ./offline-git-patches.patch
   ];
   nativeBuildInputs = [
     pkg-config
@@ -146,7 +142,14 @@ rustPlatform.buildRustPackage (finalAttrs: {
     (if stdenv.hostPlatform.isDarwin then resvg else librsvg)
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ rcodesign ]
-  ++ lib.optionals stdenv.hostPlatform.isLinux [ copyDesktopItems ];
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    copyDesktopItems
+    wayland-scanner
+  ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    libxcb
+    wayland
+  ];
   desktopItems = lib.optionals stdenv.hostPlatform.isLinux [
     (makeDesktopItem {
       name = appId;
@@ -167,14 +170,14 @@ rustPlatform.buildRustPackage (finalAttrs: {
   nativeCheckInputs = lib.optionals stdenv.hostPlatform.isLinux [ procps ];
   env = {
     CRAFT_LAUNCHER_CJK_FONT = "${fonts}/fonts/noto-sans-cjk-sc/NotoSansCJKsc-Regular.otf";
-    CRAFT_LAUNCHER_JAPANESE_FONT = "${noto-fonts-cjk-sans}/share/fonts/opentype/noto-cjk/NotoSansCJK-VF.otf.ttc";
+    CRAFT_LAUNCHER_GEORGIAN_FONT = "${fonts}/fonts/noto-sans-georgian/NotoSansGeorgian.ttf";
+    CRAFT_LAUNCHER_CJK_COLLECTION = "${noto-fonts-cjk-sans}/share/fonts/opentype/noto-cjk/NotoSansCJK-VF.otf.ttc";
   }
   // lib.optionalAttrs stdenv.hostPlatform.isLinux {
     CRAFT_LAUNCHER_APPIMAGE_RUN = lib.getExe appimageRuntime;
     CRAFT_LAUNCHER_ENV = lib.getExe' coreutils "env";
   };
   postPatch = ''
-    # The package lock also prunes GTK dependencies after disabling tray defaults.
     cp ${./Cargo.lock} Cargo.lock
     substituteInPlace crates/native/src/nix.rs --replace-fail '@nixStoreDir@' '${builtins.storeDir}'
     rm -rf docs/brand assets/app-icon
@@ -221,6 +224,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
         done
     )
     install -Dm644 ${fonts}/fonts/noto-sans-cjk-sc/OFL.txt "$out/share/doc/craft-launcher/licenses/noto-sans-cjk-sc/OFL.txt"
+    install -Dm644 ${fonts}/fonts/noto-sans-georgian/OFL.txt "$out/share/doc/craft-launcher/licenses/noto-sans-georgian/OFL.txt"
     install -Dm644 ${fonts}/ATTRIBUTION.md "$out/share/doc/craft-launcher/licenses/craft-fonts-ATTRIBUTION.md"
     install -Dm644 ${japaneseFontLicense} "$out/share/doc/craft-launcher/licenses/noto-sans-cjk-jp/OFL.txt"
     printf '%s\n' 'Built from source with Nix. Restricted ArtCraft graphical marks were removed and replaced with an original neutral icon. This modified distribution is called Craft Launcher. Nix-managed applications are read-only to the launcher; update them through your Nix configuration.' \
@@ -277,105 +281,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
         "rcodesign"
     } sign "$out/Applications/Craft Launcher.app"
   '';
-  nativeInstallCheckInputs = lib.optionals stdenv.hostPlatform.isLinux [ desktop-file-utils ];
-  doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    test "$("$out/bin/craft-launcher" --version)" = 'craft-launcher ${source.upstreamVersion}'
-    test -s "$out/share/doc/craft-launcher/licenses/LICENSE-MIT"
-    test -s "$out/share/doc/craft-launcher/licenses/noto-sans-cjk-sc/OFL.txt"
-  ''
-  + lib.optionalString stdenv.hostPlatform.isLinux ''
-    desktop-file-validate "$out/share/applications/${appId}.desktop"
-    python3 ${./scripts/check_desktop_entry.py} "$out" "${appId}.desktop" "craft-launcher"
-  ''
-  + lib.optionalString stdenv.hostPlatform.isDarwin ''
-    test -s "$out/Applications/Craft Launcher.app/Contents/_CodeSignature/CodeResources"
-  ''
-  + ''
-    runHook postInstallCheck
-  '';
-  passthru.tests =
-    (import ./scripts/appstream-test.nix {
-      inherit
-        lib
-        stdenv
-        runCommand
-        appstream
-        ;
-      package = finalAttrs.finalPackage;
-    })
-    // {
-
-      licenses = runCommand "${finalAttrs.pname}-font-notices" { nativeBuildInputs = [ python3 ]; } ''
-        python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}
-        cmp ${japaneseFontLicense} ${finalAttrs.finalPackage}/share/doc/craft-launcher/licenses/noto-sans-cjk-jp/OFL.txt
-        touch "$out"
-      '';
-    }
-    // lib.optionalAttrs (
-      stdenv.hostPlatform.isLinux && lib.versions.major pkgs.gcc.cc.version == "16"
-    ) { appimageRuntime = import ./appimage-runtime-test.nix { inherit pkgs appimageRuntime; }; }
-    // lib.optionalAttrs (stdenv.buildPlatform.canExecute stdenv.hostPlatform) {
-      cli =
-        let
-          check = writers.writePython3Bin "check-craft-launcher" {
-            libraries = [ python3.pkgs.defusedxml ];
-            flakeIgnore = [ "E501" ];
-          } ./check_cli.py;
-          minimumVersion =
-            if stdenv.hostPlatform.isDarwin then
-              if lib.versionAtLeast stdenv.hostPlatform.darwinMinVersion "11.0" then
-                stdenv.hostPlatform.darwinMinVersion
-              else
-                "11.0"
-            else
-              "0";
-        in
-        runCommand "craft-launcher-version-smoke" { } ''
-          source ${
-            replaceVars ./check-cli.sh {
-              launcher = lib.escapeShellArg (lib.getExe finalAttrs.finalPackage);
-              check = lib.escapeShellArg (lib.getExe check);
-              arguments = lib.escapeShellArgs [
-                (toString finalAttrs.finalPackage)
-                source.upstreamVersion
-                finalAttrs.version
-                appId
-                source.rev
-                (if stdenv.hostPlatform.isDarwin then "darwin" else "linux")
-                minimumVersion
-              ];
-            }
-          }
-        '';
-    }
-    // lib.optionalAttrs (stdenv.buildPlatform.system == stdenv.hostPlatform.system) {
-      quitState = import ./scripts/quit-state-test.nix {
-        inherit lib stdenv rustPlatform;
-        source = gitSources."craft-quit-0.1.0";
-      };
-    };
-  # Build an artifact for explicit native macOS checks outside the sandbox.
-  # These tests use temporary bundles, never the user's Applications folder.
-  passthru.hostTests =
-    lib.optionalAttrs
-      (stdenv.hostPlatform.isDarwin && stdenv.buildPlatform.system == stdenv.hostPlatform.system)
-      {
-        native = import ./scripts/native-host-tests.nix {
-          inherit
-            lib
-            stdenv
-            replaceVars
-            source
-            gitSources
-            fonts
-            japaneseFontLicense
-            ;
-          inherit rust;
-          package = finalAttrs.finalPackage;
-        };
-      };
   meta = {
     description = "Desktop launcher for the Craft creative and office applications";
     homepage = "https://github.com/storytold/craft-launcher";

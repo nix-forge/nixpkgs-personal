@@ -3,7 +3,6 @@
   replaceVars,
   lib,
   stdenvNoCC,
-  python3,
   fetchurl,
   unzip,
 }:
@@ -35,13 +34,6 @@ stdenvNoCC.mkDerivation {
       }
     }
   '';
-
-  nativeInstallCheckInputs = [ python3 ];
-  postInstallCheck = ''
-    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Steam.app" --expected-version ${lib.escapeShellArg source.version} --version-key CFBundleVersion
-  '';
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))

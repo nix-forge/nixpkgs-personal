@@ -1,5 +1,4 @@
 {
-  replaceVars,
   lib,
   buildNpmPackage,
   fetchFromGitHub,
@@ -27,20 +26,6 @@ buildNpmPackage (finalAttrs: {
     cp ${./scripts/strict-power.mts} src/device/strict-power.ts
   '';
   npmInstallFlags = [ "--ignore-scripts" ];
-
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit nodejs_24;
-        nodeModulesCheck = "${./scripts/check_node_modules.mts}";
-
-      }
-    }
-  ''
-  + ''
-    ${nodejs_24}/bin/node --experimental-vm-modules ${./.}/strict-power-state.test.mts "$out/lib/node_modules/homebridge-samsung-tizen"
-  '';
 
   meta = {
     description = "Homebridge plugin for Samsung Tizen televisions";

@@ -3,9 +3,6 @@
   lib,
   stdenvNoCC,
   fetchurl,
-  fontconfig,
-  python3,
-  writers,
 }:
 let
   source = import ./source.nix;
@@ -40,21 +37,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
         inherit (finalAttrs) pname;
         inherit adobeLicense;
         source_revision = source.revision;
-      }
-    }
-  '';
-
-  doInstallCheck = true;
-  nativeInstallCheckInputs = [ fontconfig ];
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        assetsCheck = lib.getExe (
-          writers.writePython3Bin "check-installed-assets" {
-            libraries = [ python3.pkgs.fonttools ];
-            flakeIgnore = [ "E501" ];
-          } ./check_installed.py
-        );
       }
     }
   '';

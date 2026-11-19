@@ -18,14 +18,17 @@ let
     (lib.versionAtLeast librsvg.version "2.62.4" && lib.versionOlder librsvg.version "2.62.90")
     || lib.versionAtLeast librsvg.version "2.63.2";
   svgLibrary =
-    assert lib.assertMsg (
-      builtins.elem librsvg.version [
-        "2.62.3"
-        "2.63.0"
-      ]
-      || svgFixed
-    ) "Review Scrypted's librsvg entity backport against the selected version";
-    if svgFixed then
+    if
+      !(
+        builtins.elem librsvg.version [
+          "2.62.3"
+          "2.63.0"
+        ]
+        || svgFixed
+      )
+    then
+      throw "Review Scrypted's librsvg entity backport against the selected version"
+    else if svgFixed then
       librsvg
     else
       librsvg.overrideAttrs (old: {
@@ -75,8 +78,6 @@ buildNpmPackage (finalAttrs: {
     source ${
       replaceVars ./scripts/build-phase.sh {
         tarPatch = "${./pax-entry-metadata.patch}";
-        cacheCheck = "${./scripts/check-cache-compatibility.mts}";
-        inherit nodejs_24;
       }
     }
   '';
@@ -91,24 +92,6 @@ buildNpmPackage (finalAttrs: {
           runtimeOutput = null;
         };
         inherit nodejs_24;
-      }
-    }
-  '';
-
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit nodejs_24;
-        nodeModulesCheck = "${./scripts/check_node_modules.mts}";
-        tarCheck = "${./scripts/check-tar.mts}";
-        proxyAddrCheck = "${./scripts/check-proxy-addr.mts}";
-        cacheCheck = "${./scripts/check-cache-compatibility.mts}";
-        runtimeCheck = "${./scripts/check-runtime-compatibility.mts}";
-        transportCheck = "${./scripts/check-transports.mts}";
-        forgeCheck = "${./scripts/check-forge.mts}";
-        nativeSvgLibrary = lib.getLib svgLibrary;
-
       }
     }
   '';

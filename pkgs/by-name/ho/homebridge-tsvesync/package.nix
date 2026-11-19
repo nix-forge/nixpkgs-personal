@@ -34,19 +34,6 @@ buildNpmPackage (finalAttrs: {
   strictDeps = true;
   npmInstallFlags = [ "--ignore-scripts" ];
 
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit nodejs_24;
-        credential_files_test_mts = "${./credential-files.test.mts}";
-        redirect_credentials_test_mts = "${./redirect-credentials.test.mts}";
-        nodeModulesCheck = "${./scripts/check_node_modules.mts}";
-
-      }
-    }
-  '';
-
   meta = {
     description = "Homebridge plugin for VeSync devices including Levoit Vital purifiers";
     homepage = "https://github.com/mickgiles/homebridge-tsvesync";

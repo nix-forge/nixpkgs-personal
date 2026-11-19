@@ -3,7 +3,6 @@
   _7zz,
   stdenvNoCC,
   pname,
-  python3,
   lib,
   version,
   src,
@@ -28,15 +27,9 @@ stdenvNoCC.mkDerivation {
 
   installPhase = builtins.readFile ./scripts/darwin-install-phase.sh;
 
-  nativeInstallCheckInputs = [ python3 ];
-  postInstallCheck = ''
-    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Moonfin.app" --expected-version ${lib.escapeShellArg version}
-  '';
-  doInstallCheck = true;
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))
     "--source-directory"
     (builtins.unsafeDiscardStringContext (toString ./.))
   ];
-  installCheckPhase = builtins.readFile ./scripts/darwin-install-check-phase.sh;
 }

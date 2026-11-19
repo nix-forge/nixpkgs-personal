@@ -1,70 +1,8 @@
---- a/crates/fonts/src/fontdb.rs
-+++ b/crates/fonts/src/fontdb.rs
-@@ -881,7 +881,7 @@
-     /// without `CRAFT_FONTS_DIR`), whose system font scan reads `font_dirs`.
-     pub fn with_font_dirs(font_dirs: Vec<std::path::PathBuf>) -> Self {
-         let mut faces = Vec::new();
--        let craft = crate::japanese_document_fonts().into_iter().map(|f| f.bytes);
-+        let craft = crate::japanese_document_fonts().into_iter().chain(crate::CRAFT_FONTS.iter().filter(|f| !f.scripts.contains(&"Jpan"))).map(|f| f.bytes);
-         for data in BUNDLED.iter().copied().chain(craft) {
-             for (i, family, style, coords) in enumerate_faces(data) {
-                 if let Some(f) = make_face(FontBytes::Static(data), FontSource::Bundled, i, family, style, coords) {
---- a/crates/fonts/src/lib.rs
-+++ b/crates/fonts/src/lib.rs
-@@ -551,6 +551,9 @@
-         db.set_system_fallback(false);
-         assert_eq!(db.face(DEFAULT_FAMILY, "Regular").family, DEFAULT_FAMILY);
-         assert!(!shape(&db.face(DEFAULT_FAMILY, "Regular"), "Hello", &[], |c| c).is_empty());
-+        for cf in CRAFT_FONTS {
-+            assert_eq!(db.face(cf.family, cf.style).family, cf.family, "all embedded fonts registered without system fallback");
-+        }
-         if CRAFT_FONTS.is_empty() {
-             assert!(japanese_fonts().next().is_none() && japanese_document_fonts().is_empty());
-             let latin = db.face(DEFAULT_FAMILY, "Regular");
---- a/crates/fonts/src/tests_fallback.rs
-+++ b/crates/fonts/src/tests_fallback.rs
-@@ -8,10 +8,19 @@
- const KANA: char = 'あ';
- const BOPOMOFO: char = 'ㄅ';
- 
-+// These fixtures model Japanese-only Craft fonts plus synthetic installed chain fonts.
-+// Full-manifest registration is covered separately by works_without_craft_fonts.
-+fn japanese_fixture(db: FontDb) -> FontDb {
-+    db.faces.write().unwrap_or_else(|e| e.into_inner()).retain(|face| !crate::CRAFT_FONTS.iter().any(|font| {
-+        !font.scripts.contains(&"Jpan") && font.family == face.family
-+    }));
-+    db
-+}
-+
- /// A database of the bundled fonts (and the craft-fonts Japanese faces, when built with them)
- /// only, no system fonts, plus `fonts` as (family, chars).
- fn db_with(fonts: &[(&str, &[char])]) -> FontDb {
--    let db = FontDb::with_font_dirs(vec![]);
-+    let db = japanese_fixture(FontDb::with_font_dirs(vec![]));
-     for (family, chars) in fonts {
-         assert_eq!(db.add_font(font_with(family, chars).unwrap()), 1, "{family}");
-     }
-@@ -112,7 +121,7 @@
-     // An added font covers the ideograph, so the language-blind search never scans the folder.
-     let other = || font_with("Other CJK", &[HAN]).unwrap();
- 
--    let db = FontDb::with_font_dirs(vec![dir.clone()]);
-+    let db = japanese_fixture(FontDb::with_font_dirs(vec![dir.clone()]));
-     db.add_font(other());
-     assert_eq!(family(&db, HAN, None).as_deref(), Some(first_loaded("Other CJK")));
-     assert!(!db.is_loaded("Songti SC"), "no language, no chain font loaded");
-@@ -121,7 +130,7 @@
-     assert_eq!(family(&db, HAN, None).as_deref(), Some(first_loaded("Other CJK")), "once loaded, still not used without the language");
- 
-     // With the system fallback off, installed chain fonts aren't loaded.
--    let db = FontDb::with_font_dirs(vec![dir]);
-+    let db = japanese_fixture(FontDb::with_font_dirs(vec![dir]));
-     db.add_font(other());
-     db.set_system_fallback(false);
-     assert_eq!(family(&db, HAN, Some("ko")).as_deref(), Some(first_loaded("Other CJK")));
+diff --git a/crates/compose/src/tests.rs b/crates/compose/src/tests.rs
+index f15f1e33d216..71eb5c6a02d4 100644
 --- a/crates/compose/src/tests.rs
 +++ b/crates/compose/src/tests.rs
-@@ -1358,7 +1358,7 @@
+@@ -2611,7 +2611,7 @@ fn kashidas_stretch_justified_arabic_before_spaces() {
  #[test]
  fn kashidas_without_tatweel_fall_back_to_spaces() {
      // A private database excludes host fonts without mutating the global database
@@ -73,7 +11,7 @@
      let db = FontDb::with_font_dirs(Vec::new());
      db.set_system_fallback(false);
      check_kashida_justification(&db, true);
-@@ -1373,8 +1373,18 @@
+@@ -2626,8 +2626,18 @@ fn check_kashida_justification(db: &FontDb, require_fallback: bool) {
          ..Default::default()
      };
      let (_, sid) = d.add_text_frame(SpreadRef::Doc(0), Rect::new(100.0, 100.0, 260.0, 400.0), lid, text, pf).unwrap();
@@ -94,7 +32,7 @@
      let composed = |d: &Document| compose_with_db(d, d.story(sid).unwrap(), &frame_specs(d, sid), &ComposeOptions::default(), db);
      let first = |d: &Document| composed(d).frames[0].lines[0].clone();
      let with = first(&d);
-@@ -2977,8 +2987,18 @@
+@@ -5099,8 +5109,18 @@ fn arabic_explicit_isolated_forms_disable_contextual_joining() {
      d.story_mut(sid).unwrap().format_chars(0..text.len(), |f| f.over.positional_form = Some("Isolated".into()));
      let cs = compose_story(&d, sid, &ComposeOptions::default());
      let gs = &cs.frames[0].lines[0].glyphs;
@@ -115,3 +53,133 @@
      }
  }
  
+diff --git a/crates/fonts/src/fontdb/db.rs b/crates/fonts/src/fontdb/db.rs
+index 224098a6a9e4..9ea08b9f9e96 100644
+--- a/crates/fonts/src/fontdb/db.rs
++++ b/crates/fonts/src/fontdb/db.rs
+@@ -25,18 +25,23 @@ const OUTLINE_CACHE_MAX: usize = 50_000;
+ 
+ impl FontDb {
+     /// A database holding the bundled fonts, then the craft-fonts Japanese faces (Mincho first),
+-    /// followed by Noto Sans Hebrew Regular and Noto Sans Devanagari Regular for document text.
++    /// the primary Hebrew and Devanagari document faces, then all remaining manifest fonts.
+     /// The optional craft-fonts faces are absent without `CRAFT_FONTS_DIR`; system font scans
+     /// read `font_dirs`. Japanese fallback and UI ordering remain independent of these additions.
+     pub fn with_font_dirs(font_dirs: Vec<std::path::PathBuf>) -> Self {
+         let mut faces = Vec::new();
++        let primary_document_families = ["Noto Sans Hebrew", "Noto Sans Devanagari"];
+         let craft = crate::japanese_document_fonts()
+             .into_iter()
+             .chain(
+-                ["Noto Sans Hebrew", "Noto Sans Devanagari"]
++                primary_document_families
+                     .into_iter()
+                     .filter_map(|family| crate::CRAFT_FONTS.iter().find(|f| f.family == family && f.style == "Regular")),
+             )
++            .chain(crate::CRAFT_FONTS.iter().filter(|font| {
++                !font.scripts.contains(&"Jpan")
++                    && !(font.style == "Regular" && primary_document_families.contains(&font.family))
++            }))
+             .map(|f| f.bytes);
+         for data in BUNDLED.iter().copied().chain(craft) {
+             for (i, family, style, coords) in enumerate_faces(data) {
+diff --git a/crates/fonts/src/fontdb/scoped.rs b/crates/fonts/src/fontdb/scoped.rs
+index 358189186cf0..44b6f9f34fb7 100644
+--- a/crates/fonts/src/fontdb/scoped.rs
++++ b/crates/fonts/src/fontdb/scoped.rs
+@@ -474,7 +474,7 @@ mod native_gui_document_fonts_tests {
+         let admitted = assert_canonical_script_fonts(&db, &scope, latin.id());
+         let loaded = loaded_faces(&db);
+         let previous_len = canonical_bundled_faces(&japanese).len();
+-        assert_eq!(&loaded[previous_len..], admitted.as_slice(), "only the two deliberate Regular tuples follow the existing document faces");
++        assert_eq!(&loaded[previous_len..previous_len + admitted.len()], admitted.as_slice(), "the canonical Regular faces keep first priority after the Japanese faces");
+         assert!(!scope.has_family("Unavailable Native GUI Family"));
+         assert_eq!(scope.face("Unavailable Native GUI Family", "Regular").family, FALLBACK_FAMILY);
+     }
+diff --git a/crates/fonts/src/fontdb/tests/fallback.rs b/crates/fonts/src/fontdb/tests/fallback.rs
+index a80730754e30..504e6ccfe7ee 100644
+--- a/crates/fonts/src/fontdb/tests/fallback.rs
++++ b/crates/fonts/src/fontdb/tests/fallback.rs
+@@ -9,10 +9,19 @@ const HANGUL: char = '한';
+ const KANA: char = 'あ';
+ const BOPOMOFO: char = 'ㄅ';
+ 
++// These fixtures model Japanese-only Craft fonts plus synthetic installed chain fonts.
++// Full-manifest registration is covered separately by works_without_craft_fonts.
++fn japanese_fixture(db: FontDb) -> FontDb {
++    db.faces.write().unwrap_or_else(|e| e.into_inner()).retain(|face| !crate::CRAFT_FONTS.iter().any(|font| {
++        !font.scripts.contains(&"Jpan") && font.family == face.family
++    }));
++    db
++}
++
+ /// A database of the bundled fonts (and the craft-fonts Japanese faces, when built with them)
+ /// only, no system fonts, plus `fonts` as (family, chars).
+ fn db_with(fonts: &[(&str, &[char])]) -> FontDb {
+-    let db = FontDb::with_font_dirs(vec![]);
++    let db = japanese_fixture(FontDb::with_font_dirs(vec![]));
+     for (family, chars) in fonts {
+         assert_eq!(db.add_font(font_with(family, chars).unwrap()), 1, "{family}");
+     }
+@@ -113,7 +122,7 @@ fn chain_fonts_load_from_the_font_folders_when_first_needed() {
+     // An added font covers the ideograph, so the language-blind search never scans the folder.
+     let other = || font_with("Other CJK", &[HAN]).unwrap();
+ 
+-    let db = FontDb::with_font_dirs(vec![dir.clone()]);
++    let db = japanese_fixture(FontDb::with_font_dirs(vec![dir.clone()]));
+     db.add_font(other());
+     assert_eq!(family(&db, HAN, None).as_deref(), Some(first_loaded("Other CJK")));
+     assert!(!db.is_loaded("Songti SC"), "no language, no chain font loaded");
+@@ -122,7 +131,7 @@ fn chain_fonts_load_from_the_font_folders_when_first_needed() {
+     assert_eq!(family(&db, HAN, None).as_deref(), Some(first_loaded("Other CJK")), "once loaded, still not used without the language");
+ 
+     // With the system fallback off, installed chain fonts aren't loaded.
+-    let db = FontDb::with_font_dirs(vec![dir]);
++    let db = japanese_fixture(FontDb::with_font_dirs(vec![dir]));
+     db.add_font(other());
+     db.set_system_fallback(false);
+     assert_eq!(family(&db, HAN, Some("ko")).as_deref(), Some(first_loaded("Other CJK")));
+diff --git a/crates/fonts/src/fontdb/tests/fallback.rs b/crates/fonts/src/fontdb/tests/fallback.rs
+index 504e6ccfe7ee..d73a99748d4e 100644
+--- a/crates/fonts/src/fontdb/tests/fallback.rs
++++ b/crates/fonts/src/fontdb/tests/fallback.rs
+@@ -162,7 +162,7 @@ fn malayalam_fonts_load_from_the_font_folders_when_first_needed() {
+     let _ = std::fs::remove_dir_all(&dir);
+     std::fs::create_dir_all(&dir).unwrap();
+     std::fs::write(dir.join("noto.ttf"), font_with("Noto Sans Malayalam", &[KA]).unwrap()).unwrap();
+-    let db = FontDb::with_font_dirs(vec![dir]);
++    let db = japanese_fixture(FontDb::with_font_dirs(vec![dir]));
+     db.add_font(font_with("Arial Unicode MS", &[KA]).unwrap());
+     assert!(!db.is_loaded("Noto Sans Malayalam"));
+     assert_eq!(family(&db, KA, None).as_deref(), Some("Noto Sans Malayalam"));
+diff --git a/crates/ui-egui/src/theme.rs b/crates/ui-egui/src/theme.rs
+index 8efa2e423e53..2fc6f788b3dc 100644
+--- a/crates/ui-egui/src/theme.rs
++++ b/crates/ui-egui/src/theme.rs
+@@ -758,7 +758,7 @@ mod japanese_font_tests {
+             ("Tamil Sangam MN", &['a'][..]),
+             // One face for two scripts is added once.
+             ("Nirmala UI", &['த', 'க', 'क'][..]),
+-            ("Noto Sans Thai", &['ก'][..]),
++            ("Thonburi", &['ก'][..]),
+         ];
+         for (i, (family, chars)) in fonts.iter().enumerate() {
+             std::fs::write(dir.join(format!("font{i}.ttf")), designcraft_fonts::testing::font_with(family, chars).unwrap()).unwrap();
+@@ -767,7 +767,7 @@ mod japanese_font_tests {
+         let system = super::installed_ui_fonts(&db, &[]);
+         let _ = std::fs::remove_dir_all(&dir);
+         let picked: Vec<(&str, &str)> = system.iter().map(|f| (f.script, f.family.as_str())).collect();
+-        assert_eq!(picked, [("Jpan", "Noto Sans CJK JP"), ("Taml", "Nirmala UI"), ("Thai", "Noto Sans Thai")]);
++        assert_eq!(picked, [("Jpan", "Noto Sans CJK JP"), ("Taml", "Nirmala UI"), ("Thai", "Thonburi")]);
+ 
+         let mut defs = super::font_definitions(&[], "ja");
+         defs.families.entry(egui::FontFamily::Proportional).or_default().push("craft-Stand-in".into());
+@@ -775,7 +775,7 @@ mod japanese_font_tests {
+         let stack = &defs.families[&egui::FontFamily::Proportional];
+         let at = |n: &str| stack.iter().position(|x| x == n).unwrap();
+         assert!(at("system-Noto Sans CJK JP") < at("craft-Stand-in"), "{stack:?}");
+-        assert!(at("craft-Stand-in") < at("system-Nirmala UI") && at("system-Nirmala UI") < at("system-Noto Sans Thai"), "{stack:?}");
++        assert!(at("craft-Stand-in") < at("system-Nirmala UI") && at("system-Nirmala UI") < at("system-Thonburi"), "{stack:?}");
+         defs.families.entry(egui::FontFamily::Proportional).or_default().retain(|n| n != "craft-Stand-in");
+         let ctx = egui::Context::default();
+         ctx.set_fonts(defs);

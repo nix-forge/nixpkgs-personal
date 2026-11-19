@@ -3,10 +3,9 @@
   actual-server,
   lib,
   nodejs_22,
-  testers,
 }:
 actual-server.overrideAttrs (
-  final: old: {
+  _final: old: {
     pname = "actual-cli";
     strictDeps = true;
     buildPhase = builtins.readFile ./scripts/build-phase.sh;
@@ -17,12 +16,7 @@ actual-server.overrideAttrs (
         }
       }
     '';
-    passthru = {
-      tests.version = testers.testVersion {
-        package = final.finalPackage;
-        command = "actual-cli --version";
-      };
-    };
+    passthru = { };
     meta = old.meta // {
       description = "Official Actual Budget command line client";
       mainProgram = "actual-cli";

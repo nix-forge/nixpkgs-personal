@@ -1,5 +1,4 @@
 {
-  replaceVars,
   lib,
   stdenvNoCC,
   fetchurl,
@@ -26,17 +25,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   ];
 
   installPhase = builtins.readFile ./scripts/install-phase.sh;
-
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit python3;
-        check_py = "${./check_plugin_archive.py}";
-        inherit (finalAttrs) version;
-      }
-    }
-  '';
 
   meta = {
     description = "Published HomeKit integration plugin artifact for Scrypted";

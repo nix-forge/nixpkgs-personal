@@ -25,8 +25,6 @@ if stdenv.hostPlatform.isLinux && stdenv.buildPlatform.system != stdenv.hostPlat
               });
             }
           );
-          # ORC's development docs execute target-linked generators. Runtime and tools remain.
-          orc = prev.orc.override { buildDevDoc = false; };
           # The FHS baseline needs target GCC runtime libraries. Retain their full ABI.
           gcc =
             if lib.versions.major prev.gcc.cc.version == "16" then

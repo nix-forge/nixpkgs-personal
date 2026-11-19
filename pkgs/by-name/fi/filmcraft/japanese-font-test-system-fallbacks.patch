@@ -1,51 +1,44 @@
+diff --git a/crates/ui-egui/src/cjk.rs b/crates/ui-egui/src/cjk.rs
+index fb840ced3e8a..7a7a753a302d 100644
 --- a/crates/ui-egui/src/cjk.rs
 +++ b/crates/ui-egui/src/cjk.rs
-@@ -78,6 +78,12 @@
+@@ -130,6 +130,12 @@ fn install_thai(fonts: &mut FontDefinitions) {
      }
  }
  
 +/// Whether a test stack entry is an optional installed CJK fallback.
 +#[cfg(test)]
 +pub(crate) fn is_system_face(name: &str) -> bool {
-+    matches!(name, "system-chinese" | "system-korean")
++    matches!(name, "system-chinese" | KOREAN_FACE | THAI_FACE)
 +}
 +
  fn install_chinese(fonts: &mut FontDefinitions) {
      let chinese: Vec<_> = craft_fonts().collect();
      if chinese.is_empty() {
+diff --git a/crates/ui-egui/src/i18n/tests.rs b/crates/ui-egui/src/i18n/tests.rs
+index cc3fde82456f..9f3351c7e3b7 100644
+--- a/crates/ui-egui/src/i18n/tests.rs
++++ b/crates/ui-egui/src/i18n/tests.rs
+@@ -788,8 +788,7 @@ fn japanese_needs_an_installed_font() {
+         // (`rtl::install`) come after every other fallback by design, so they are left out.
+         for family in crate::theme::font_families() {
+             let mut stack = fonts.definitions().families.get(&family).cloned().unwrap_or_default();
+-            stack.retain(|n| !crate::rtl::is_system_face(n));
+-            stack.retain(|n| n != crate::cjk::KOREAN_FACE && n != "system-chinese");
++            stack.retain(|n| !crate::rtl::is_system_face(n) && !crate::cjk::is_system_face(n));
+             if craft {
+                 assert!(stack.last().is_some_and(|n| n.starts_with("craft:")), "{family:?}: {stack:?}");
+                 assert!(!stack.iter().any(|n| n == JAPANESE_FONT), "{family:?}: {stack:?}");
+diff --git a/crates/ui-egui/src/theme.rs b/crates/ui-egui/src/theme.rs
+index 13a9cc614483..fa2cc8125632 100644
 --- a/crates/ui-egui/src/theme.rs
 +++ b/crates/ui-egui/src/theme.rs
-@@ -672,8 +672,10 @@
-         ctx.fonts_mut(|fonts| {
-             let defs = fonts.definitions().clone();
-             for (family, stack) in &defs.families {
--                // installed right-to-left faces (Hebrew is not in craft-fonts) come after the craft run
--                let stack: Vec<&String> = stack.iter().filter(|n| !crate::rtl::is_system_face(n)).collect();
-+                // Optional installed CJK and RTL faces may follow or separate the
-+                // craft runs. They do not change Japanese fallback precedence.
-+                let stack: Vec<&String> =
-+                    stack.iter().filter(|n| !crate::rtl::is_system_face(n) && !crate::cjk::is_system_face(n)).collect();
+@@ -681,7 +681,7 @@ mod tests {
+                 // craft-fonts) and the Hangul face (none is in craft-fonts)
+                 let stack: Vec<&String> = stack
+                     .iter()
+-                    .filter(|n| !crate::rtl::is_system_face(n) && n.as_str() != crate::cjk::KOREAN_FACE && n.as_str() != crate::cjk::THAI_FACE)
++                    .filter(|n| !crate::rtl::is_system_face(n) && !crate::cjk::is_system_face(n))
+                     .collect();
                  let first = stack.iter().position(|n| n.starts_with("craft:")).unwrap_or(stack.len());
                  assert!(first > 0 && stack[first..].iter().all(|n| n.starts_with("craft:")), "{family:?}: {stack:?}");
-                 let first_japanese = stack.iter().find(|n| n.starts_with("craft:BIZ") || n.starts_with("craft:Shippori"));
---- a/crates/ui-egui/src/i18n/mod.rs
-+++ b/crates/ui-egui/src/i18n/mod.rs
-@@ -1358,7 +1358,17 @@
-             // every theme family falls back to the craft-fonts (when built with them; no system
-             // font is added then) or to the system Japanese font
-             for family in crate::theme::font_families() {
--                let stack = fonts.definitions().families.get(&family).cloned().unwrap_or_default();
-+                let stack: Vec<String> = fonts
-+                    .definitions()
-+                    .families
-+                    .get(&family)
-+                    .cloned()
-+                    .unwrap_or_default()
-+                    .into_iter()
-+                    // Unrelated optional CJK/RTL fallbacks may follow the
-+                    // Japanese run; keep the Japanese system face visible.
-+                    .filter(|n| !crate::rtl::is_system_face(n) && !crate::cjk::is_system_face(n))
-+                    .collect();
-                 if craft {
-                     assert!(stack.last().is_some_and(|n| n.starts_with("craft:")), "{family:?}: {stack:?}");
-                     assert!(!stack.iter().any(|n| n == JAPANESE_FONT), "{family:?}: {stack:?}");

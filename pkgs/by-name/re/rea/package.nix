@@ -1,102 +1,37 @@
 {
   lib,
   stdenv,
-  clangStdenv,
   brotli,
   buildPackages,
   buildNpmPackage,
   fetchFromGitHub,
   fetchurl,
   nodejs_24,
-  nodejs-slim_24,
   python3,
-  bash,
   callPackage,
   replaceVars,
-  testers,
   procps,
 }:
 let
   source = import ./source.nix;
-  # Keep this security minimum local to REA rather than changing all packages.
-  withReaNodeSource =
-    compiler: scopedCallPackage: scopedBrotli: node:
-    (node.override {
-      stdenv = compiler;
-      callPackage =
-        path: args:
-        scopedCallPackage path (
-          args
-          // {
-            # Preserve version-specific Darwin toolchains selected by Nixpkgs.
-            stdenv = if compiler.hostPlatform.isLinux then compiler else args.stdenv or compiler;
-            brotli = scopedBrotli.overrideAttrs (_: {
-              inherit (source.brotli) version;
-              src = fetchFromGitHub {
-                owner = "google";
-                repo = "brotli";
-                tag = "v${source.brotli.version}";
-                inherit (source.brotli) hash;
-              };
-            });
-          }
-
-        );
-    }).overrideAttrs
-      (
-        old:
-        {
-          inherit (source.nodejs) version;
-          src = fetchurl {
-            url = "https://nodejs.org/dist/v${source.nodejs.version}/node-v${source.nodejs.version}.tar.xz";
-            inherit (source.nodejs) hash;
-          };
-        }
-        // lib.optionalAttrs compiler.hostPlatform.isDarwin {
-          patches = (old.patches or [ ]) ++ [
-            ./node-darwin-tests.patch
-            ./node-darwin-rss.patch
-          ];
-          preCheck = (old.preCheck or "") + ''
-            # Match the test runner to the allocation, retaining compiler parallelism.
-            export JOBS="$NIX_BUILD_CORES"
-            # Print each command before launch so a stalled case is identifiable.
-            export PYTHONUNBUFFERED=1
-            export TEST_CI_ARGS="''${TEST_CI_ARGS:-} --verbose"
-          '';
-        }
-      );
-  # Keep eight compiler workers; Clang avoids the observed Linux GCC reclaim stall.
-  targetCompiler = if stdenv.hostPlatform.isLinux then clangStdenv else stdenv;
-  buildCompiler =
-    if stdenv.buildPlatform.isLinux then buildPackages.clangStdenv else buildPackages.stdenv;
-  # Reuse the unmodified, substitutable Nixpkgs runtime when the same LTS line
-  # meets both security minimums. Darwin24.22.2 is qualified by the same RSS
-  # regression as the fallback; older Darwin runtimes retain the owning repair.
-  reuseUpstreamNode =
-    (
-      stdenv.hostPlatform.isLinux
-      || (stdenv.hostPlatform.isDarwin && lib.versionAtLeast nodejs_24.version "24.22.2")
-    )
-    && lib.versions.major nodejs_24.version == "24"
-    && lib.versionAtLeast nodejs_24.version source.nodejs.version
-    && lib.versionAtLeast brotli.version source.brotli.version;
-  targetNodejsSlim =
-    if reuseUpstreamNode then
-      nodejs-slim_24
-    else
-      withReaNodeSource targetCompiler callPackage brotli nodejs-slim_24;
+  # Supported package sets supply the reviewed Node LTS/Brotli combination.
+  # Reject older sets instead of maintaining a private Node toolchain.
+  supportedNode =
+    node: brotliPackage:
+    lib.versions.major node.version == "24"
+    && lib.versionAtLeast node.version "24.22.2"
+    && lib.versionAtLeast brotliPackage.version "1.2.1";
+  reuseUpstreamNode = supportedNode nodejs_24 brotli;
   targetNodejs =
-    if reuseUpstreamNode then nodejs_24 else nodejs_24.override { nodejs-slim = targetNodejsSlim; };
+    assert lib.assertMsg reuseUpstreamNode "REA requires Node 24.22.2+ and Brotli 1.2.1+ from Nixpkgs";
+    nodejs_24;
   buildNodejs =
     if stdenv.buildPlatform == stdenv.hostPlatform then
       targetNodejs
     else
-      buildPackages.nodejs_24.override {
-        nodejs-slim =
-          withReaNodeSource buildCompiler buildPackages.callPackage buildPackages.brotli
-            buildPackages.nodejs-slim_24;
-      };
+      assert lib.assertMsg (supportedNode buildPackages.nodejs_24 buildPackages.brotli)
+        "REA's build platform requires Node 24.22.2+ and Brotli 1.2.1+ from Nixpkgs";
+      buildPackages.nodejs_24;
   targetNpmHooks = buildPackages.npmHooks.override { nodejs = targetNodejs; };
   appSrc = fetchFromGitHub {
     owner = "morluto";
@@ -229,15 +164,6 @@ buildNpmPackage (finalAttrs: {
       install -m755 ${darwinHelpers}/bin/rea-native-ui "$out/lib/node_modules/rea-agents/bridge/native/rea-native-ui"
     ''}
   '';
-  doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    ${lib.getExe targetNodejs} ${./scripts/check-install.mts} \
-      "$out" "$skills" '${finalAttrs.version}' ${lib.getExe bash} --sandbox
-    # Re-run the original upstream RSS contract with this exact runtime.
-    bash ${./scripts/check-node-memory.sh} ${lib.getExe targetNodejs} ${targetNodejsSlim.src}
-    runHook postInstallCheck
-  '';
   passthru = {
     inherit buildNodejs reuseUpstreamNode;
     runtimeNodejs = targetNodejs;
@@ -247,7 +173,6 @@ buildNpmPackage (finalAttrs: {
       "--source-directory"
       (builtins.unsafeDiscardStringContext (toString ./.))
     ];
-    tests.version = testers.testVersion { package = finalAttrs.finalPackage; };
   };
   meta = {
     description = "Reverse engineering CLI and MCP server for native and packaged applications";

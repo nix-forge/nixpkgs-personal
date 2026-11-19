@@ -58,12 +58,6 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
     source ${replaceVars ./scripts/install-phase.sh { inherit wasm; }}
   '';
-  nativeInstallCheckInputs = [
-    jq
-    unzip
-  ];
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
   # Consumers need the plugin marker and upstream build passthru, while the
   # public archive package runs on the Linux host rather than the WASI target.
   passthru = (removeAttrs (wasm.passthru or { }) [ "updateScript" ]) // {

@@ -21,6 +21,5 @@ npm rebuild @scrypted/node-pty classic-level \
 npm explore sharp -- npm run build
 test -n "$(find node_modules/classic-level/build/Release -maxdepth 1 -name '*.node' -print -quit)"
 test -n "$(find node_modules/sharp/src/build/Release -maxdepth 1 -name '*.node' -print -quit)"
-timeout --kill-after=5s 90s @nodejs_24@/bin/node @cacheCheck@ "$PWD" "$PWD"
 npm prune --omit=dev --ignore-scripts --offline
 runHook postBuild

@@ -1,14 +1,11 @@
 {
   imports = [
-    ./artcraft.nix
     ./apple-fonts.nix
     ./documentation.nix
-    ./emoji-fonts.nix
-    ./font-packaging.nix
     ./formatter.nix
     ./git-hooks.nix
+    ./lib-tests.nix
     ./packages.nix
-    ./icon-themes.nix
     ./shell.nix
   ];
 }

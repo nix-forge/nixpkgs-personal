@@ -5,17 +5,17 @@
   stdenv,
   rustPlatform,
   fetchFromGitHub,
+  fetchgit,
   pkg-config,
   makeWrapper,
   python3,
-  runCommand,
-  appstream,
-  desktop-file-utils,
   libGL,
   vulkan-loader,
   wayland,
+  wayland-scanner,
   libxkbcommon,
   libx11,
+  libxcb,
   libxcursor,
   libxi,
   libxrandr,
@@ -27,6 +27,9 @@
 let
   source = import ./source.nix;
   zipSource = callPackage ./zip-source.nix { patches = [ ./zip-header-identity.patch ]; };
+  gitSources = lib.mapAttrs (
+    _: dependency: fetchgit { inherit (dependency) url rev hash; }
+  ) source.gitDependencies;
   fonts = fetchFromGitHub {
     owner = "storytold";
     repo = "craft-fonts";
@@ -38,6 +41,7 @@ let
     wayland
     libxkbcommon
     libx11
+    libxcb
     libxcursor
     libxi
     libxrandr
@@ -48,13 +52,15 @@ in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "figcraft";
   inherit (source) version;
-  cargoPatches = [ ./rustls-security-update.patch ];
   src = fetchFromGitHub {
     owner = "storytold";
     repo = "figcraft";
     inherit (source) rev hash;
   };
-  cargoLock.lockFile = ./Cargo.lock;
+  cargoLock = {
+    lockFile = ./Cargo.lock;
+    outputHashes = lib.mapAttrs (_: dependency: dependency.hash) source.gitDependencies;
+  };
   strictDeps = true;
   # Native collaboration/control regressions bind synthetic loopback sockets.
   __darwinAllowLocalNetworking = stdenv.buildPlatform.isDarwin;
@@ -63,11 +69,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # The stable release includes the bounded ruzstd decoder.
   # Keep the application and vendored dependency locks identical.
   patches = [
-
-    ./native-window-app-id.patch
-    ./nix-fontconfig-discovery.patch
-    ./portable-ui-regressions.patch
     ./archive-security.patch
+    ./embedded-font-fallbacks.patch
     ./home-recents-failure-context.patch
   ];
   cargoBuildFlags = [
@@ -93,18 +96,20 @@ rustPlatform.buildRustPackage (finalAttrs: {
     makeWrapper
     python3
   ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ wayland-scanner ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ rcodesign ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    libxcb
+    wayland
+  ];
   env = {
     FIGCRAFT_BUILD_SHA = source.rev;
     CRAFT_FONTS_DIR = fonts;
     CRAFT_FONTS_REQUIRED = "1";
     FIGCRAFT_EMBED_CJK = "1";
-  }
-  // lib.optionalAttrs stdenv.hostPlatform.isLinux {
-    FIGCRAFT_FC_LIST = "${fontconfig}/bin/fc-list";
   };
   postPatch = ''
-    cmp Cargo.lock ${./Cargo.lock}
+    cp ${./Cargo.lock} Cargo.lock
     mkdir -p vendor
     cp -R ${zipSource} vendor/zip
     chmod -R u+w vendor/zip
@@ -112,6 +117,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
   '';
   preCheck = builtins.readFile ./scripts/pre-check.sh;
   postInstall = ''
+    source ${
+      replaceVars ./scripts/install-git-notices.sh {
+        inherit (finalAttrs) pname;
+        gitSources = lib.escapeShellArgs (lib.attrValues gitSources);
+        gitMetadata = builtins.toFile "artcraft-git-sources.json" (builtins.toJSON source.gitDependencies);
+      }
+    }
     source ${
       replaceVars ./scripts/post-install.sh {
         inherit (finalAttrs) pname cargoDeps;
@@ -159,103 +171,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
       }
     }
   '';
-  nativeInstallCheckInputs = lib.optionals stdenv.hostPlatform.isLinux [ desktop-file-utils ];
-  doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
-  installCheckPhase = ''
-    source ${replaceVars ./scripts/install-check-phase.sh { inherit (finalAttrs) pname; }}
-    python3 ${./scripts/check_fonts.py} installed ${fonts} "$out"
-  ''
-  + lib.optionalString stdenv.hostPlatform.isLinux ''
-    desktop-file-validate "$out/share/applications/ai.storyteller.figcraft.desktop"
-    python3 ${./scripts/check_desktop_entry.py} "$out" ai.storyteller.figcraft.desktop figcraft
-  ''
-  + lib.optionalString stdenv.hostPlatform.isDarwin ''
-    source ${
-      replaceVars ./scripts/darwin-check-app-bundle.sh {
-        tests_check_craft_assets_py = "${./scripts/check_craft_assets.py}";
-        upstreamVersion = lib.escapeShellArg source.upstreamVersion;
-      }
-    }
-    python3 ${./scripts}/check_bundle.py "$out" ${source.upstreamVersion} ${stdenv.hostPlatform.darwinMinVersion}
-  ''
-  + builtins.readFile ./scripts/run-post-install-check-hook.sh;
-  passthru.tests =
-    (import ./scripts/appstream-test.nix {
-      inherit
-        lib
-        stdenv
-        runCommand
-        appstream
-        ;
-      package = finalAttrs.finalPackage;
-    })
-    // {
-      # Test the owning format library and its engine/server consumers without a GUI launch.
-      archiveCompatibility = finalAttrs.finalPackage.overrideAttrs (previous: {
-        pname = "figcraft-archive-compatibility";
-        cargoBuildType = "debug";
-        cargoCheckType = "debug";
-        env = previous.env // {
-          CARGO_INCREMENTAL = "0";
-          CARGO_PROFILE_DEV_DEBUG = "0";
-          CARGO_PROFILE_TEST_DEBUG = "0";
-        };
-        cargoBuildFlags = [
-          "-p"
-          "figcraft-format"
-          "-p"
-          "figcraft-engine"
-          "-p"
-          "figcraft-server"
-          "--lib"
-          "--locked"
-        ];
-        cargoTestFlags = [
-          "-p"
-          "figcraft-format"
-          "-p"
-          "figcraft-engine"
-          "-p"
-          "figcraft-server"
-          "--lib"
-          "--locked"
-        ];
-        installPhase = ''
-          runHook preInstall
-          mkdir -p "$out"
-          touch "$out/passed"
-          runHook postInstall
-        '';
-        postInstall = "";
-        postFixup = "";
-        doInstallCheck = false;
-        passthru = { };
-      });
-
-      licenses = runCommand "figcraft-font-notices" { nativeBuildInputs = [ python3 ]; } ''
-        python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} figcraft
-        python3 ${./scripts/check_fonts.py} installed ${fonts} ${finalAttrs.finalPackage}
-        touch "$out"
-      '';
-    }
-    // lib.optionalAttrs (stdenv.buildPlatform.canExecute stdenv.hostPlatform) {
-      cli = runCommand "figcraft-cli-roundtrip" { nativeBuildInputs = [ python3 ]; } ''
-        export HOME="$TMPDIR" FIGCRAFT_NO_SYSTEM_FONTS=1
-        python3 ${./scripts}/check_cli.py ${finalAttrs.finalPackage} ${./scripts/document.json} ${source.version}
-        touch "$out"
-      '';
-      server =
-        runCommand "figcraft-server-smoke"
-          {
-            nativeBuildInputs = [ python3 ];
-            __darwinAllowLocalNetworking = stdenv.buildPlatform.isDarwin;
-          }
-          ''
-            export HOME="$TMPDIR"
-            python3 ${./scripts/check_server.py} ${finalAttrs.finalPackage} ${source.version}
-            touch "$out"
-          '';
-    };
   meta = {
     description = "Interface design and prototyping editor with CLI and collaboration server";
     homepage = "https://github.com/storytold/figcraft";

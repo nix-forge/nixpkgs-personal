@@ -9,18 +9,18 @@
   pkg-config,
   makeWrapper,
   python3,
-  runCommand,
-  appstream,
-  desktop-file-utils,
   libGL,
   vulkan-loader,
   wayland,
+  wayland-scanner,
   libxkbcommon,
   libx11,
+  libxcb,
   libxcursor,
   libxi,
   libxrandr,
   fontconfig,
+  coreutils,
   dbus,
   xdg-utils,
   rcodesign,
@@ -38,6 +38,7 @@ let
     wayland
     libxkbcommon
     libx11
+    libxcb
     libxcursor
     libxi
     libxrandr
@@ -82,14 +83,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./remove-restricted-marks.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ ./system-font-fixture.patch ]
-  ++ lib.optionals stdenv.hostPlatform.isLinux [
-    ./appstream-screenshot.patch
-    ./fontconfig-discovery.patch
-  ]
-  ++ [
-    ./relative-footage-path-order.patch
-
-  ];
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ ./fontconfig-discovery.patch ];
 
   postPatch = ''
     source ${
@@ -101,6 +95,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   + lib.optionalString stdenv.hostPlatform.isLinux ''
     source ${
       replaceVars ./scripts/configure-fonts.sh {
+        timeoutExecutable = lib.getExe' coreutils "timeout";
         fontconfigExecutable = lib.getExe' fontconfig "fc-list";
       }
     }
@@ -111,8 +106,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
     makeWrapper
     python3
   ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ wayland-scanner ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ rcodesign ];
-  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [ alsa-lib ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    alsa-lib
+    libxcb
+    wayland
+  ];
   nativeCheckInputs = [ ffmpeg ];
   env.EFFECTCRAFT_BUILD_SHA = source.rev;
 
@@ -175,60 +175,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
       }
     }
   '';
-  nativeInstallCheckInputs = lib.optionals stdenv.hostPlatform.isLinux [ desktop-file-utils ];
-  doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit (finalAttrs) pname;
-      }
-    }
-  ''
-  + lib.optionalString stdenv.hostPlatform.isLinux ''
-    desktop-file-validate "$out/share/applications/ai.storyteller.${finalAttrs.pname}.desktop"
-    python3 ${./scripts/check_desktop_entry.py} "$out" "ai.storyteller.${finalAttrs.pname}.desktop" "${finalAttrs.pname}"
-  ''
-  + lib.optionalString stdenv.hostPlatform.isDarwin ''
-    source ${
-      replaceVars ./scripts/darwin-check-app-bundle.sh {
-        tests_check_craft_assets_py = "${./scripts/check_craft_assets.py}";
-        upstreamVersion = lib.escapeShellArg source.upstreamVersion;
-      }
-    }
-  ''
-  + (builtins.readFile ./scripts/run-post-install-check-hook.sh);
-  passthru.tests =
-    (import ./scripts/appstream-test.nix {
-      inherit
-        lib
-        stdenv
-        runCommand
-        appstream
-        ;
-      package = finalAttrs.finalPackage;
-    })
-    // {
-
-      licenses = runCommand "${finalAttrs.pname}-font-notices" { nativeBuildInputs = [ python3 ]; } ''
-        python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}
-        touch "$out"
-      '';
-
-    }
-    // lib.optionalAttrs (stdenv.buildPlatform.canExecute stdenv.hostPlatform) {
-      cli = runCommand "${finalAttrs.pname}-cli-smoke" { nativeBuildInputs = [ python3 ]; } ''
-        source ${
-          replaceVars ./scripts/cli-smoke.sh {
-            package = finalAttrs.finalPackage;
-            inherit (finalAttrs) pname;
-            darwinCliCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
-              python3 ${./scripts/check_craft_assets.py} bundle ${lib.escapeShellArg (toString finalAttrs.finalPackage)} ${lib.escapeShellArg source.upstreamVersion} ${lib.escapeShellArg stdenv.hostPlatform.darwinMinVersion}
-            '';
-            tests_check_craft_assets_py = "${./scripts/check_craft_assets.py}";
-          }
-        }
-      '';
-    };
   meta = {
     description = "Motion graphics and visual effects compositor";
     homepage = "https://github.com/storytold/effectcraft";

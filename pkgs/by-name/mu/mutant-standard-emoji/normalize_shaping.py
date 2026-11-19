@@ -27,14 +27,18 @@ def normalize(path: Path, artwork: Path) -> None:
         buffer.add_str("".join(map(chr, codepoints)))
         buffer.guess_segment_properties()
         hb.shape(shaper, buffer)
-        assert len(buffer.glyph_infos) == 1, source.name
-        assert buffer.glyph_infos[0].codepoint != 0, source.name
+        if len(buffer.glyph_infos) != 1:
+            raise ValueError(f"Expected one glyph for {source.name}")
+        if buffer.glyph_infos[0].codepoint == 0:
+            raise ValueError(f"Missing glyph for {source.name}")
         glyph = font.getGlyphName(buffer.glyph_infos[0].codepoint)
-        assert normalized not in mappings, f"Ambiguous encoding: {source.name}"
+        if normalized in mappings:
+            raise ValueError(f"Ambiguous encoding: {source.name}")
         mappings[normalized] = glyph
         for index, cp in enumerate(codepoints):
             if cp == 0xFE0F:
-                assert index > 0, source.name
+                if index == 0:
+                    raise ValueError(f"Variation selector has no base in {source.name}")
                 variation_bases.add(codepoints[index - 1])
 
     for table in font["cmap"].tables:
@@ -47,8 +51,10 @@ def normalize(path: Path, artwork: Path) -> None:
     cmap = font.getBestCmap()
     if cmap is None:
         raise ValueError("The compiled emoji font has no Unicode character map")
-    assert variation_bases <= cmap.keys()
-    assert not any(table.format == 14 for table in font["cmap"].tables)
+    if not variation_bases <= cmap.keys():
+        raise ValueError("Variation bases are absent from the compiled character map")
+    if any(table.format == 14 for table in font["cmap"].tables):
+        raise ValueError("The input font already defines variation sequences")
     variations = CmapSubtable.newSubtable(14)
     variations.platformID = 0
     variations.platEncID = 5

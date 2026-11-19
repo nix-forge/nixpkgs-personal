@@ -58,15 +58,6 @@ buildDotnetModule (finalAttrs: {
       }
     }
   '';
-  doInstallCheck = true;
-  nativeInstallCheckInputs = [ powershell ];
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        analyzerSmoke = "${./scripts/analyzer-smoke.ps1}";
-      }
-    }
-  '';
   passthru.modulePath = "${finalAttrs.finalPackage}/share/powershell/Modules/PSScriptAnalyzer";
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))

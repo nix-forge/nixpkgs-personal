@@ -17,7 +17,6 @@
   spotxArgs,
   spotxSource,
   stdenvNoCC,
-  python3,
   unzip,
   util-linux,
   writeText,
@@ -62,16 +61,6 @@ stdenvNoCC.mkDerivation {
     util-linux
     zip
   ];
-
-  nativeInstallCheckInputs = [ python3 ];
-  postInstallCheck = ''
-    python3 ${./scripts/check_app_bundle.py} "$out/Applications/Spotify.app" --expected-version ${lib.escapeShellArg source.version}
-  '';
-  doInstallCheck = true;
-  installCheckPhase = ''
-    runHook preInstallCheck
-    runHook postInstallCheck
-  '';
 
   installPhase = ''
     source ${

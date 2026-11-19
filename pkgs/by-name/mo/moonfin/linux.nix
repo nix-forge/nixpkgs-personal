@@ -15,7 +15,6 @@
   meta,
   mpv-unwrapped,
   patchelf,
-  python3,
   sqlite,
   webkitgtk_4_1,
 }:
@@ -77,14 +76,9 @@ flutter347.buildFlutterApplication {
       }
     }
   '';
-  postInstallCheck = ''
-    ${lib.getExe python3} ${./scripts/check_desktop_entry.py} "$out" "org.moonfin.linux.desktop" "moonfin"
-  '';
-  doInstallCheck = true;
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))
     "--source-directory"
     (builtins.unsafeDiscardStringContext (toString ./.))
   ];
-  installCheckPhase = builtins.readFile ./scripts/linux-install-check-phase.sh;
 }

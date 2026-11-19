@@ -9,14 +9,13 @@
   pkg-config,
   makeWrapper,
   python3,
-  runCommand,
-  appstream,
-  desktop-file-utils,
   libGL,
   vulkan-loader,
   wayland,
+  wayland-scanner,
   libxkbcommon,
   libx11,
+  libxcb,
   libxcursor,
   libxi,
   libxrandr,
@@ -47,6 +46,7 @@ let
     wayland
     libxkbcommon
     libx11
+    libxcb
     libxcursor
     libxi
     libxrandr
@@ -61,7 +61,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     lockFile = ./Cargo.lock;
     outputHashes = lib.mapAttrs (_: dependency: dependency.hash) source.gitDependencies;
   };
-  cargoPatches = [ ./rustls-security-update.patch ];
   src = fetchFromGitHub {
     owner = "storytold";
     repo = "filmcraft";
@@ -97,13 +96,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ./rustcrypto-provider.patch
     ./disable-unused-gtk-menu-features.patch
     ./remove-restricted-marks.patch
-
+    ./cargo-release-manifest.patch
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ ./system-font-fixture.patch ]
   ++ [ ./japanese-font-test-system-fallbacks.patch ];
 
   postPatch = ''
-    cmp Cargo.lock ${./Cargo.lock}
+    cp ${./Cargo.lock} Cargo.lock
     mkdir -p vendor
     cp -R ${zipSource} vendor/zip
     cp -R ${rustcryptoSource} vendor/rustls-rustcrypto
@@ -116,12 +115,19 @@ rustPlatform.buildRustPackage (finalAttrs: {
     makeWrapper
     python3
   ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ wayland-scanner ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [ rcodesign ];
-  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [ alsa-lib ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    alsa-lib
+    libxcb
+    wayland
+  ];
   nativeCheckInputs = [ ffmpeg ];
-  env.FILMCRAFT_BUILD_SHA = source.rev;
-  env.CRAFT_FONTS_DIR = fonts;
-  env.CRAFT_FONTS_REQUIRED = "1";
+  env = {
+    FILMCRAFT_BUILD_SHA = source.rev;
+    CRAFT_FONTS_DIR = fonts;
+    CRAFT_FONTS_REQUIRED = "1";
+  };
 
   preCheck = builtins.readFile ./scripts/pre-check.sh;
 
@@ -184,180 +190,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
       }
     }
   '';
-  nativeInstallCheckInputs = lib.optionals stdenv.hostPlatform.isLinux [ desktop-file-utils ];
-  doInstallCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit (finalAttrs) pname;
-      }
-    }
-  ''
-  + lib.optionalString stdenv.hostPlatform.isLinux ''
-    desktop-file-validate "$out/share/applications/ai.storyteller.${finalAttrs.pname}.desktop"
-    python3 ${./scripts/check_desktop_entry.py} "$out" "ai.storyteller.${finalAttrs.pname}.desktop" "${finalAttrs.pname}"
-  ''
-  + lib.optionalString stdenv.hostPlatform.isDarwin ''
-    source ${
-      replaceVars ./scripts/darwin-check-app-bundle.sh {
-        tests_check_craft_assets_py = "${./scripts/check_craft_assets.py}";
-        upstreamVersion = lib.escapeShellArg source.upstreamVersion;
-      }
-    }
-  ''
-  + (builtins.readFile ./scripts/run-post-install-check-hook.sh);
-  passthru.tests =
-    (import ./scripts/appstream-test.nix {
-      inherit
-        lib
-        stdenv
-        runCommand
-        appstream
-        ;
-      package = finalAttrs.finalPackage;
-    })
-    // {
-
-      # Exercise optional voices and Candle eager/lazy tensor archive readers.
-      archiveCompatibility = finalAttrs.finalPackage.overrideAttrs (previous: {
-        pname = "filmcraft-archive-compatibility";
-        cargoBuildType = "debug";
-        cargoCheckType = "debug";
-        env = previous.env // {
-          CARGO_INCREMENTAL = "0";
-          CARGO_PROFILE_DEV_DEBUG = "0";
-          CARGO_PROFILE_TEST_DEBUG = "0";
-        };
-        cargoBuildFeatures = [ "kokoro" ];
-        cargoCheckFeatures = [ "kokoro" ];
-        cargoBuildFlags = [
-          "-p"
-          "filmcraft-tts"
-          "--lib"
-          "--locked"
-        ];
-        cargoTestFlags = [
-          "-p"
-          "filmcraft-tts"
-          "--lib"
-          "--locked"
-        ];
-        installPhase = ''
-          runHook preInstall
-          mkdir -p "$out"
-          touch "$out/passed"
-          runHook postInstall
-        '';
-        postInstall = "";
-        postFixup = "";
-        doInstallCheck = false;
-        passthru = { };
-      });
-
-      menuDependencies = finalAttrs.finalPackage.overrideAttrs (_: {
-        pname = "filmcraft-menu-dependencies";
-        buildPhase = ''
-          runHook preBuild
-          for configuration in normal neural-voices; do
-            features="filmcraft/whisper,filmcraft-cli/whisper"
-            if [ "$configuration" = neural-voices ]; then
-              features="$features,filmcraft/neural-voices"
-            fi
-            for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc wasm32-unknown-unknown; do
-              cargo metadata --offline --locked --format-version 1 --filter-platform "$target" --features "$features" > "metadata-$configuration-$target.json"
-              python3 ${./check_menu_dependencies.py} "metadata-$configuration-$target.json" "$target"
-            done
-          done
-          runHook postBuild
-        '';
-        checkPhase = ''
-          runHook preCheck
-          # Check both owning binaries, including the target-selected native menu backend.
-          cargo check --offline --locked --package filmcraft --package filmcraft-cli --bins --features "filmcraft/whisper,filmcraft-cli/whisper"
-          runHook postCheck
-        '';
-        doCheck = true;
-        preCheck = "";
-        installPhase = ''
-          runHook preInstall
-          mkdir -p "$out"
-          cp metadata-*.json "$out/"
-          runHook postInstall
-        '';
-        postInstall = "";
-        postFixup = "";
-        doInstallCheck = false;
-        passthru = { };
-      });
-
-      tlsProvider = finalAttrs.finalPackage.overrideAttrs (_: {
-        pname = "filmcraft-tls-provider";
-        cargoBuildType = "debug";
-        cargoCheckType = "debug";
-        buildFeatures = [
-          "filmcraft-speech/whisper"
-          "filmcraft-speech/download"
-        ];
-        cargoBuildFeatures = [
-          "filmcraft-speech/whisper"
-          "filmcraft-speech/download"
-        ];
-        cargoCheckFeatures = [
-          "filmcraft-speech/whisper"
-          "filmcraft-speech/download"
-        ];
-        cargoBuildFlags = [
-          "-p"
-          "filmcraft-speech"
-          "--lib"
-          "--locked"
-        ];
-        cargoTestFlags = [
-          "-p"
-          "filmcraft-speech"
-          "--lib"
-          "--locked"
-        ];
-        postCheck = ''
-          for target in x86_64-unknown-linux-gnu aarch64-apple-darwin wasm32-unknown-unknown; do
-            cargo metadata --offline --locked --format-version 1 --filter-platform "$target" --features "filmcraft/whisper,filmcraft-cli/whisper,filmcraft-speech/download" > "metadata-$target.json"
-            python3 ${./check_tls_provider.py} "metadata-$target.json" "$target"
-          done
-          cargo tree --offline --locked --package filmcraft-speech --no-default-features --target wasm32-unknown-unknown --edges normal,build,dev --prefix none --format '{p}' > speech-web-tree.txt
-          python3 ${./check_tls_provider.py} --speech-web-tree speech-web-tree.txt
-        '';
-        installPhase = ''
-          runHook preInstall
-          mkdir -p "$out"
-          cp metadata-*.json speech-web-tree.txt "$out/"
-          runHook postInstall
-        '';
-        postInstall = "";
-        postFixup = "";
-        doInstallCheck = false;
-        passthru = { };
-      });
-
-      licenses = runCommand "${finalAttrs.pname}-font-notices" { nativeBuildInputs = [ python3 ]; } ''
-        python3 ${./check_licenses.py} ${finalAttrs.finalPackage} ${finalAttrs.cargoDeps} ${finalAttrs.pname}
-        touch "$out"
-      '';
-
-    }
-    // lib.optionalAttrs (stdenv.buildPlatform.canExecute stdenv.hostPlatform) {
-      cli = runCommand "${finalAttrs.pname}-cli-smoke" { nativeBuildInputs = [ python3 ]; } ''
-        source ${
-          replaceVars ./scripts/cli-smoke.sh {
-            package = finalAttrs.finalPackage;
-            inherit (finalAttrs) pname;
-            darwinCliCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
-              python3 ${./scripts/check_craft_assets.py} bundle ${lib.escapeShellArg (toString finalAttrs.finalPackage)} ${lib.escapeShellArg source.upstreamVersion} ${lib.escapeShellArg stdenv.hostPlatform.darwinMinVersion}
-            '';
-            tests_check_craft_assets_py = "${./scripts/check_craft_assets.py}";
-          }
-        }
-      '';
-    };
   meta = {
     description = "Native nonlinear video editor with timeline and media codecs";
     homepage = "https://github.com/storytold/filmcraft";

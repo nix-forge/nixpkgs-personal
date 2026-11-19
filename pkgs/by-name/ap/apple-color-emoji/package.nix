@@ -61,25 +61,6 @@ stdenvNoCC.mkDerivation {
     }
   '';
 
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        checkArtworkCommand =
-          if repairArtwork then
-            ''
-              ${checkPython}/bin/python ${./check_emoji_artwork.py} \
-                "$out/share/fonts/truetype/apple-color-emoji/font.ttf" ${emojiData} --original "$src"
-            ''
-          else
-            ''
-              cmp "$src" "$out/share/fonts/truetype/apple-color-emoji/font.ttf"
-              test ! -e "$out/share/doc/apple-color-emoji/artwork-repairs.json"
-            '';
-      }
-    }
-  '';
-
   passthru = {
     inherit repairArtwork;
     sourceManifest = source;

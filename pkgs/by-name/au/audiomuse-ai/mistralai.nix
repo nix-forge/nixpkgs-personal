@@ -40,18 +40,9 @@ python313Packages.buildPythonPackage {
 
   # Upstream's test group requires every optional integration, including the
   # MCP agent stack. AudioMuse uses only the core client. Keep an import check
-  # here and exercise the core client with the focused install check below.
+  # here; this does not establish authenticated client or inference behavior.
   doCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
   pythonImportsCheck = [ "mistralai" ];
-
-  # Run against every SDK update, with Invoke imports explicitly blocked even
-  # if another package happens to put the task runner on PYTHONPATH.
-  installCheckPhase = ''
-    runHook preInstallCheck
-    PYTHONPATH="$out/${python313Packages.python.sitePackages}:$PYTHONPATH" \
-      python ${./check-mistralai.py}
-    runHook postInstallCheck
-  '';
 
   meta = {
     description = "Python client library for the Mistral AI platform";

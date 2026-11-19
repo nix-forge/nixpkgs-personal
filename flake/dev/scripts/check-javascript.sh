@@ -1,4 +1,4 @@
 # shellcheck shell=bash
 runHook preCheck
-npm run check
+javascript-check
 runHook postCheck

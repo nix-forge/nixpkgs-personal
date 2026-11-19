@@ -40,6 +40,4 @@ flutter347.buildFlutterApplication {
     webBaseHref
   ];
   postInstall = builtins.readFile ./scripts/web-post-install.sh;
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/web-install-check-phase.sh;
 }

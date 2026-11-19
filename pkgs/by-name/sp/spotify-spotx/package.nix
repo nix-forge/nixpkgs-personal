@@ -20,16 +20,21 @@ let
     "--nocolor"
     "--noexp"
     "--noninteractive"
-    "--oldui"
     "--premium"
   ];
   unsupportedSpotxArgs = lib.subtractLists supportedSpotxArgs spotxArgs;
-  adapterArgs = { inherit source spotxArgs spotxSource; };
+  adapterArgs = {
+    inherit source spotxSource;
+    # A caller may select no optional features, but cannot re-enable prompts.
+    spotxArgs = lib.unique (spotxArgs ++ [ "--noninteractive" ]);
+  };
 in
-assert lib.assertMsg (unsupportedSpotxArgs == [ ]) ''
-  spotify-spotx only accepts non-interactive, build-safe SpotX arguments.
-  Unsupported arguments: ${lib.concatStringsSep ", " unsupportedSpotxArgs}
-'';
+if unsupportedSpotxArgs != [ ] then
+  throw ''
+    spotify-spotx only accepts non-interactive, build-safe SpotX arguments.
+    Unsupported arguments: ${lib.concatStringsSep ", " unsupportedSpotxArgs}
+  ''
+else
 # Select the build recipe here; each adapter declares its supported architectures
 # in meta.platforms. Keep metadata readable on unsupported hosts for discovery.
 if stdenv.hostPlatform.isDarwin then

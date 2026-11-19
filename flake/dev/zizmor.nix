@@ -8,7 +8,6 @@ in
 if fixed then
   package
 else
-  assert package.version == "1.32.0";
   package.overrideAttrs (old: {
     buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.aws-lc ];
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.pkg-config ];

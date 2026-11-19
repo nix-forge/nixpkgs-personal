@@ -10,7 +10,7 @@
       "patches": [
         {
           "file": "appimage-runtime-and-safe-refresh.patch",
-          "sha256": "6423197e378356f5496db3e86e435418bf9805eed257bf00b42aae11a153e69d",
+          "sha256": "9905276fe5a954300c1dd3d6ee6835ca3738549fce03eec36413b854f591d3e1",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/craft-launcher/pull/328",
@@ -18,23 +18,23 @@
             "https://github.com/storytold/craft-launcher/pull/120"
           ],
           "reason": "Provide an AppImage runtime on Nix systems and refresh generated desktop integration without overwriting user customizations. The portable portion overlaps existing proposal 328.",
-          "removeWhen": "Remove when the packaged source includes an equivalent upstream fix and the affected regression passes without this patch."
+          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
         {
           "file": "atomic-state-upstream-314.patch",
           "sha256": "450e5f468be201f631b7e5ce753b93957d405fcc5e2a5b41ac5ed65901799851",
-          "kind": "upstream-candidate",
+          "kind": "upstream-backport",
           "upstream": ["https://github.com/storytold/craft-launcher/pull/314"],
-          "reason": "Retain atomic settings and recovery behavior from existing proposal 314, excluding the identical tempfile manifest change already supplied by the accepted backup fix.",
-          "removeWhen": "Remove when the packaged source includes an equivalent upstream fix and the affected regression passes without this patch."
+          "reason": "Retain atomic settings and recovery behavior from merged upstream PR314 at this older source pin, excluding the identical tempfile manifest change already supplied by the accepted backup fix.",
+          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
         {
           "file": "autostart-exec-quoting.patch",
           "sha256": "8aa77f4c4a587b119aa95b60f6e6ea36c07c01372cf81545331896a37fd29225",
           "kind": "upstream-candidate",
           "upstream": ["https://github.com/storytold/craft-launcher/pull/420"],
-          "reason": "Escape executable paths according to the Desktop Entry specification while preserving the packaged renderer and regressions.",
-          "removeWhen": "Remove when the packaged source includes an equivalent upstream fix and the affected regression passes without this patch."
+          "reason": "Escape executable paths according to the Desktop Entry specification while preserving the packaged command renderer. Validate native autostart paths with spaces, percent signs and quoting when reviewing source adoption.",
+          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
         {
           "file": "disable-unused-gtk-tray-features.patch",
@@ -63,17 +63,17 @@
         {
           "file": "macos-quit-handshake.patch",
           "sha256": "10d0e64520ce48d5b11ac0f60367275b323b1cf94d947a4e04b0b8553891340c",
-          "kind": "upstream-candidate",
+          "kind": "upstream-backport",
           "upstream": [
             "https://github.com/storytold/craft-launcher/pull/335",
             "https://github.com/storytold/craft-launcher/issues/333"
           ],
-          "reason": "Route the launcher's own close request through craft-quit after its close-to-tray decision, addressing the native AppKit termination failure covered by proposal 335. Native quit, tray and packaged dependency validation remain required before retirement.",
+          "reason": "Route the launcher's own close request through craft-quit after its close-to-tray decision, addressing the native AppKit termination failure covered by proposal 335. Native quit, tray and packaged dependency validation remain required before retirement. The owning PR 335 is merged; the selected application source still predates it.",
           "removeWhen": "Remove when the selected Launcher source includes the native close-request repair and native macOS quit, close-to-tray and packaged craft-quit dependency checks pass without this patch."
         },
         {
           "file": "nix-bundle-integration.patch",
-          "sha256": "2dc16449f890411c5c402425411d10b1a8fe57c38da0bbcf4f98b7da47e1895e",
+          "sha256": "769dde877986dc76a591dc6b8f948cd914e3b52af3d926ea39d362747ad168c7",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/craft-launcher/blob/cbae640688c5fa3daa120a7f5e050f8e24148a47/AGENTS.md"
@@ -83,7 +83,7 @@
         },
         {
           "file": "nix-cjk-fonts.patch",
-          "sha256": "f2447c11383f5b7ccba5e4c146b68c8a29d5a0cf5a21df3f428632e17b9c1ae5",
+          "sha256": "4c901bfbfbf4d189c5fe4cd4189e0217c8955a88ee6072db5146ec49ce4265f4",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/craft-launcher/issues/220",
@@ -96,7 +96,7 @@
         },
         {
           "file": "nix-discovery-priority.patch",
-          "sha256": "ec8941b86d36afeee4be3dc3f63a7b401c38ab7c0eb3a873d48c573b597be5f6",
+          "sha256": "bb3204a51e6c1999223c4087d18a3e3f7d02b9da7f6cc13130b2953f478beb87",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/craft-launcher/blob/cbae640688c5fa3daa120a7f5e050f8e24148a47/AGENTS.md",
@@ -107,7 +107,7 @@
         },
         {
           "file": "nix-linux-process-locale.patch",
-          "sha256": "5d10f977d69b6b2ebd10b60805635e8aad49be68fbc84e406e31ca00bebeb05a",
+          "sha256": "63dfe5087209e216968fbe2a6497e47bd0abf1d13214a7317abaa323c4d4716d",
           "kind": "platform-workaround",
           "upstream": [
             "https://github.com/storytold/craft-launcher/pull/81",
@@ -118,7 +118,7 @@
         },
         {
           "file": "nix-managed-applications.patch",
-          "sha256": "203cd0fd675844501f4f1afacc5ba2d6032bc22390f36c432b98a3e24a5b40f3",
+          "sha256": "4a4017cac316cbd7c3e9adb85726ca14e6d3d16b0408a9fc314f55d0c4c3460f",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/craft-launcher/pull/72",
@@ -168,10 +168,10 @@
         {
           "file": "unix-restart-test-path-helpers.patch",
           "sha256": "0c82c1f78f774fde05ec5f9706b9b7ab595cf64607983ce8d58214ebb1293eb3",
-          "kind": "upstream-candidate",
+          "kind": "upstream-backport",
           "upstream": ["https://github.com/storytold/craft-launcher/pull/424"],
-          "reason": "Resolve sleep and touch through PATH in the existing Unix restart regression.",
-          "removeWhen": "Remove when the packaged source includes an equivalent upstream fix and the affected regression passes without this patch."
+          "reason": "Resolve sleep and touch through PATH in the existing Unix restart regression. The owning PR 424 is merged; the selected application source still predates it.",
+          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         }
       ]
     },
@@ -197,12 +197,12 @@
             "https://github.com/zip-rs/zip2/pull/1256",
             "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
           ],
-          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
-          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+          "reason": "Compare original local and central filename bytes before UnicodePath aliases; reject duplicate decoded names and conflicting filename encodings during complete archive validation. Preserve flag-selected CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this hash-pinned patched dependency through an explicit Cargo path. Project-authored synthetic cases are retired; run the upstream suites and a representative archive corpus before removing the fork.",
+          "removeWhen": "Remove when the selected ZIP release provides equivalent original-header identity, decoded-name uniqueness, flag-selected encoding and lookup semantics. Remove its local Cargo path and synchronized lock changes together; validate the upstream suites and representative legacy and Unicode documents manually."
         },
         {
           "file": "archive-security.patch",
-          "sha256": "f9fd80632621d524f24f321d5e38fb22dbd81e40a7fd8f64c181ca97894a3f2e",
+          "sha256": "5bbd97b65c8c2b40a9328ab300be909b93f72c394cb1c46eb6e48c6ca5a1436a",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
@@ -210,8 +210,8 @@
             "https://github.com/advisories/GHSA-q7v9-x93c-xqv3",
             "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
           ],
-          "reason": "Select ZIP 9.5.0 with explicit whole-archive consistency validation before native format, IDML, DOCX and both XLSX consumers read semantic parts. Preserve existing lenient IDML reference resolution, bounded text parts, disabled AES features and ordinary errors. Synthetic regressions cover all five consumers and compatible Unicode, ZIP64 and descriptor forms.",
-          "removeWhen": "Remove when the pinned source uses a fixed ZIP release and equivalent complete validation at all five import boundaries, then passes the original and new archive tests without the patch. Keep the source and packaging lock synchronized."
+          "reason": "Select ZIP 9.5.0 and validate complete archives before native format, IDML, DOCX and both XLSX consumers read semantic parts. Preserve lenient IDML references, bounded text parts, disabled AES features and ordinary errors. Project-authored synthetic regressions are retired; archive compatibility remains an upstream-suite and manual corpus acceptance requirement.",
+          "removeWhen": "Remove when the selected source provides equivalent fixed ZIP dependencies and complete validation at all five import boundaries. Keep source and packaging locks synchronized; run upstream suites and manually review Unicode, ZIP64, descriptor and malformed archives."
         },
         {
           "file": "appstream-screenshot.patch",
@@ -221,12 +221,12 @@
             "https://github.com/storytold/designcraft/pull/957",
             "https://github.com/storytold/designcraft/commit/dd079e1c965a341b76947005424670a4b3f07be8"
           ],
-          "reason": "Accepted upstream screenshot repair, merged after the packaged stable revision. Keep the local replacement until a source update includes the equivalent metadata fix; upstream may use a different valid image URL.",
+          "reason": "Accepted upstream screenshot repair, merged after the packaged stable revision. Keep the local replacement until a source update includes the equivalent metadata fix; upstream may use a different valid image URL. The owning PR 1480 is merged; the selected application source still predates it.",
           "removeWhen": "Remove after updating to a release containing the merged repair and validating the unpatched installed AppStream XML and referenced image. Review any separate immutable-image-URL policy independently."
         },
         {
           "file": "register-all-craft-fonts.patch",
-          "sha256": "fc6f3878ce913ee58c32400e5cb92fa39c2d38d12794521e6c90c27cf9f86eb9",
+          "sha256": "7c6dee47bc3ed7ccaa82016900a0b6dd60f708cbd7ba82f75301b15de61f0449",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/designcraft/blob/d07cbbe94c2762865eaefeff4ebfd1dbada180a0/crates/fonts/src/fontdb.rs",
@@ -255,14 +255,14 @@
         {
           "file": "appstream-screenshot.patch",
           "sha256": "ff093c23f47f4f5fcef77e8aa45c70acfd6c105de87b984ce720926c121a023c",
-          "kind": "upstream-candidate",
+          "kind": "upstream-backport",
           "upstream": ["https://github.com/storytold/effectcraft/pull/1480"],
-          "reason": "Use an existing attributed application screenshot and an accurate caption in software-center metadata.",
+          "reason": "Use an existing attributed application screenshot and an accurate caption in software-center metadata. The owning PR 1480 is merged; the selected application source still predates it.",
           "removeWhen": "Remove after updating to a source revision with the screenshot metadata fix and validating the unpatched installed AppStream file and image reference."
         },
         {
           "file": "fontconfig-discovery.patch",
-          "sha256": "a7f0948beecb294b65ef503cc0afc693c22574c8184e948393d41cb501aa37d7",
+          "sha256": "cc57cf3ccd3a598ef8d4b7b78d485b5d704be29671b7c4f87b0364288b2bb48c",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/effectcraft/blob/05955c08b4fd025f1a09882df72e6dbff1a8148a/crates/text/src/fonts.rs",
@@ -272,7 +272,7 @@
             "https://fontconfig.pages.freedesktop.org/fontconfig/fontconfig-user.html",
             "https://github.com/storytold/effectcraft/pull/1592"
           ],
-          "reason": "Keep the configured-file fallback and executable hook at the selected source. PR1540 repairs configuration search paths; PR1592 separately removes the eight-level traversal cutoff with iterative branch ancestry, preserving sibling aliases, regular-file links and final path ordering. Actual reduced text regressions pass on Linux and native ARM macOS. No new total-work cap or full Fontconfig equivalence is claimed.",
+          "reason": "Keep Fontconfig discovery at the selected source and use an immutable target executable. The subprocess has a five-second TERM deadline and one-second kill grace, then falls back to existing directories on failure. Current output is LF-delimited and scans parent directories, so unusual filenames and exact configured-file parity remain limitations. Merged PR1540 improves search paths; PR1592 is complementary traversal work. Prefer the compatible shared craft-font-catalog when adopting newer application sources; no current project-authored font regression gate remains.",
           "removeWhen": "Re-evaluate after the selected source contains equivalent configuration selection and deep cycle-safe traversal. Compare configured supported font files without this fallback, including aliases, ordering and filesystem failure behavior. Retain any required executable integration or distribution policy; PR1540 and PR1592 alone are not a universal Fontconfig equivalence proof."
         },
         {
@@ -281,7 +281,7 @@
           "kind": "upstream-candidate",
           "upstream": ["https://github.com/storytold/effectcraft/pull/1391"],
           "reason": "Compare expected and reopened footage paths independently of the temporary root ordering. Existing proposal 1391 covers the same failure.",
-          "removeWhen": "Remove when the packaged source includes an equivalent upstream fix and the affected regression passes without this patch."
+          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
         {
           "file": "remove-restricted-marks.patch",
@@ -313,7 +313,7 @@
       "patches": [
         {
           "file": "archive-security.patch",
-          "sha256": "ae50b70b866738191088a86cd52ccf9586b895f28209af85bdb0b5fefd6c4601",
+          "sha256": "137cec9c12a716bcfded61599a078c7e23f71e5e64256188e3bd13e4d273be54",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
@@ -321,8 +321,8 @@
             "https://github.com/advisories/GHSA-q7v9-x93c-xqv3",
             "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
           ],
-          "reason": "Upgrade FigCraft ZIP while retaining the existing flate2/rust_backend and Zopfli backends. Validate complete archives at the six consuming native, FIG, library and preview boundaries before optional recovery or server retention. Preserve metadata-only FIG classification, bounded payload reads and the existing Rustls source/vendor lock assertion. Original synthetic regressions cover all consuming APIs and server publication.",
-          "removeWhen": "Remove when the selected source has an equivalent fixed dependency and complete archive validation at all six consuming entry points, then passes format, engine and server archive/compatibility regressions without these changes. Update the source and vendor locks together."
+          "reason": "Upgrade FigCraft ZIP while retaining the existing flate2/rust_backend and Zopfli backends. Validate complete archives at six native, FIG, library and preview boundaries before optional recovery or server retention. Preserve metadata-only FIG classification, bounded reads and Rustls source/vendor lock synchronization. Project-authored synthetic regressions are retired; validate upstream suites and representative import and server-publication flows manually.",
+          "removeWhen": "Remove when the selected source supplies equivalent fixed ZIP dependencies and complete validation at all six consuming entry points. Update source and vendor locks together; run upstream suites and manually validate format, engine, server publication and legacy document compatibility."
         },
         {
           "file": "zip-header-identity.patch",
@@ -333,8 +333,8 @@
             "https://github.com/zip-rs/zip2/pull/1256",
             "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
           ],
-          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
-          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+          "reason": "Compare original local and central filename bytes before UnicodePath aliases; reject duplicate decoded names and conflicting filename encodings during complete archive validation. Preserve flag-selected CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this hash-pinned patched dependency through an explicit Cargo path. Project-authored synthetic cases are retired; run the upstream suites and a representative archive corpus before removing the fork.",
+          "removeWhen": "Remove when the selected ZIP release provides equivalent original-header identity, decoded-name uniqueness, flag-selected encoding and lookup semantics. Remove its local Cargo path and synchronized lock changes together; validate the upstream suites and representative legacy and Unicode documents manually."
         },
         {
           "file": "native-window-app-id.patch",
@@ -346,11 +346,11 @@
             "https://github.com/storytold/figcraft/commit/be875da985150a8678685b168ae9b3c1b198feb4"
           ],
           "reason": "Merged PR346 sets the native viewport identity and Linux desktop window class to the desktop entry identifier. The maintainer retained the reviewed Linux fix and added a separate FreeBSD desktop-entry adjustment. Keep the backport until the selected stable source includes the accepted behavior and the unpatched regression passes; no fresh FreeBSD runtime validation is claimed.",
-          "removeWhen": "Remove when the packaged source includes an equivalent upstream fix and the affected regression passes without this patch."
+          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
         {
           "file": "nix-fontconfig-discovery.patch",
-          "sha256": "3ce1a356094e5e378ab750f362d66260cdcd8a4d2f46734c7baac4c21d6dcbd6",
+          "sha256": "5f91fd142efef53b4adfaa8ec2b6b122caf22c58292241d06e864b549ff4f9de",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/figcraft/blob/833f0d2c27f0acbae5394848930ae531fc89c724/crates/text/src/fontdb.rs",
@@ -360,12 +360,12 @@
             "https://github.com/storytold/figcraft/pull/582",
             "https://github.com/storytold/figcraft/commit/2a3309902a4df16ce2b2b4e101e42dfa5441a608"
           ],
-          "reason": "Keep the configured-font fallback and fixed executable integration at the selected source. PR582 shares optional Linux fc-list exact-file enumeration across both entry points, preserves opt-out and conventional priority, and handles raw Unix filenames including newline/backslash/comma. Five actual reduced-crate tests and both public-API before/after proofs pass. Query failure or incomplete output retains conventional fonts. Its wait deadline is cooperative, with synchronous child cleanup and filesystem IO outside a hard return-time bound. Merged PR474 supplies the complementary XDG path repair; PR568 remains complementary special-file protection. Neither alone retires this broader fallback.",
-          "removeWhen": "Remove or reduce only when the packaged source discovers the configured supported font files in both scan entry points while preserving opt-out, priorities and bounded failure behavior. The XDG_DATA_HOME fix alone is insufficient; retain fixed executable-path integration until its replacement is validated."
+          "reason": "Keep configured Nix font discovery, opt-out handling, immutable executable selection and duplicate-face suppression at the selected source. Discovery has a five-second TERM deadline and one-second kill grace, with conventional-directory fallback on command failure. The current LF-delimited output and parent-directory scan do not implement the exact-file and unusual-filename behavior described in closed-unmerged PR582. Prefer upstream shared craft-font-catalog after configured-only-font comparison. The orphan test attributes are removed; no project-authored font regression gate remains.",
+          "removeWhen": "Remove with a compatible selected source using the shared craft-font-catalog or equivalent discovery after manually comparing configured-only fonts, conventional roots, opt-out behavior and rendering. Merged XDG and special-file fixes alone do not establish equivalent configured-font discovery."
         },
         {
           "file": "portable-ui-regressions.patch",
-          "sha256": "24c032df5aa91d87018b18ae8e27ddd56c1e1c318d4f3da2c04b4468e9befecd",
+          "sha256": "aa2d9f4cace14f1cbde8e2a9463e3dd120549a85b78375d0f94276b8aefbc482",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/figcraft/pull/347",
@@ -426,12 +426,12 @@
             "https://github.com/advisories/GHSA-965h-392x-2mh5",
             "https://github.com/advisories/GHSA-xgp8-3hg3-c2mh"
           ],
-          "reason": "Backport upstream algorithm-identifier imports and removal of the obsolete WebPKI dependency while retaining provider 0.0.2-alpha, its cipher suites and cryptographic dependency versions. Declare pki-types 1.11 as the actual API minimum and preserve the existing std/alloc/tls12/zeroize wiring. Original WebPKI 0.102.8 is used only for constants; actual certificate verification already uses patched WebPKI. Application-provider regressions preserve all twelve DER identifiers and exercise all eleven signature algorithms with valid, altered, truncated and malformed inputs.",
+          "reason": "Backport upstream algorithm-identifier imports and removal of obsolete WebPKI while retaining provider 0.0.2-alpha, cipher suites and cryptographic dependency versions. Declare pki-types 1.11 as the API minimum and preserve std/alloc/tls12/zeroize wiring. Removed WebPKI 0.102.8 supplied constants; actual certificate verification retains patched WebPKI. Project-authored provider regressions are retired; existing upstream suites and manual native TLS acceptance remain required.",
           "removeWhen": "Remove when the selected compatible provider includes this dependency removal and passes identifier, signature and download-library checks without the local source override."
         },
         {
           "file": "rustcrypto-provider.patch",
-          "sha256": "ffd3ae162d19db9bd0863bed8405c1cc30e3007ac0ed60fee79a2cfea3b4375f",
+          "sha256": "57da2f03effd3a2ecce320958f42a41218c2483fdbd5f693a716b7dc4d8b58cd",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/RustCrypto/rustls-rustcrypto/commit/b840ddb98fc1604e72cec8ed4ef6d83729e207f3",
@@ -440,7 +440,7 @@
             "https://github.com/advisories/GHSA-965h-392x-2mh5",
             "https://github.com/advisories/GHSA-xgp8-3hg3-c2mh"
           ],
-          "reason": "Select the explicitly pinned, patched RustCrypto source through a local Cargo path, eliminating rustls-webpki 0.102.8 from the complete lock while preserving actual certificate verification and all unrelated dependency records. The native TLS-provider check covers the application download library and provider regressions; locked Linux/Darwin/WASM metadata guards selection and features.",
+          "reason": "Select the hash-pinned patched RustCrypto provider through a local Cargo path and eliminate WebPKI 0.102.8 while preserving actual certificate verification. Remove the cryptographic dev-dependency and lock edges left by deleted project-authored provider tests; keep runtime provider dependencies unchanged. Upstream suites and manual application-download/TLS acceptance establish behavior; the static lifecycle check establishes only source, inventory and checksum consistency.",
           "removeWhen": "Remove the Cargo path override and synchronized lock changes together when the selected upstream application resolves a provider without the obsolete WebPKI dependency and the same compatibility checks pass."
         },
         {
@@ -452,12 +452,12 @@
             "https://github.com/zip-rs/zip2/pull/1256",
             "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
           ],
-          "reason": "Compare original local/central filename bytes before UnicodePath aliases, reject duplicate decoded names and conflicting filename encodings during whole-archive validation, and retain CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this pinned, patched dependency through a local Cargo path; the source archive hash and patches remain explicit. Original synthetic cases cover non-ASCII CRC aliases and legacy name compatibility.",
-          "removeWhen": "Remove when the selected ZIP source enforces original header identity and decoded-name uniqueness while preserving flag-selected encoding and lookup semantics. Remove the local Cargo path and synchronized lock change together, then pass the archive regressions."
+          "reason": "Compare original local and central filename bytes before UnicodePath aliases; reject duplicate decoded names and conflicting filename encodings during complete archive validation. Preserve flag-selected CP437/UTF-8 decoding, matching lookup and harmless ASCII flag differences. The application uses this hash-pinned patched dependency through an explicit Cargo path. Project-authored synthetic cases are retired; run the upstream suites and a representative archive corpus before removing the fork.",
+          "removeWhen": "Remove when the selected ZIP release provides equivalent original-header identity, decoded-name uniqueness, flag-selected encoding and lookup semantics. Remove its local Cargo path and synchronized lock changes together; validate the upstream suites and representative legacy and Unicode documents manually."
         },
         {
           "file": "archive-security.patch",
-          "sha256": "fc0573b88cc156c66b18032fcfe1ac6b2e76d59c405979c735d7117dd3da3101",
+          "sha256": "80e7c15b0e59857ad4a74f76bc1109abeed02b02e24dc7dc292ea7d5dbf62fba",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
@@ -467,8 +467,8 @@
             "https://github.com/advisories/GHSA-9hj8-73fh-9963",
             "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
           ],
-          "reason": "Move FilmCraft and Candle to the pinned patched ZIP source. Validate voice-pack headers before selection, retaining fixed tensor size, bounded reads, finite-value checks and Model errors. Exercise optional Kokoro and tensor archives without changing normal application features or checks.",
-          "removeWhen": "Remove when selected upstream sources have equivalent fixed ZIP requirements and complete archive validation before member use and every reopen, then pass voice/PTH/NPZ regressions. Update source and vendor locks together."
+          "reason": "Move FilmCraft and Candle to the hash-pinned patched ZIP source. Validate voice-pack headers before selection, retaining fixed tensor size, bounded reads, finite-value checks and Model errors. Normal features use Whisper; optional Kokoro, PTH and NPZ acceptance requires a separate manual run. Project-authored synthetic archive regressions are retired.",
+          "removeWhen": "Remove when compatible upstream sources provide fixed ZIP requirements and complete validation before member use and every lazy reopen. Update source and vendor locks together; run the upstream suites and manually validate optional voice, PTH and NPZ consumers."
         },
         {
           "file": "candle-zip-compatibility.patch",
@@ -483,7 +483,7 @@
             "https://github.com/advisories/GHSA-8hxf-qr8p-62x4"
           ],
           "reason": "Adapt Candle 0.9.2 to ZIP 9.5 fallible filename APIs and validate complete PTH/NPZ archives before metadata discovery and every lazy reopen. Preserve public tensor layouts, dtype, missing-name behavior and upstream license notices.",
-          "removeWhen": "Remove when selected upstream sources have equivalent fixed ZIP requirements and complete archive validation before member use and every reopen, then pass voice/PTH/NPZ regressions. Update source and vendor locks together."
+          "removeWhen": "Remove when compatible upstream sources provide fixed ZIP requirements and complete validation before member use and every lazy reopen. Update source and vendor locks together; run the upstream suites and manually validate voice, PTH and NPZ compatibility and repeated-read cost."
         },
         {
           "file": "japanese-font-test-system-fallbacks.patch",
@@ -491,7 +491,7 @@
           "kind": "upstream-candidate",
           "upstream": ["https://github.com/storytold/filmcraft/pull/1944"],
           "reason": "Exclude only named optional CJK and RTL system faces from Japanese-specific ordering assertions while retaining Japanese precedence, glyph and layout checks.",
-          "removeWhen": "Remove when the packaged source includes an equivalent upstream fix and the affected regression passes without this patch."
+          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
         {
           "file": "remove-restricted-marks.patch",

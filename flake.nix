@@ -52,6 +52,7 @@
       ];
 
       flake = {
+        libTests = import ./lib/tests { inherit (nixpkgs) lib; };
         homeManagerModules.rift = import ./modules/home/rift.nix;
         lib.packagesFor = packagesFor;
         overlays.default = personalOverlay;

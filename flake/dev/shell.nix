@@ -49,7 +49,6 @@
               cargo
               cargo-deny
               cargo-machete
-              cargo-nextest
               clippy
               deadnix
               direnv
@@ -61,7 +60,7 @@
               nixd
               nixf-diagnose
               nixfmt
-              nodejs_24
+              nix-unit
               prek
               pinact
               prefetch-npm-deps

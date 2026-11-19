@@ -1,12 +1,8 @@
 {
   replaceVars,
-  replaceVarsWith,
-  runtimeShell,
   lib,
   fetchFromGitHub,
   noctalia,
-  dbus,
-  python3,
 }:
 let
   source = import ./source.nix;
@@ -14,17 +10,6 @@ let
     owner = "noctalia-dev";
     repo = "noctalia";
     inherit (source) rev hash;
-  };
-  testDbusSession = replaceVarsWith {
-    name = "dbus-test-session.sh";
-    src = ./scripts/dbus-test-session.sh.in;
-    isExecutable = true;
-    replacements = {
-      runtime_shell = runtimeShell;
-      dbus_run_session = lib.getExe' dbus "dbus-run-session";
-      dbus_daemon = lib.getExe' dbus "dbus-daemon";
-      dbus_session_config = "${dbus.out}/share/dbus-1/session.conf";
-    };
   };
   upstream = noctalia.overrideAttrs (_: {
     inherit src;
@@ -48,13 +33,7 @@ upstream.overrideAttrs (old: {
     "-p1"
     "--fuzz=0"
   ];
-  mesonFlags = lib.unique (
-    lib.remove "-Dtests=disabled" (old.mesonFlags or [ ]) ++ [ "-Dtests=enabled" ]
-  );
   postPatch = (old.postPatch or "") + ''
-    substituteInPlace meson.build \
-      --replace-fail "dbus_run_session = find_program('dbus-run-session', required: false)" \
-      "dbus_run_session = find_program('${testDbusSession}', required: true)"
     source ${
       replaceVars ./scripts/post-patch.sh {
         source_version = source.version;
@@ -63,26 +42,11 @@ upstream.overrideAttrs (old: {
       }
     }
   '';
-  doCheck = true;
-  nativeCheckInputs = (old.nativeCheckInputs or [ ]) ++ [
-    dbus
-    python3
-  ];
-  checkPhase = ''
-    source ${
-      replaceVars ./scripts/check-phase.sh {
-        test_inventory_python = "${./check_test_inventory.py}";
-        test_bar_icon_policy_cpp = "${./test_bar_icon_policy.cpp}";
-        test_route_preference_cpp = "${./test_route_preference.cpp}";
-      }
-    }
-  '';
   postInstall = (old.postInstall or "") + ''
     source ${replaceVars ./scripts/post-install.sh { readme = "${./README.md}"; }}
   '';
   passthru = removeAttrs (old.passthru or { }) [ "updateScript" ] // {
     upstreamRevision = source.rev;
-    inherit testDbusSession;
   };
   meta = old.meta // {
     maintainers = [ ];

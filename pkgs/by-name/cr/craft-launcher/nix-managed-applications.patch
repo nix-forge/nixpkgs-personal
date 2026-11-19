@@ -1,6 +1,8 @@
+diff --git a/crates/core/src/status.rs b/crates/core/src/status.rs
+index 44a04cce7acd..c44b0510983a 100644
 --- a/crates/core/src/status.rs
 +++ b/crates/core/src/status.rs
-@@ -23,6 +23,8 @@
+@@ -24,6 +24,8 @@ pub enum InstallSource {
      Flatpak,
      /// An AppImage file found on disk.
      AppImage,
@@ -9,28 +11,19 @@
      /// A binary found on `PATH` or in a system prefix.
      Binary,
  }
-@@ -38,6 +40,7 @@
-             Self::Pacman => "Arch package (AUR)",
+@@ -39,6 +41,7 @@ impl InstallSource {
+             Self::Pacman => "Arch package",
              Self::Flatpak => "Flatpak",
              Self::AppImage => "AppImage",
 +            Self::Nix => "Nix package",
              Self::Binary => "System binary",
          }
      }
---- a/crates/native/src/lib.rs
-+++ b/crates/native/src/lib.rs
-@@ -22,6 +22,8 @@
- pub mod queue;
- pub mod screenshots;
- pub mod self_update;
-+#[cfg(unix)]
-+pub mod nix;
- pub mod single_instance;
- pub mod source;
- 
+diff --git a/crates/native/src/detect.rs b/crates/native/src/detect.rs
+index d61199418d08..12ad2b1de5c2 100644
 --- a/crates/native/src/detect.rs
 +++ b/crates/native/src/detect.rs
-@@ -37,6 +37,10 @@
+@@ -37,6 +37,10 @@ impl Snapshot {
  /// What's installed of `app`, best source first.
  pub fn detect(app: &CraftApp, manifest: &Manifest, snapshot: &Snapshot) -> Option<Installed> {
      let _ = snapshot;
@@ -41,60 +34,56 @@
      if let Some(found) = from_manifest(app, manifest) {
          return Some(found);
      }
---- a/crates/native/src/self_update.rs
-+++ b/crates/native/src/self_update.rs
-@@ -89,6 +89,10 @@
- pub fn current() -> Option<Install> {
-     let exe = std::env::current_exe().ok()?;
-     let exe = exe.canonicalize().unwrap_or(exe);
-+    #[cfg(unix)]
-+    if crate::nix::is_store_path(&exe) {
-+        return None;
-+    }
-     detect(&exe)
- }
- 
+diff --git a/crates/native/src/install.rs b/crates/native/src/install.rs
+index 67d1f2d2f89b..fb13172b4d95 100644
 --- a/crates/native/src/install.rs
 +++ b/crates/native/src/install.rs
-@@ -51,6 +51,9 @@
-     job: &mut Job<'_>,
- ) -> Result<Option<Record>, String> {
-     let _ = previous;
-+    if existing.is_some_and(|installed| installed.source == InstallSource::Nix) {
-+        return Err(format!("{} is managed by Nix. Update it through your Nix configuration.", app.name));
+@@ -144,6 +144,9 @@ pub fn install_at(
+     // Every early way out below gives the job's place in its batch back (see [`BatchPlace`]).
+     #[cfg_attr(not(any(target_os = "linux", windows)), allow(unused_mut, unused_variables))]
+     let mut batch = BatchPlace(job.batch.take());
++    if let Some(installed) = existing.filter(|installed| installed.source == InstallSource::Nix) {
++        return Err(managed_elsewhere(app, installed, false).expect("Nix copies are managed externally"));
 +    }
-     if let Some(inst) = existing
-         && inst.source.launcher_can_update()
-         && process::is_running(Path::new(&inst.location))
-@@ -122,6 +125,7 @@
-             InstallSource::Pacman => None,
-             InstallSource::Flatpak => Some(PackageKind::Flatpak),
-             InstallSource::AppImage => Some(PackageKind::AppImage),
-+            InstallSource::Nix => None,
-             InstallSource::Binary => Some(PackageKind::TarGz),
-         };
-         if let Some(k) = kind.filter(|k| available.contains(k)) {
-@@ -204,6 +208,7 @@
-             };
-             Some(format!("{} was installed from the AUR ({pkg}). Update it with {cmd}", app.name))
+     #[allow(unused_variables)]
+     let destination = destination(app, kind, existing, previous, job.install_locations)?;
+     #[cfg(windows)]
+@@ -611,7 +614,7 @@ pub(crate) fn choose_kinds_with(
+             // packages are updated outside the launcher (see `managed_elsewhere`); the launcher
+             // opens and removes them but never replaces them.
+             InstallSource::Pacman if is_release_arch_package(app, inst) => Some(PackageKind::ArchPkg),
+-            InstallSource::Pacman => return Vec::new(),
++            InstallSource::Pacman | InstallSource::Nix => return Vec::new(),
+             // Repository-managed Flatpaks are externally managed: the launcher will not
+             // replace them with a downloaded local .flatpak bundle.
+             InstallSource::Flatpak if inst.externally_managed => return Vec::new(),
+@@ -729,6 +732,7 @@ fn managed_elsewhere_with(app: &CraftApp, installed: &Installed, uninstall: bool
+             let scope = crate::packages::flatpak_scope(installed.installation.as_deref());
+             Some(format!("{} was installed from a Flatpak repository. Update it with flatpak update {scope} {pkg}", app.name))
          }
 +        InstallSource::Nix => Some(format!("{} is managed by Nix. Update or remove it through your Nix configuration.", app.name)),
          InstallSource::Binary => Some(format!("{} was installed outside the launcher. Update or remove it the way it was installed.", app.name)),
          _ => None,
      }
-@@ -220,6 +225,9 @@
-     phase: &mut dyn FnMut(JobPhase),
- ) -> Result<(), String> {
-     let _ = (record, stop, &phase, paths);
-+    if installed.source == InstallSource::Nix {
-+        return Err(format!("{} is managed by Nix. Remove it through your Nix configuration.", app.name));
-+    }
-     let path = PathBuf::from(&installed.location);
-     if let Some(msg) = managed_elsewhere(app, installed, true) {
-         return Err(msg);
+diff --git a/crates/native/src/lib.rs b/crates/native/src/lib.rs
+index 135affd163f2..86c74e15ec79 100644
+--- a/crates/native/src/lib.rs
++++ b/crates/native/src/lib.rs
+@@ -28,6 +28,8 @@ pub mod proxy;
+ pub mod queue;
+ pub mod screenshots;
+ pub mod self_update;
++#[cfg(unix)]
++pub mod nix;
+ pub mod single_instance;
+ pub mod source;
+ 
+diff --git a/crates/native/src/nix.rs b/crates/native/src/nix.rs
+new file mode 100644
+index 000000000000..84696c3f6a48
 --- /dev/null
 +++ b/crates/native/src/nix.rs
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,27 @@
 +//! Read-only discovery of applications installed through Nix profiles.
 +use std::path::{Path, PathBuf};
 +use std::time::Duration;
@@ -122,27 +111,3 @@
 +    Some(Installed { version: current, source: InstallSource::Nix, location: location.display().to_string(), package: Some(app.id.to_owned()) })
 +}
 +
-+#[cfg(test)]
-+mod tests {
-+    use super::*;
-+    #[test]
-+    fn immutable_store_paths_have_an_output_and_a_file() {
-+        assert!(is_store_path(Path::new("@nixStoreDir@/hash-photocraft/bin/photocraft")));
-+        assert!(is_store_path(Path::new("@nixStoreDir@/hash-photocraft/Applications/PhotoCraft.app/Contents/MacOS/PhotoCraft")));
-+        assert!(!is_store_path(Path::new("@nixStoreDir@")));
-+        assert!(!is_store_path(Path::new("@nixStoreDir@/hash-photocraft")));
-+        assert!(!is_store_path(Path::new("/tmp/nix/store/hash/bin/photocraft")));
-+        assert!(!is_store_path(Path::new("@nixStoreDir@front/hash/bin/photocraft")));
-+    }
-+    #[test]
-+    fn nix_ownership_never_allows_launcher_updates_or_removal() {
-+        let app = CraftApp::by_id("photocraft").unwrap();
-+        let installed = Installed { version: None, source: InstallSource::Nix, location: String::new(), package: Some(app.id.to_owned()) };
-+        assert!(!installed.source.launcher_can_update());
-+        assert_eq!(installed.source.label(), "Nix package");
-+        for uninstall in [false, true] {
-+            let reason = crate::install::managed_elsewhere(app, &installed, uninstall).unwrap();
-+            assert!(reason.contains("through your Nix configuration"));
-+        }
-+    }
-+}

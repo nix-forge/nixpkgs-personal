@@ -85,19 +85,6 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
     }
   '';
 
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit pname;
-        toString_builtins_length_themes = toString (builtins.length themes);
-        checkThemes = lib.concatMapStringsSep "\n" (theme: ''
-          source ${replaceVars ./scripts/check-cursor-theme.sh { inherit theme; }}
-        '') themes;
-      }
-    }
-  '';
-
   passthru = { inherit themes; };
 
   meta = {

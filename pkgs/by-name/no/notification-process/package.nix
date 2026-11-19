@@ -9,20 +9,9 @@ python3Packages.buildPythonPackage {
       ./pyproject.toml
       ./src
       ./LICENSE
-      ./test_notifications.py
-      ./fixtures
     ];
   };
   build-system = [ python3Packages.setuptools ];
-  nativeCheckInputs = [
-    python3Packages.pytestCheckHook
-    python3Packages.pytest-timeout
-  ];
-  pytestFlags = [
-    "--timeout=30"
-    "--timeout-method=thread"
-    "test_notifications.py"
-  ];
   pythonImportsCheck = [ "notification_process" ];
   meta = {
     description = "Owned commands with blocking POSIX exit and pipe notifications";

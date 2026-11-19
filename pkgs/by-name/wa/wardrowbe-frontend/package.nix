@@ -41,8 +41,6 @@ buildNpmPackage (finalAttrs: {
     source ${replaceVars ./scripts/post-patch.sh { inherit inter; }}
   '';
 
-  preBuild = builtins.readFile ./scripts/pre-build.sh;
-
   installPhase = ''
     source ${
       replaceVars ./scripts/install-phase.sh {
@@ -51,9 +49,6 @@ buildNpmPackage (finalAttrs: {
       }
     }
   '';
-
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))

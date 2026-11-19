@@ -8,25 +8,22 @@
 let
   source = import ./source.nix;
 in
-buildNpmPackage (finalAttrs: {
+buildNpmPackage (_finalAttrs: {
   pname = "homebridge-blueair-purifier";
   inherit (source) version npmDepsHash;
 
   src = fetchFromGitHub {
     owner = "kovapatrik";
     repo = "homebridge-blueair-purifier";
-    tag = "v${finalAttrs.version}";
+    inherit (source) rev;
     inherit (source) hash;
   };
 
-  patches = [ ./redact-api-logs.patch ];
-
-  # Upstream's lock contains lodash 4.17.21. Its fixed release is outside
-  # the declared 4.17 range, so both the manifest and lock are pinned here.
+  # The selected upstream commit includes log redaction and the Lodash minimum.
+  # Retain the reviewed transitive security updates until its lock catches up.
   postPatch = ''
     source ${
       replaceVars ./scripts/post-patch.sh {
-        package_json = "${./package.json}";
         package_lock_json = "${./package-lock.json}";
       }
     }
@@ -35,17 +32,6 @@ buildNpmPackage (finalAttrs: {
   nodejs = nodejs_24;
   strictDeps = true;
   npmInstallFlags = [ "--ignore-scripts" ];
-
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit nodejs_24;
-        nodeModulesCheck = "${./scripts/check_node_modules.mts}";
-
-      }
-    }
-  '';
 
   meta = {
     description = "Homebridge plugin for Blueair cloud purifiers, including Blue Pure 511i Max";

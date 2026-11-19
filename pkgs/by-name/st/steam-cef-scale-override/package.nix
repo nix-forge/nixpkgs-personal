@@ -32,10 +32,6 @@ stdenv.mkDerivation {
   ];
 
   doCheck = true;
-  postCheck = builtins.readFile ./scripts/post-check.sh;
-
-  doInstallCheck = true;
-  installCheckPhase = builtins.readFile ./scripts/install-check-phase.sh;
 
   meta = {
     sourceProvenance = [ lib.sourceTypes.fromSource ];

@@ -1,6 +1,8 @@
+diff --git a/src/dbus/mpris/mpris_service.cpp b/src/dbus/mpris/mpris_service.cpp
+index 314144eb7f6f..b3ceebf1e089 100644
 --- a/src/dbus/mpris/mpris_service.cpp
 +++ b/src/dbus/mpris/mpris_service.cpp
-@@ -1628,6 +1628,8 @@
+@@ -1635,6 +1635,8 @@ void MprisService::registerBusSignals() {
            return;
          }
  
@@ -9,7 +11,7 @@
          addOrRefreshPlayer(name);
        });
  }
-@@ -1726,12 +1728,29 @@
+@@ -1733,12 +1735,29 @@ void MprisService::addOrRefreshPlayer(const std::string& busName) {
        m_playerProxies.emplace(busName, sdbus::createProxy(m_bus.connection(), sdbus::ServiceName{busName}, kMprisPath));
  
    if (inserted) {
@@ -40,7 +42,7 @@
            if (interface_name == kMprisRootInterface || interface_name == kMprisPlayerInterface) {
              const bool metadataChanged =
                  changed_properties.contains("Metadata") || std::ranges::contains(invalidated_properties, "Metadata");
-@@ -1773,59 +1792,64 @@
+@@ -1780,59 +1799,64 @@ void MprisService::addOrRefreshPlayer(const std::string& busName) {
            }
          });
  
@@ -49,7 +51,17 @@
 -      if (playerIt == m_players.end()) {
 -        return;
 -      }
--
++    proxyIt->second->uponSignal("Seeked")
++        .onInterface(kMprisPlayerInterface)
++        .call([this, busName, fromPlayer](int64_t posUs) {
++          if (!fromPlayer()) {
++            return;
++          }
++          auto playerIt = m_players.find(busName);
++          if (playerIt == m_players.end()) {
++            return;
++          }
+ 
 -      const auto now = std::chrono::steady_clock::now();
 -      auto offsetIt = m_positionOffsetsUs.find(busName);
 -      std::int64_t offsetUs = offsetIt != m_positionOffsetsUs.end() ? offsetIt->second : 0;
@@ -58,21 +70,40 @@
 -      const auto previousTrackRawIt = m_previousTrackRawPositionUs.find(busName);
 -      const bool looksLikePreviousTrackContinuation = previousTrackRawIt != m_previousTrackRawPositionUs.end()
 -          && std::llabs(posUs - previousTrackRawIt->second) <= kPreviousTrackContinuationSlackUs;
--
++          const auto now = std::chrono::steady_clock::now();
++          auto offsetIt = m_positionOffsetsUs.find(busName);
++          std::int64_t offsetUs = offsetIt != m_positionOffsetsUs.end() ? offsetIt->second : 0;
++          std::int64_t normalizedUs = std::max<std::int64_t>(0, posUs - offsetUs);
++          const std::int64_t previousPosUs = playerIt->second.positionUs;
++          const auto previousTrackRawIt = m_previousTrackRawPositionUs.find(busName);
++          const bool looksLikePreviousTrackContinuation = previousTrackRawIt != m_previousTrackRawPositionUs.end()
++              && std::llabs(posUs - previousTrackRawIt->second) <= kPreviousTrackContinuationSlackUs;
+ 
 -      if (looksLikePreviousTrackContinuation) {
 -        return;
 -      }
--
++          if (looksLikePreviousTrackContinuation) {
++            return;
++          }
+ 
 -      if (offsetUs > 0) {
 -        offsetIt->second = 0;
 -        offsetUs = 0;
 -        normalizedUs = std::max<std::int64_t>(0, posUs);
 -      }
--
++          if (offsetUs > 0) {
++            offsetIt->second = 0;
++            offsetUs = 0;
++            normalizedUs = std::max<std::int64_t>(0, posUs);
++          }
+ 
 -      if (!isPlausibleTrackPosition(normalizedUs, playerIt->second.lengthUs)) {
 -        return;
 -      }
--
++          if (!isPlausibleTrackPosition(normalizedUs, playerIt->second.lengthUs)) {
++            return;
++          }
+ 
 -      if (playerIt->second.playbackStatus == "Paused" && normalizedUs > 0) {
 -        const auto pauseIt = m_recentNoSignalPauseAt.find(busName);
 -        const bool recoveringRecentPause =
@@ -85,52 +116,6 @@
 -          m_recentNoSignalPauseAt.erase(pauseIt);
 -        }
 -      }
--
--      playerIt->second.positionUs = normalizedUs;
--      m_hasAuthoritativePositionSample[busName] = true;
--      m_lastPositionSampleAt[busName] = now;
--      m_previousTrackRawPositionUs.erase(busName);
--      m_pendingPositionCandidateUs.erase(busName);
--      m_pendingPositionCandidateMatches.erase(busName);
--      m_pendingPositionCandidateAt.erase(busName);
--      if (m_changeCallback) {
--        m_changeCallback();
--      }
--    });
-+    proxyIt->second->uponSignal("Seeked")
-+        .onInterface(kMprisPlayerInterface)
-+        .call([this, busName, fromPlayer](int64_t posUs) {
-+          if (!fromPlayer()) {
-+            return;
-+          }
-+          auto playerIt = m_players.find(busName);
-+          if (playerIt == m_players.end()) {
-+            return;
-+          }
-+
-+          const auto now = std::chrono::steady_clock::now();
-+          auto offsetIt = m_positionOffsetsUs.find(busName);
-+          std::int64_t offsetUs = offsetIt != m_positionOffsetsUs.end() ? offsetIt->second : 0;
-+          std::int64_t normalizedUs = std::max<std::int64_t>(0, posUs - offsetUs);
-+          const std::int64_t previousPosUs = playerIt->second.positionUs;
-+          const auto previousTrackRawIt = m_previousTrackRawPositionUs.find(busName);
-+          const bool looksLikePreviousTrackContinuation = previousTrackRawIt != m_previousTrackRawPositionUs.end()
-+              && std::llabs(posUs - previousTrackRawIt->second) <= kPreviousTrackContinuationSlackUs;
-+
-+          if (looksLikePreviousTrackContinuation) {
-+            return;
-+          }
-+
-+          if (offsetUs > 0) {
-+            offsetIt->second = 0;
-+            offsetUs = 0;
-+            normalizedUs = std::max<std::int64_t>(0, posUs);
-+          }
-+
-+          if (!isPlausibleTrackPosition(normalizedUs, playerIt->second.lengthUs)) {
-+            return;
-+          }
-+
 +          if (playerIt->second.playbackStatus == "Paused" && normalizedUs > 0) {
 +            const auto pauseIt = m_recentNoSignalPauseAt.find(busName);
 +            const bool recoveringRecentPause =
@@ -143,7 +128,18 @@
 +              m_recentNoSignalPauseAt.erase(pauseIt);
 +            }
 +          }
-+
+ 
+-      playerIt->second.positionUs = normalizedUs;
+-      m_hasAuthoritativePositionSample[busName] = true;
+-      m_lastPositionSampleAt[busName] = now;
+-      m_previousTrackRawPositionUs.erase(busName);
+-      m_pendingPositionCandidateUs.erase(busName);
+-      m_pendingPositionCandidateMatches.erase(busName);
+-      m_pendingPositionCandidateAt.erase(busName);
+-      if (m_changeCallback) {
+-        m_changeCallback();
+-      }
+-    });
 +          playerIt->second.positionUs = normalizedUs;
 +          m_hasAuthoritativePositionSample[busName] = true;
 +          m_lastPositionSampleAt[busName] = now;
@@ -158,7 +154,7 @@
    }
  
    const bool hadPositionSignal = m_pendingPositionSignalRefresh[busName];
-@@ -1958,38 +1982,20 @@
+@@ -1965,38 +1989,20 @@ void MprisService::applyPlayerSnapshot(
    }
    const auto previousActive = activePlayer();
    const auto now = std::chrono::steady_clock::now();
@@ -198,16 +194,16 @@
    }
    if (hasStrongNowPlayingMetadata(info)) {
      m_lastStrongMetadataUpdate[busName] = now;
-@@ -2251,7 +2257,7 @@
+@@ -2258,7 +2264,7 @@ void MprisService::applyPlayerSnapshot(
      }
  
      syncSignals(previousActive);
 -    if ((significantChanged || clearedPinnedPlayerPreference) && m_changeCallback) {
 +    if (significantChanged && m_changeCallback) {
        m_changeCallback();
-     }
-   }
-@@ -2316,6 +2322,9 @@
+     } else if (m_positionSampleCallback) {
+       m_positionSampleCallback();
+@@ -2325,6 +2331,9 @@ void MprisService::removePlayer(const std::string& busName) {
    }
  
    clearPlayerState(busName);
@@ -217,9 +213,11 @@
    m_playerProxies.erase(busName);
    emitPlayersChanged();
    syncSignals(previousActive);
+diff --git a/src/shell/control_center/tabs/media_tab.cpp b/src/shell/control_center/tabs/media_tab.cpp
+index 55448c553500..c69cdb8b03a5 100644
 --- a/src/shell/control_center/tabs/media_tab.cpp
 +++ b/src/shell/control_center/tabs/media_tab.cpp
-@@ -1,1058 +1,388 @@
+@@ -1,1067 +1,389 @@
  #include "shell/control_center/tabs/media_tab.h"
  
 -#include "config/config_service.h"
@@ -235,10 +233,11 @@
 -#include "shell/control_center/tab.h"
 -#include "shell/panel/panel_button_style.h"
  #include "shell/panel/panel_manager.h"
+-#include "shell/visuals/audio_visualizer.h"
  #include "ui/builders.h"
 -#include "ui/controls/context_menu.h"
 -#include "ui/controls/context_menu_popup.h"
--#include "ui/visuals/audio_visualizer.h"
+ #include "ui/controls/image.h"
  
  #include <algorithm>
 -#include <chrono>
@@ -279,9 +278,12 @@
 -
 -  std::string_view playPauseGlyph(const std::string& playbackStatus) {
 -    return playbackStatus == "Playing" ? "media-pause" : "media-play";
--  }
++  std::string timeLabel(std::int64_t us) {
++    const auto seconds = std::max<std::int64_t>(0, us / 1000000);
++    return std::format("{}:{:02}", seconds / 60, seconds % 60);
+   }
 -
--  [[nodiscard]] int mediaTabArtDecodeSize(float scale) {
+-  int mediaTabArtDecodeSize(float scale) {
 -    // Match the widest artwork layout bound (see mediaWidth in doLayout).
 -    return static_cast<int>(std::round(kMediaUnit * 11.0F * scale));
 -  }
@@ -293,10 +295,6 @@
 -  ButtonVariant toggleVariant(bool active) { return active ? ButtonVariant::Primary : ButtonVariant::Ghost; }
 -  constexpr int kVisualizerBandCount = 32;
 -
-+  std::string timeLabel(std::int64_t us) {
-+    const auto seconds = std::max<std::int64_t>(0, us / 1000000);
-+    return std::format("{}:{:02}", seconds / 60, seconds % 60);
-+  }
  } // namespace
  
  MediaTab::MediaTab(
@@ -388,7 +386,7 @@
 -              },
 -          .parent =
 -              PopupSurfaceParent{
--                  .layerSurface = parentCtx->layerSurface,
+-                  .attach = parentCtx->attach,
 -                  .output = parentCtx->output,
 -              },
 -          .pointerParentSurface = parentCtx->surface,
@@ -576,7 +574,7 @@
 -              }
 -              const auto current = m_mpris->loopStatusActive().value_or("None");
 -              const std::string next = current == "None" ? "Playlist" : (current == "Playlist" ? "Track" : "None");
--              (void)m_mpris->setLoopStatusActive(next);
+-              m_mpris->setLoopStatusActive(next);
 -              PanelManager::instance().refresh();
 -            });
 -          },
@@ -598,7 +596,7 @@
 -              if (aliveGuard.expired() || m_mpris == nullptr) {
 -                return;
 -              }
--              (void)m_mpris->previousActive();
+-              m_mpris->previousActive();
 -              PanelManager::instance().refresh();
 -            });
 -          },
@@ -620,7 +618,7 @@
 -              if (aliveGuard.expired() || m_mpris == nullptr) {
 -                return;
 -              }
--              (void)m_mpris->playPauseActive();
+-              m_mpris->playPauseActive();
 -              PanelManager::instance().refresh();
 -            });
 -          },
@@ -642,7 +640,7 @@
 -              if (aliveGuard.expired() || m_mpris == nullptr) {
 -                return;
 -              }
--              (void)m_mpris->nextActive();
+-              m_mpris->nextActive();
 -              PanelManager::instance().refresh();
 -            });
 -          },
@@ -665,7 +663,7 @@
 -                return;
 -              }
 -              const bool enabled = m_mpris->shuffleActive().value_or(false);
--              (void)m_mpris->setShuffleActive(!enabled);
+-              m_mpris->setShuffleActive(!enabled);
 -              PanelManager::instance().refresh();
 -            });
 -          },
@@ -697,13 +695,6 @@
 +        view.clearBorder();
        },
    });
--
--  auto visualizerBody = ui::row({
--      .out = &m_visualizerBody,
--      .align = FlexAlign::Stretch,
--      .justify = FlexJustify::Start,
--      .fillWidth = true,
--      .flexGrow = 1.0F,
 +  m_list = scroll->content();
 +  m_list->setDirection(FlexDirection::Vertical);
 +  m_list->setAlign(FlexAlign::Stretch);
@@ -711,7 +702,48 @@
 +  root->addChild(std::move(scroll));
 +  return root;
 +}
-+
+ 
+-  auto visualizerBody = ui::row({
+-      .out = &m_visualizerBody,
+-      .align = FlexAlign::Stretch,
+-      .justify = FlexJustify::Start,
+-      .fillWidth = true,
+-      .flexGrow = 1.0F,
+-  });
+-
+-  auto visualizerSpectrum = std::make_unique<AudioVisualizer>();
+-  visualizerSpectrum->setGradient(colorForRole(ColorRole::Secondary), colorForRole(ColorRole::Tertiary));
+-  visualizerSpectrum->setOrientation(AudioSpectrumOrientation::Vertical);
+-  visualizerSpectrum->setMirrored(true);
+-  visualizerSpectrum->setCentered(true);
+-  visualizerSpectrum->setValues(std::vector<float>(kVisualizerBandCount, 0.0F));
+-  visualizerSpectrum->tick(0.0F);
+-  visualizerSpectrum->setFlexGrow(1.0F);
+-  m_visualizerSpectrum = visualizerSpectrum.get();
+-  visualizerBody->addChild(std::move(visualizerSpectrum));
+-  visualizerColumn->addChild(std::move(visualizerBody));
+-  visualizerColumn->setVisible(m_showVisualizer);
+-  tab->addChild(std::move(mediaColumn));
+-  tab->addChild(std::move(visualizerColumn));
+-
+-  if (m_wayland != nullptr && m_renderContext != nullptr) {
+-    m_playerMenuPopup = std::make_unique<ContextMenuPopup>(*m_wayland, *m_renderContext);
+-    m_playerMenuPopup->setOnActivate([this](const ContextMenuControlEntry& entry) {
+-      const std::weak_ptr<void> aliveGuard = m_aliveGuard;
+-      DeferredCall::callLater([this, aliveGuard, entry] {
+-        if (aliveGuard.expired() || m_mpris == nullptr) {
+-          return;
+-        }
+-        if (entry.id == 0) {
+-          m_mpris->clearPinnedPlayerPreference();
+-        } else {
+-          const auto idx = static_cast<std::size_t>(entry.id - 1);
+-          if (idx < m_playerBusNames.size()) {
+-            m_mpris->setPinnedPlayerPreference(m_playerBusNames[idx]);
+-          }
+-        }
+-        PanelManager::instance().refresh();
+-      });
 +void MediaTab::rebuild(const std::vector<MprisPlayerInfo>& players) {
 +  while (!m_list->children().empty()) {
 +    m_list->removeChild(m_list->children().back().get());
@@ -737,7 +769,100 @@
 +        .align = FlexAlign::Stretch,
 +        .gap = Style::spaceSm * scale,
 +        .configure = [scale, opacity = panelCardOpacity()](Flex& node) { applySectionCardStyle(node, scale, opacity); },
-+    });
+     });
+-  }
+-
+-  return tab;
+-}
+-
+-std::unique_ptr<Flex> MediaTab::createHeaderActions() {
+-  const float scale = contentScale();
+-  if (m_config != nullptr) {
+-    m_showVisualizer = m_config->config().controlCenter.mediaTab.showVisualizer;
+-  }
+-  return ui::row(
+-      {
+-          .align = FlexAlign::Center,
+-          .gap = Style::spaceSm * scale,
+-      },
+-      ui::button({
+-          .out = &m_toggleVisualizerButton,
+-          .glyph = m_showVisualizer ? "chart-bar" : "chart-bar-off",
+-          .selected = m_showVisualizer,
+-          .tooltip = i18n::tr("control-center.media.toggle-visualizer"),
+-          .onClick = [this] { toggleVisualizer(); },
+-          .configure = [scale](Button& button) { panel_button_style::configureHeaderIconButton(button, scale); },
+-      })
+-  );
+-}
+-
+-void MediaTab::doLayout(Renderer& renderer, float contentWidth, float bodyHeight) {
+-  if (m_rootLayout == nullptr || m_nowCard == nullptr || m_mediaStack == nullptr) {
+-    return;
+-  }
+-
+-  const float scale = contentScale();
+-  m_rootLayout->setSize(contentWidth, bodyHeight);
+-  m_rootLayout->layout(renderer);
+-
+-  const float cardInnerWidth =
+-      std::max(0.0F, m_nowCard->width() - (m_nowCard->paddingLeft() + m_nowCard->paddingRight()));
+-  const float mediaWidth =
+-      m_showVisualizer ? std::clamp(cardInnerWidth, 1.0F, kMediaUnit * 11.0F * scale) : std::max(cardInnerWidth, 1.0F);
+-  const float mediaStackHeight = m_mediaStack->height();
+-  m_mediaStack->setSize(mediaWidth, mediaStackHeight);
+-
+-  if (m_artworkRow != nullptr) {
+-    // Horizontal Flex with justify Center under-reports its width when the child is narrower than
+-    // the stretched cross-axis; min width keeps the row full-bleed so art centers.
+-    m_artworkRow->setMinWidth(mediaWidth);
+-  }
+-
+-  if (m_artwork != nullptr) {
+-    const float sideButtonSize = kMediaControlsHeight * scale;
+-    const float playPauseButtonSize = kMediaPlayPauseHeight * scale;
+-    const float sideGlyphSize = Style::fontSizeTitle * scale;
+-    const float playPauseGlyphSize = (Style::fontSizeTitle + Style::spaceXs) * scale;
+-
+-    for (auto* button : {m_repeatButton, m_prevButton, m_nextButton, m_shuffleButton}) {
+-      if (button != nullptr) {
+-        button->setMinWidth(sideButtonSize);
+-        button->setMinHeight(sideButtonSize);
+-        button->setGlyphSize(sideGlyphSize);
+-        button->setPadding(Style::spaceSm * scale, Style::spaceSm * scale);
+-        button->setRadius(Style::scaledRadiusLg(scale));
+-      }
+-    }
+-    if (m_playPauseButton != nullptr) {
+-      m_playPauseButton->setMinWidth(playPauseButtonSize);
+-      m_playPauseButton->setMinHeight(playPauseButtonSize);
+-      m_playPauseButton->setGlyphSize(playPauseGlyphSize);
+-      m_playPauseButton->setPadding(Style::spaceSm * scale, Style::spaceSm * scale);
+-      m_playPauseButton->setRadius(Style::scaledRadiusLg(scale));
+-    }
+-  }
+-
+-  if (m_trackTitle != nullptr) {
+-    m_trackTitle->setMaxWidth(mediaWidth);
+-  }
+-  if (m_trackArtist != nullptr) {
+-    m_trackArtist->setMaxWidth(mediaWidth);
+-  }
+-  if (m_trackAlbum != nullptr) {
+-    m_trackAlbum->setMaxWidth(mediaWidth);
+-  }
+-  if (m_progressSlider != nullptr) {
+-    m_progressSlider->setSize(mediaWidth, 0.0F);
+-  }
+-
+-  m_mediaStack->layout(renderer);
+-
+-  if (m_artwork != nullptr && m_artworkRow != nullptr) {
+-    const float artWidth =
+-        std::max(1.0F, m_artworkRow->width() - (m_artworkRow->paddingLeft() + m_artworkRow->paddingRight()));
+-    const float artHeight = std::max(
+-        kMediaArtworkMinHeight * scale,
+-        m_artworkRow->height() - (m_artworkRow->paddingTop() + m_artworkRow->paddingBottom())
 +    auto content = ui::row({.align = FlexAlign::Center, .gap = Style::spaceMd * scale, .fillWidth = true});
 +    content->addChild(
 +        ui::image(
@@ -749,7 +874,17 @@
 +             .visible = false,
 +             .participatesInLayout = false}
 +        )
-+    );
+     );
+-    // Media art is always presented as a square (album-art convention).
+-    const float side = std::min(artWidth, artHeight);
+-    m_artwork->setSize(side, side);
+-    m_artwork->setRadius(Style::scaledRadiusXl(scale));
+-    m_mediaStack->layout(renderer);
+-  }
+-
+-  if (m_showVisualizer && m_visualizerBody != nullptr && m_visualizerSpectrum != nullptr) {
+-    const float bodyWidth = std::max(
+-        0.0F, m_visualizerBody->width() - (m_visualizerBody->paddingLeft() + m_visualizerBody->paddingRight())
 +    auto placeholder = ui::column({
 +        .out = &card.placeholder,
 +        .align = FlexAlign::Center,
@@ -765,11 +900,17 @@
 +            .glyphSize = 32.0F * scale,
 +            .color = colorSpecFromRole(ColorRole::OnSurfaceVariant),
 +        })
-+    );
+     );
+-    const float bodyHeightAvail = std::max(
+-        0.0F, m_visualizerBody->height() - (m_visualizerBody->paddingTop() + m_visualizerBody->paddingBottom())
 +    content->addChild(std::move(placeholder));
 +    auto details = ui::column(
 +        {.out = &card.details, .align = FlexAlign::Stretch, .gap = Style::spaceXs * scale, .flexGrow = 1.0F}
-+    );
+     );
+-    const float spectrumWidth = std::max(1.0F, bodyWidth);
+-    const float spectrumHeight = std::max(1.0F, bodyHeightAvail);
+-    m_visualizerSpectrum->setSize(spectrumWidth, spectrumHeight);
+-    m_visualizerBody->layout(renderer);
 +    details->addChild(
 +        ui::label(
 +            {.out = &card.source,
@@ -874,301 +1015,10 @@
 +    root->addChild(std::move(timeline));
 +    m_cards.push_back(std::move(card));
 +    m_list->addChild(std::move(root));
-+  }
-+}
-+
-+void MediaTab::control(const std::string& bus, int action) {
-+  DeferredCall::callLater([this, guard = std::weak_ptr<void>(m_aliveGuard), bus, action]() {
-+    if (guard.expired() || m_mpris == nullptr || !m_mpris->players().contains(bus)) {
-+      return;
-+    }
-+    if (action == 3) {
-+      if (m_mpris->pinnedPlayerPreference() == bus) {
-+        m_mpris->clearPinnedPlayerPreference();
-+      } else {
-+        m_mpris->setPinnedPlayerPreference(bus);
-+      }
-+    } else {
-+      if (action == 0) {
-+        m_mpris->previous(bus);
-+      } else if (action == 1) {
-+        m_mpris->playPause(bus);
-+      } else if (action == 2) {
-+        m_mpris->next(bus);
-+      }
-+    }
-+    PanelManager::instance().refresh();
-   });
--
--  auto visualizerSpectrum = std::make_unique<AudioVisualizer>();
--  visualizerSpectrum->setGradient(colorForRole(ColorRole::Secondary), colorForRole(ColorRole::Tertiary));
--  visualizerSpectrum->setOrientation(AudioSpectrumOrientation::Vertical);
--  visualizerSpectrum->setMirrored(true);
--  visualizerSpectrum->setCentered(true);
--  visualizerSpectrum->setValues(std::vector<float>(kVisualizerBandCount, 0.0F));
--  visualizerSpectrum->tick(0.0F);
--  visualizerSpectrum->setFlexGrow(1.0F);
--  m_visualizerSpectrum = visualizerSpectrum.get();
--  visualizerBody->addChild(std::move(visualizerSpectrum));
--  visualizerColumn->addChild(std::move(visualizerBody));
--  visualizerColumn->setVisible(m_showVisualizer);
--  tab->addChild(std::move(mediaColumn));
--  tab->addChild(std::move(visualizerColumn));
--
--  if (m_wayland != nullptr && m_renderContext != nullptr) {
--    m_playerMenuPopup = std::make_unique<ContextMenuPopup>(*m_wayland, *m_renderContext);
--    m_playerMenuPopup->setOnActivate([this](const ContextMenuControlEntry& entry) {
--      const std::weak_ptr<void> aliveGuard = m_aliveGuard;
--      DeferredCall::callLater([this, aliveGuard, entry] {
--        if (aliveGuard.expired() || m_mpris == nullptr) {
--          return;
--        }
--        if (entry.id == 0) {
--          m_mpris->clearPinnedPlayerPreference();
--        } else {
--          const auto idx = static_cast<std::size_t>(entry.id - 1);
--          if (idx < m_playerBusNames.size()) {
--            m_mpris->setPinnedPlayerPreference(m_playerBusNames[idx]);
--          }
--        }
--        PanelManager::instance().refresh();
--      });
--    });
--  }
--
--  return tab;
--}
--
--std::unique_ptr<Flex> MediaTab::createHeaderActions() {
--  const float scale = contentScale();
--  if (m_config != nullptr) {
--    m_showVisualizer = m_config->config().controlCenter.mediaTab.showVisualizer;
--  }
--  return ui::row(
--      {
--          .align = FlexAlign::Center,
--          .gap = Style::spaceSm * scale,
--      },
--      ui::button({
--          .out = &m_toggleVisualizerButton,
--          .glyph = m_showVisualizer ? "chart-bar" : "chart-bar-off",
--          .selected = m_showVisualizer,
--          .tooltip = i18n::tr("control-center.media.toggle-visualizer"),
--          .onClick = [this] { toggleVisualizer(); },
--          .configure = [scale](Button& button) { panel_button_style::configureHeaderIconButton(button, scale); },
--      })
--  );
--}
--
--void MediaTab::doLayout(Renderer& renderer, float contentWidth, float bodyHeight) {
--  if (m_rootLayout == nullptr || m_nowCard == nullptr || m_mediaStack == nullptr) {
-+}
-+
-+void MediaTab::seek(const std::string& bus, double seconds) {
-+  auto card = std::ranges::find(m_cards, bus, &Card::busName);
-+  if (card == m_cards.end()) {
-     return;
    }
--
--  const float scale = contentScale();
--  m_rootLayout->setSize(contentWidth, bodyHeight);
--  m_rootLayout->layout(renderer);
--
--  const float cardInnerWidth =
--      std::max(0.0F, m_nowCard->width() - (m_nowCard->paddingLeft() + m_nowCard->paddingRight()));
--  const float mediaWidth =
--      m_showVisualizer ? std::clamp(cardInnerWidth, 1.0F, kMediaUnit * 11.0F * scale) : std::max(cardInnerWidth, 1.0F);
--  const float mediaStackHeight = m_mediaStack->height();
--  m_mediaStack->setSize(mediaWidth, mediaStackHeight);
--
--  if (m_artworkRow != nullptr) {
--    // Horizontal Flex with justify Center under-reports its width when the child is narrower than
--    // the stretched cross-axis; min width keeps the row full-bleed so art centers.
--    m_artworkRow->setMinWidth(mediaWidth);
--  }
--
--  if (m_artwork != nullptr) {
--    const float sideButtonSize = kMediaControlsHeight * scale;
--    const float playPauseButtonSize = kMediaPlayPauseHeight * scale;
--    const float sideGlyphSize = Style::fontSizeTitle * scale;
--    const float playPauseGlyphSize = (Style::fontSizeTitle + Style::spaceXs) * scale;
--
--    for (auto* button : {m_repeatButton, m_prevButton, m_nextButton, m_shuffleButton}) {
--      if (button != nullptr) {
--        button->setMinWidth(sideButtonSize);
--        button->setMinHeight(sideButtonSize);
--        button->setGlyphSize(sideGlyphSize);
--        button->setPadding(Style::spaceSm * scale, Style::spaceSm * scale);
--        button->setRadius(Style::scaledRadiusLg(scale));
-+  const auto position = static_cast<std::int64_t>(std::max(0.0, seconds) * 1000000.0);
-+  card->pendingSeekUs = position;
-+  card->pendingUntil = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-+  DeferredCall::callLater([this, guard = std::weak_ptr<void>(m_aliveGuard), bus, track = card->trackId, position]() {
-+    if (guard.expired() || m_mpris == nullptr) {
-+      return;
-+    }
-+    const auto it = m_mpris->players().find(bus);
-+    if (it != m_mpris->players().end() && it->second.trackId == track && it->second.canSeek) {
-+      m_mpris->setPosition(bus, position);
-+    }
-+  });
-+}
-+
-+void MediaTab::refresh(Renderer& renderer) {
-+  if (m_list == nullptr || m_mpris == nullptr) {
-+    return;
-+  }
-+  auto players = m_mpris->listPlayers();
-+  const auto pinned = m_mpris->pinnedPlayerPreference();
-+  std::stable_partition(players.begin(), players.end(), [&pinned](const auto& player) {
-+    return player.busName == pinned;
-+  });
-+  bool same = m_initialized && players.size() == m_cards.size();
-+  for (std::size_t i = 0; same && i < players.size(); ++i) {
-+    same = players[i].busName == m_cards[i].busName;
-+  }
-+  if (!same) {
-+    rebuild(players);
-+    PanelManager::instance().requestLayout();
-+  }
-+  const auto now = std::chrono::steady_clock::now();
-+  for (std::size_t i = 0; i < players.size(); ++i) {
-+    const auto& player = players[i];
-+    auto& card = m_cards[i];
-+    if (card.trackId != player.trackId) {
-+      card.trackId = player.trackId;
-+      card.pendingSeekUs = -1;
-+    }
-+    card.source->setText(player.identity);
-+    card.title->setText(player.title.empty() ? "Unknown track" : player.title);
-+    card.artist->setText(mpris::joinArtists(player.artists));
-+    card.playPause->setGlyph(player.playbackStatus == "Playing" ? "media-pause" : "media-play");
-+    card.playPause->setEnabled(
-+        player.canControl && (player.playbackStatus == "Playing" ? player.canPause : player.canPlay)
-+    );
-+    card.previous->setEnabled(player.canControl && player.canGoPrevious);
-+    card.next->setEnabled(player.canControl && player.canGoNext);
-+    card.pin->setVariant(pinned == player.busName ? ButtonVariant::Secondary : ButtonVariant::Ghost);
-+    card.pin->setTooltip(
-+        pinned == player.busName ? "Release media keys to automatic selection" : "Use media keys for this source"
-+    );
-+
-+    const std::string url = mpris::effectiveArtUrl(player);
-+    if (url != card.artUrl) {
-+      card.artwork->clear(renderer);
-+      card.artUrl.clear();
-+    }
-+    if (!url.empty() && !card.artwork->hasImage()) {
-+      const auto path = mpris::resolveArtworkSource(
-+          m_httpClient, m_pendingArtDownloads, url, [] { PanelManager::instance().refresh(); }, m_aliveGuard
-+      );
-+      if (!path.empty() && card.artwork->setSourceFile(renderer, path, 256, true, true)) {
-+        card.artUrl = url;
-       }
-     }
--    if (m_playPauseButton != nullptr) {
--      m_playPauseButton->setMinWidth(playPauseButtonSize);
--      m_playPauseButton->setMinHeight(playPauseButtonSize);
--      m_playPauseButton->setGlyphSize(playPauseGlyphSize);
--      m_playPauseButton->setPadding(Style::spaceSm * scale, Style::spaceSm * scale);
--      m_playPauseButton->setRadius(Style::scaledRadiusLg(scale));
--    }
--  }
--
--  if (m_trackTitle != nullptr) {
--    m_trackTitle->setMaxWidth(mediaWidth);
--  }
--  if (m_trackArtist != nullptr) {
--    m_trackArtist->setMaxWidth(mediaWidth);
--  }
--  if (m_trackAlbum != nullptr) {
--    m_trackAlbum->setMaxWidth(mediaWidth);
--  }
--  if (m_progressSlider != nullptr) {
--    m_progressSlider->setSize(mediaWidth, 0.0F);
--  }
--
--  m_mediaStack->layout(renderer);
--
--  if (m_artwork != nullptr && m_artworkRow != nullptr) {
--    const float artWidth =
--        std::max(1.0F, m_artworkRow->width() - (m_artworkRow->paddingLeft() + m_artworkRow->paddingRight()));
--    const float artHeight = std::max(
--        kMediaArtworkMinHeight * scale,
--        m_artworkRow->height() - (m_artworkRow->paddingTop() + m_artworkRow->paddingBottom())
--    );
--    // Media art is always presented as a square (album-art convention).
--    const float side = std::min(artWidth, artHeight);
--    m_artwork->setSize(side, side);
--    m_artwork->setRadius(Style::scaledRadiusXl(scale));
--    m_mediaStack->layout(renderer);
--  }
--
--  if (m_showVisualizer && m_visualizerBody != nullptr && m_visualizerSpectrum != nullptr) {
--    const float bodyWidth = std::max(
--        0.0F, m_visualizerBody->width() - (m_visualizerBody->paddingLeft() + m_visualizerBody->paddingRight())
--    );
--    const float bodyHeightAvail = std::max(
--        0.0F, m_visualizerBody->height() - (m_visualizerBody->paddingTop() + m_visualizerBody->paddingBottom())
--    );
--    const float spectrumWidth = std::max(1.0F, bodyWidth);
--    const float spectrumHeight = std::max(1.0F, bodyHeightAvail);
--    m_visualizerSpectrum->setSize(spectrumWidth, spectrumHeight);
--    m_visualizerBody->layout(renderer);
--  }
--}
--
-+    const bool hasArt = card.artwork->hasImage();
-+    card.artwork->setVisible(hasArt);
-+    card.artwork->setParticipatesInLayout(hasArt);
-+    card.placeholder->setVisible(!hasArt);
-+    card.placeholder->setParticipatesInLayout(!hasArt);
-+
-+    auto position = player.positionUs;
-+    if (card.pendingSeekUs >= 0 && now < card.pendingUntil && std::abs(position - card.pendingSeekUs) > 500000) {
-+      position = card.pendingSeekUs;
-+    } else {
-+      card.pendingSeekUs = -1;
-+    }
-+    const bool timed = player.lengthUs > 0;
-+    card.elapsed->setText(timed ? timeLabel(position) : "");
-+    card.duration->setText(timed ? timeLabel(player.lengthUs) : "");
-+    card.progress->setEnabled(timed && player.canSeek);
-+    // Programmatic updates must never seek, including setRange changes.
-+    m_syncingProgress = true;
-+    card.progress->setRange(0.0, timed ? static_cast<double>(player.lengthUs) / 1000000.0 : 1.0);
-+    if (!card.progress->dragging()) {
-+      card.progress->setValue(timed ? static_cast<double>(position) / 1000000.0 : 0.0);
-+    }
-+    m_syncingProgress = false;
-+    card.progress->setVisible(timed);
-+    card.elapsed->setVisible(timed);
-+    card.duration->setVisible(timed);
-+    // Keep the pin at the far edge even for live media without a duration.
-+  }
-+}
-+
-+void MediaTab::doLayout(Renderer& renderer, float width, float height) {
-+  if (m_root == nullptr || m_scroll == nullptr) {
-+    return;
-+  }
-+  m_root->setSize(width, height);
-+  m_root->layout(renderer);
-+  const float cardWidth = std::max(1.0F, m_scroll->contentViewportWidth());
-+  // Reserve identical artwork, padding, and transport columns for every card.
-+  const float fixedWidth = (72.0F + 4.0F * Style::spaceMd + 3.0F * 36.0F + 2.0F * Style::spaceXs) * contentScale();
-+  const float textWidth = std::max(1.0F, cardWidth - fixedWidth);
-+  for (auto& card : m_cards) {
-+    card.root->setMinWidth(cardWidth);
-+    card.details->setMinWidth(textWidth);
-+    card.details->setMaxWidth(textWidth);
-+    card.source->setMaxWidth(textWidth);
-+    card.title->setMaxWidth(textWidth);
-+    card.artist->setMaxWidth(textWidth);
-+  }
-+  m_root->layout(renderer);
-+}
- void MediaTab::doUpdate(Renderer& renderer) {
+ }
+ 
+-void MediaTab::doUpdate(Renderer& renderer) {
 -  if (!m_active) {
 -    m_progressTimer.stop();
 -    return;
@@ -1193,17 +1043,8 @@
 -        if (!m_active) {
 -          return;
 -        }
-+  if (m_active) {
-+    refresh(renderer);
-+  }
-+}
-+void MediaTab::setActive(bool active) {
-+  m_active = active;
-+  if (active && !m_timer.active()) {
-+    m_timer.startRepeating(std::chrono::milliseconds(1000), [this] {
-+      if (m_active) {
-         PanelManager::instance().requestUpdateOnly();
-         PanelManager::instance().requestRedraw();
+-        PanelManager::instance().requestUpdateOnly();
+-        PanelManager::instance().requestRedraw();
 -      });
 -    }
 -  } else {
@@ -1213,7 +1054,7 @@
 -  refresh(renderer);
 -}
 -
--void MediaTab::onFrameTick(float deltaMs) {
+-void MediaTab::onFrameTick(float deltaMs, Renderer& /*renderer*/) {
 -  if (!m_active || !m_showVisualizer) {
 -    return;
 -  }
@@ -1225,7 +1066,7 @@
 -      m_visualizerSpectrum->setValues(m_spectrum->values(m_spectrumListenerId));
 -    }
 -
--    m_visualizerSpectrum->tick(deltaMs);
+-    m_visualizerSpectrum->advance(deltaMs, m_spectrum != nullptr && !m_spectrum->idle());
 -  }
 -}
 -
@@ -1246,20 +1087,13 @@
 -  }
 -}
 -
-+      }
-+    });
-+  } else if (!active) {
-+    m_timer.stop();
-+  }
-+}
- void MediaTab::onClose() {
+-void MediaTab::onClose() {
 -  m_progressTimer.stop();
 -  if (m_spectrum != nullptr && m_spectrumListenerId != 0) {
 -    m_spectrum->removeChangeListener(m_spectrumListenerId);
 -    m_spectrumListenerId = 0;
 -  }
-+  m_timer.stop();
-   m_active = false;
+-  m_active = false;
 -  m_rootLayout = nullptr;
 -  m_mediaColumn = nullptr;
 -  m_visualizerColumn = nullptr;
@@ -1334,17 +1168,33 @@
 -  const std::weak_ptr<void> aliveGuard = m_aliveGuard;
 -  DeferredCall::callLater([this, aliveGuard, seekBusName, targetUs] {
 -    if (aliveGuard.expired() || m_mpris == nullptr) {
--      return;
--    }
++void MediaTab::control(const std::string& bus, int action) {
++  DeferredCall::callLater([this, guard = std::weak_ptr<void>(m_aliveGuard), bus, action]() {
++    if (guard.expired() || m_mpris == nullptr || !m_mpris->players().contains(bus)) {
+       return;
+     }
 -    if (!seekBusName.empty()) {
--      (void)m_mpris->setPosition(seekBusName, targetUs);
--    } else {
--      (void)m_mpris->setPositionActive(targetUs);
--    }
--    PanelManager::instance().refresh();
--  });
--}
--
+-      m_mpris->setPosition(seekBusName, targetUs);
++    if (action == 3) {
++      if (m_mpris->pinnedPlayerPreference() == bus) {
++        m_mpris->clearPinnedPlayerPreference();
++      } else {
++        m_mpris->setPinnedPlayerPreference(bus);
++      }
+     } else {
+-      m_mpris->setPositionActive(targetUs);
++      if (action == 0) {
++        m_mpris->previous(bus);
++      } else if (action == 1) {
++        m_mpris->playPause(bus);
++      } else if (action == 2) {
++        m_mpris->next(bus);
++      }
+     }
+     PanelManager::instance().refresh();
+   });
+ }
+ 
 -void MediaTab::refresh(Renderer& renderer) {
 -  std::vector<MprisPlayerInfo> players;
 -  std::optional<MprisPlayerInfo> active;
@@ -1406,23 +1256,108 @@
 -      || m_playPauseButton == nullptr
 -      || m_repeatButton == nullptr
 -      || m_shuffleButton == nullptr) {
--    return;
--  }
--
++void MediaTab::seek(const std::string& bus, double seconds) {
++  auto card = std::ranges::find(m_cards, bus, &Card::busName);
++  if (card == m_cards.end()) {
+     return;
+   }
++  const auto position = static_cast<std::int64_t>(std::max(0.0, seconds) * 1000000.0);
++  card->pendingSeekUs = position;
++  card->pendingUntil = std::chrono::steady_clock::now() + std::chrono::seconds(2);
++  DeferredCall::callLater([this, guard = std::weak_ptr<void>(m_aliveGuard), bus, track = card->trackId, position]() {
++    if (guard.expired() || m_mpris == nullptr) {
++      return;
++    }
++    const auto it = m_mpris->players().find(bus);
++    if (it != m_mpris->players().end() && it->second.trackId == track && it->second.canSeek) {
++      m_mpris->setPosition(bus, position);
++    }
++  });
++}
+ 
 -  if (active.has_value()) {
 -    const auto& player = *active;
 -    m_lastActiveSnapshot = player;
 -    m_lastActiveSeenAt = now;
 -    const std::string trackSignature = std::format(
 -        "{}\n{}\n{}\n{}\n{}", player.trackId, player.title, joinArtists(player.artists), player.album, player.sourceUrl
--    );
++void MediaTab::refresh(Renderer& renderer) {
++  if (m_list == nullptr || m_mpris == nullptr) {
++    return;
++  }
++  auto players = m_mpris->listPlayers();
++  const auto pinned = m_mpris->pinnedPlayerPreference();
++  std::stable_partition(players.begin(), players.end(), [&pinned](const auto& player) {
++    return player.busName == pinned;
++  });
++  bool same = m_initialized && players.size() == m_cards.size();
++  for (std::size_t i = 0; same && i < players.size(); ++i) {
++    same = players[i].busName == m_cards[i].busName;
++  }
++  if (!same) {
++    rebuild(players);
++    PanelManager::instance().requestLayout();
++  }
++  const auto now = std::chrono::steady_clock::now();
++  for (std::size_t i = 0; i < players.size(); ++i) {
++    const auto& player = players[i];
++    auto& card = m_cards[i];
++    if (card.trackId != player.trackId) {
++      card.trackId = player.trackId;
++      card.pendingSeekUs = -1;
++    }
++    card.source->setText(player.identity);
++    card.title->setText(player.title.empty() ? "Unknown track" : player.title);
++    card.artist->setText(mpris::joinArtists(player.artists));
++    card.playPause->setGlyph(player.playbackStatus == "Playing" ? "media-pause" : "media-play");
++    card.playPause->setEnabled(
++        player.canControl && (player.playbackStatus == "Playing" ? player.canPause : player.canPlay)
+     );
 -    std::int64_t livePositionUs = player.positionUs;
 -    if (player.lengthUs > 0) {
 -      livePositionUs = std::clamp<std::int64_t>(livePositionUs, 0, player.lengthUs);
--    } else {
++    card.previous->setEnabled(player.canControl && player.canGoPrevious);
++    card.next->setEnabled(player.canControl && player.canGoNext);
++    card.pin->setVariant(pinned == player.busName ? ButtonVariant::Secondary : ButtonVariant::Ghost);
++    card.pin->setTooltip(
++        pinned == player.busName ? "Release media keys to automatic selection" : "Use media keys for this source"
++    );
++
++    const std::string url = mpris::effectiveArtUrl(player);
++    if (url != card.artUrl) {
++      card.artwork->clear(renderer);
++      card.artUrl.clear();
++    }
++    if (!url.empty() && !card.artwork->hasImage()) {
++      const auto path = mpris::resolveArtworkSource(
++          m_httpClient, m_pendingArtDownloads, url, [] { PanelManager::instance().refresh(); }, m_aliveGuard
++      );
++      if (!path.empty() && card.artwork->setSourceFile(renderer, path, 256, true, true)) {
++        card.artUrl = url;
++      }
++    }
++    const bool hasArt = card.artwork->hasImage();
++    card.artwork->setVisible(hasArt);
++    card.artwork->setParticipatesInLayout(hasArt);
++    card.placeholder->setVisible(!hasArt);
++    card.placeholder->setParticipatesInLayout(!hasArt);
++
++    auto position = player.positionUs;
++    if (card.pendingSeekUs >= 0 && now < card.pendingUntil && std::abs(position - card.pendingSeekUs) > 500000) {
++      position = card.pendingSeekUs;
+     } else {
 -      livePositionUs = std::max<std::int64_t>(0, livePositionUs);
--    }
++      card.pendingSeekUs = -1;
+     }
 -
+-    // A new track ends a seek still waiting on the previous one, and the hold after it, so the bar starts at 0:00.
+-    if (m_positionBusName == player.busName
+-        && !m_positionTrackSignature.empty()
+-        && m_positionTrackSignature != trackSignature) {
+-      m_pendingSeekBusName.clear();
+-      m_pendingSeekUs = -1;
+-      m_progressSettleUntil = {};
+-    }
 -    const bool pendingMatchesPlayer = m_pendingSeekBusName.empty() || m_pendingSeekBusName == player.busName;
 -    const bool seekArrived = pendingMatchesPlayer
 -        && m_pendingSeekUs >= 0
@@ -1522,7 +1457,12 @@
 -    const bool progressInteracting = m_progressSlider->dragging() || seekPending || withinProgressSettle;
 -    const bool progressEnabled = player.canSeek && (trackLengthUs > 0 || progressInteracting);
 -
--    m_syncingProgress = true;
++    const bool timed = player.lengthUs > 0;
++    card.elapsed->setText(timed ? timeLabel(position) : "");
++    card.duration->setText(timed ? timeLabel(player.lengthUs) : "");
++    card.progress->setEnabled(timed && player.canSeek);
++    // Programmatic updates must never seek, including setRange changes.
+     m_syncingProgress = true;
 -    m_progressSlider->setEnabled(progressEnabled);
 -    if (trackLengthUs > 0) {
 -      m_progressSlider->setRange(0.0, static_cast<double>(trackLengthUs) / 1000000.0);
@@ -1532,8 +1472,11 @@
 -      const double nextValue =
 -          sliderMax > 0.0 ? std::clamp(static_cast<double>(displayPositionUs) / 1000000.0, 0.0, sliderMax) : 0.0;
 -      m_progressSlider->setValue(nextValue);
--    }
--    m_syncingProgress = false;
++    card.progress->setRange(0.0, timed ? static_cast<double>(player.lengthUs) / 1000000.0 : 1.0);
++    if (!card.progress->dragging()) {
++      card.progress->setValue(timed ? static_cast<double>(position) / 1000000.0 : 0.0);
+     }
+     m_syncingProgress = false;
 -
 -    m_playPauseButton->setGlyph(playPauseGlyph(player.playbackStatus));
 -    m_playPauseButton->setVariant(ButtonVariant::Primary);
@@ -1552,7 +1495,11 @@
 -    m_lastLoopStatus = player.loopStatus;
 -    m_lastShuffle = player.shuffle;
 -    return;
--  }
++    card.progress->setVisible(timed);
++    card.elapsed->setVisible(timed);
++    card.duration->setVisible(timed);
++    // Keep the pin at the far edge even for live media without a duration.
+   }
 -
 -  m_pendingSeekBusName.clear();
 -  m_pendingSeekUs = -1;
@@ -1591,8 +1538,8 @@
 -  m_lastPlaybackStatus.clear();
 -  m_lastLoopStatus.clear();
 -  m_lastShuffle = false;
--}
--
+ }
+ 
 -void MediaTab::toggleVisualizer() {
 -  m_showVisualizer = !m_showVisualizer;
 -  if (m_config != nullptr) {
@@ -1610,27 +1557,64 @@
 -
 -void MediaTab::updateSpectrumSubscription() {
 -  if (m_spectrum == nullptr) {
--    return;
--  }
++void MediaTab::doLayout(Renderer& renderer, float width, float height) {
++  if (m_root == nullptr || m_scroll == nullptr) {
+     return;
+   }
 -  const bool shouldSubscribe = m_active && m_showVisualizer;
 -  if (shouldSubscribe && m_spectrumListenerId == 0) {
 -    m_spectrumListenerId = m_spectrum->addChangeListener(kVisualizerBandCount, [this] {
 -      if (!m_active || !m_showVisualizer || m_spectrum->idle()) {
 -        return;
--      }
++  m_root->setSize(width, height);
++  m_root->layout(renderer);
++  const float cardWidth = std::max(1.0F, m_scroll->contentViewportWidth());
++  // Reserve identical artwork, padding, and transport columns for every card.
++  const float fixedWidth = (72.0F + 4.0F * Style::spaceMd + 3.0F * 36.0F + 2.0F * Style::spaceXs) * contentScale();
++  const float textWidth = std::max(1.0F, cardWidth - fixedWidth);
++  for (auto& card : m_cards) {
++    card.root->setMinWidth(cardWidth);
++    card.details->setMinWidth(textWidth);
++    card.details->setMaxWidth(textWidth);
++    card.source->setMaxWidth(textWidth);
++    card.title->setMaxWidth(textWidth);
++    card.artist->setMaxWidth(textWidth);
++  }
++  m_root->layout(renderer);
++}
++void MediaTab::doUpdate(Renderer& renderer) {
++  if (m_active) {
++    refresh(renderer);
++  }
++}
++void MediaTab::setActive(bool active) {
++  m_active = active;
++  if (active && !m_timer.active()) {
++    m_timer.startRepeating(std::chrono::milliseconds(1000), [this] {
++      if (m_active) {
++        PanelManager::instance().requestUpdateOnly();
++        PanelManager::instance().requestRedraw();
+       }
 -      PanelManager::instance().requestFrameTick();
--    });
+     });
 -  } else if (!shouldSubscribe && m_spectrumListenerId != 0) {
 -    m_spectrum->removeChangeListener(m_spectrumListenerId);
 -    m_spectrumListenerId = 0;
--  }
--}
++  } else if (!active) {
++    m_timer.stop();
+   }
+ }
++void MediaTab::onClose() {
++  m_timer.stop();
++  m_active = false;
 +  m_root = nullptr;
 +  m_scroll = nullptr;
 +  m_list = nullptr;
 +  m_cards.clear();
 +  m_initialized = false;
 +}
+diff --git a/src/shell/control_center/tabs/media_tab.h b/src/shell/control_center/tabs/media_tab.h
+index a06bd201a01a..576c28354e1c 100644
 --- a/src/shell/control_center/tabs/media_tab.h
 +++ b/src/shell/control_center/tabs/media_tab.h
 @@ -5,111 +5,71 @@
@@ -1670,7 +1654,7 @@
 -
    std::unique_ptr<Flex> create() override;
 -  std::unique_ptr<Flex> createHeaderActions() override;
--  void onFrameTick(float deltaMs) override;
+-  void onFrameTick(float deltaMs, Renderer& renderer) override;
    void setActive(bool active) override;
    void onClose() override;
 -  bool dismissTransientUi() override;
@@ -1723,13 +1707,7 @@
 -  WaylandConnection* m_wayland = nullptr;
 -  RenderContext* m_renderContext = nullptr;
 -  std::uint64_t m_spectrumListenerId = 0;
-+  Flex* m_root = nullptr;
-+  ScrollView* m_scroll = nullptr;
-+  Flex* m_list = nullptr;
-+  std::vector<Card> m_cards;
-+  std::unordered_set<std::string> m_pendingArtDownloads;
-+  Timer m_timer;
-   bool m_active = false;
+-  bool m_active = false;
 -
 -  Flex* m_rootLayout = nullptr;
 -  Flex* m_mediaColumn = nullptr;
@@ -1759,15 +1737,18 @@
 -  std::string m_lastPlaybackStatus;
 -  std::string m_lastLoopStatus;
 -  bool m_lastShuffle = false;
-+  bool m_initialized = false;
-   bool m_syncingProgress = false;
+-  bool m_syncingProgress = false;
 -  std::int64_t m_pendingSeekUs = -1;
 -  std::string m_pendingSeekBusName;
 -  std::chrono::steady_clock::time_point m_pendingSeekUntil;
 -  std::chrono::steady_clock::time_point m_progressSettleUntil;
 -  bool m_playerMenuOpen = false;
 -  std::vector<std::string> m_playerBusNames;
--  std::unordered_set<std::string> m_pendingArtDownloads;
++  Flex* m_root = nullptr;
++  ScrollView* m_scroll = nullptr;
++  Flex* m_list = nullptr;
++  std::vector<Card> m_cards;
+   std::unordered_set<std::string> m_pendingArtDownloads;
 -  std::string m_positionBusName;
 -  std::string m_positionTrackId;
 -  std::string m_positionTrackSignature;
@@ -1779,4 +1760,8 @@
 -  std::chrono::steady_clock::time_point m_nextRealtimeUpdateAt;
 -  std::chrono::steady_clock::time_point m_lastRealtimeMprisPollAt;
 -  Timer m_progressTimer;
++  Timer m_timer;
++  bool m_active = false;
++  bool m_initialized = false;
++  bool m_syncingProgress = false;
  };

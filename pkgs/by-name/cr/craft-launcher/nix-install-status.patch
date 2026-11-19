@@ -1,0 +1,65 @@
+diff --git a/crates/native/src/detect.rs b/crates/native/src/detect.rs
+index f7b86ead3709..27119aec663d 100644
+--- a/crates/native/src/detect.rs
++++ b/crates/native/src/detect.rs
+@@ -70,18 +70,16 @@ fn from_manifest(app: &CraftApp, manifest: &Manifest) -> Option<Installed> {
+     if rec.kind == artcraft_launcher_core::PackageKind::Dmg {
+         return macos::read_bundle(app, &rec.path);
+     }
++    #[cfg(unix)]
++    let source = if rec.path.canonicalize().is_ok_and(|path| crate::nix::is_store_path(&path)) { InstallSource::Nix } else { InstallSource::Launcher };
++    #[cfg(not(unix))]
++    let source = InstallSource::Launcher;
+     Some(Installed {
+         version: version::parse(&rec.version),
+-        source: {
+-            #[cfg(unix)]
+-            let source = if rec.path.canonicalize().is_ok_and(|path| crate::nix::is_store_path(&path)) { InstallSource::Nix } else { InstallSource::Launcher };
+-            #[cfg(not(unix))]
+-            let source = InstallSource::Launcher;
+-            source
+-        },
++        source,
+         location: rec.path.display().to_string(),
+         package: None,
+-        externally_managed: false,
++        externally_managed: source == InstallSource::Nix,
+         origin: None,
+         installation: None,
+     })
+@@ -222,12 +220,13 @@ pub mod macos {
+             .map(String::as_str)
+             .chain(["CFBundleShortVersionString", "CFBundleVersion"])
+             .find_map(|k| dict.get(k).and_then(plist::Value::as_string));
++        let source = if path.canonicalize().is_ok_and(|path| crate::nix::is_store_path(&path)) { InstallSource::Nix } else { InstallSource::MacApp };
+         Some(Installed {
+             version: text.and_then(version::parse),
+-            source: if path.canonicalize().is_ok_and(|path| crate::nix::is_store_path(&path)) { InstallSource::Nix } else { InstallSource::MacApp },
++            source,
+             location: path.display().to_string(),
+             package: None,
+-            externally_managed: false,
++            externally_managed: source == InstallSource::Nix,
+             origin: None,
+             installation: None,
+         })
+diff --git a/crates/native/src/nix.rs b/crates/native/src/nix.rs
+index 2ca5ec9ee7a4..6f9caa0da5a4 100644
+--- a/crates/native/src/nix.rs
++++ b/crates/native/src/nix.rs
+@@ -27,6 +27,14 @@ pub fn detect(app: &CraftApp) -> Option<Installed> {
+         canonical.ancestors().find(|path| path.extension().is_some_and(|extension| extension == "app"))
+             .map(Path::to_path_buf).unwrap_or(canonical)
+     } else { PathBuf::from(&executable) };
+-    Some(Installed { version: current, source: InstallSource::Nix, location: location.display().to_string(), package: Some(app.id.to_owned()) })
++    Some(Installed {
++        version: current,
++        source: InstallSource::Nix,
++        location: location.display().to_string(),
++        package: Some(app.id.to_owned()),
++        externally_managed: true,
++        origin: None,
++        installation: None,
++    })
+ }
+ 

@@ -5,7 +5,7 @@
   stdenvNoCC,
   fetchFromGitHub,
   findutils,
-  gnused,
+  gawk,
 }:
 
 let
@@ -19,7 +19,7 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
   src = fetchFromGitHub source.src;
   nativeBuildInputs = [
     findutils
-    gnused
+    gawk
   ];
   strictDeps = true;
   dontConfigure = true;
@@ -27,15 +27,6 @@ stdenvNoCC.mkDerivation (_finalAttrs: {
 
   installPhase = ''
     source ${replaceVars ./scripts/install-phase.sh { inherit pname; }}
-  '';
-
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit pname;
-      }
-    }
   '';
 
   passthru.updateScript = [

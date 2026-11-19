@@ -7,9 +7,10 @@ The additional independence requirement applies to every public output.
 
 Each public attribute has `pkgs/by-name/<first-two-letters>/<name>/package.nix`.
 The expression is a function returning a derivation, with dependencies supplied
-by upstream Nixpkgs. Keep its source pins, patches, helper modules, tests and
-updater in that directory. Do not import sibling packages, repository tooling,
-personal configuration modules, flake inputs, or a private Nixpkgs package set.
+by upstream Nixpkgs. Keep its source pins, patches, build helpers, checks and
+updater entry points in that directory. The application build must remain
+independent of sibling packages, repository tooling, personal configuration
+modules, flake inputs and private Nixpkgs package sets.
 
 `pkgs/default.nix` discovers package directories and supplies the upstream scope.
 Declare compatibility in each package's `meta.platforms` and, when needed,
@@ -75,7 +76,7 @@ For a macOS application, set `mainDarwinApp` to the exact installed directory
 under `Applications`, including `.app`. Gate this field for callers older than
 Nixpkgs 26.11. Keep a separate `mainProgram` only when the output installs a
 command in `bin`. Preserve signed vendor plists; validate identities, executables
-and icons in package-local install checks. Locally authored plists use a
+and icons during manual package review when needed. Locally authored plists use a
 structured writer and the actual platform deployment minimum.
 
 Use `makeDesktopItem` and `copyDesktopItems` for newly authored Linux launchers.
@@ -150,8 +151,8 @@ solves a concrete problem; it is not a reason to rewrite existing packages.
 
 Use structured parsers, checked subprocess argument lists and bounded network
 requests in Python. Run Ruff formatting, lint and type checks. Preserve native
-compiler warnings, sanitizers and package tests. Repository scripts orchestrate
-these tools but are never imported by a package.
+compiler warnings, sanitizers and package tests. Repository scripts orchestrate these tools. Package builds use their own
+helpers and upstream build tools.
 
 ## Updates and verification
 
@@ -159,7 +160,12 @@ Updaters locate their source files relative to `__file__`, accept `--help`
 without network access, and offer a preview before changing pins. Each updater
 has a package-local `update.nix` built with `writeShellApplication`; declare its
 Python libraries, Nix, certificates, and any Git, extraction or inspection tools.
-Keep updater dependencies separate from the application closure.
+Keep updater dependencies separate from the application closure. Each wrapper
+invokes its package-local launcher so an editable recipe directory still works
+on its own. Shared launcher and updater helpers have canonical copies under
+`scripts/`. The process helper is owned by the notification-process package.
+Regenerate the local mirrors with `bash scripts/sync-updater-mirrors.sh --write`.
+The update workflow checks that mirrors match their owners.
 
 The daily scheduled runner discovers these entry points and runs each in a
 separate checkout. Each changed package gets its own signed commit, branch,
@@ -199,24 +205,16 @@ releases and the consolidated Apple developer-font entries still require manual
 source and inventory review. A package without an updater must document that
 choice.
 
-Run `just check`, `just lint`, and `just test`. The contract check evaluates
-copied package directories with all personal dependency names poisoned, forces
-metadata on all systems and derivation paths on supported systems, and checks
-registry coverage. It also evaluates the overlay and checks that its names
-match supported packages, preventing recursion and unsupported overrides. The template check builds native hook substitutions and parses their generated
-Bash without building the applications. Helper regressions exercise sourcing,
-quoting, runtime inputs and Python libraries. The layout check
-rejects escaping symlinks and runs every updater's help from a temporary copy.
-The source-pin check validates non-placeholder SRI hashes and rejects common
-moving branch and release names in `source.nix`; package-local validators check structured inventories.
-The updater check runs all native commands from standalone editable copies with
-an empty caller PATH and tests source-directory arguments. Transaction and
-dispatcher tests cover rollback, file modes and changes to already dirty files.
-Python test modules run in separate processes to avoid collisions between local
-module names such as `update` and `font_support`.
-Metadata validation uses `checkMeta = true`. The package-policy check exercises
-default unfree rejection, selective package-name consent and source provenance
-through the public import and overlay interfaces on all supported flake systems.
+Run `just check` for structural output evaluation, `just lint` for Python
+analysis, and `just test` for the Nix library suite. `npm run check` runs only
+TypeScript checking, lint and formatting. Package hook syntax is checked without
+building application closures. Static source-pin and NUR metadata checks remain.
+
+Project-authored behavioral, update-transaction, packaging-contract, application
+and install-check suites are removed. Upstream software's own test defaults and
+production input/runtime safety checks remain. Add Nix tests only for reusable
+functions under `lib/`; module assertions validate invalid setting combinations.
+See [testing](testing.md) for the current execution boundary.
 
 CI evaluates all packages and builds eligible changed packages on matching Linux
 and macOS runners. The reasoned exclusions in `.github/ci-policy.json` govern

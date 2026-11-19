@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+bash scripts/sync-updater-mirrors.sh
+
 # Revision-dependent tooling uses revCount. A shallow source can list updaters but fails
 # when their pinned Nixpkgs is imported, after costly shell realization.
 if [[ $(git rev-parse --is-shallow-repository) != false ]]; then

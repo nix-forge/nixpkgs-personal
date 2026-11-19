@@ -143,7 +143,7 @@
       "reviewNote": "No explicit per-skill license at the pinned revision; preserve unchanged and exclude from the free selection."
     },
     "docx": {
-      "skillHash": "9e8202e2524a9ed87da67a5b3eaa76e8e6038f4171f8251ad6aaefd34e82a3df",
+      "skillHash": "895d5aa6c4cd98e4aed4c995d846f056f3549086e79bcd6617afea6014f82288",
       "notices": {
         "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
       },
@@ -183,7 +183,7 @@
       "licenses": ["asl20"]
     },
     "pptx": {
-      "skillHash": "b60bd282c6e01297f0eefe71594d1756dbf60a584f524c04a803ec6950b7fba2",
+      "skillHash": "598c981d93f2173b251f86a4bc94e9fb4e4f5ddaa314ba2dd4eca24b7a07808e",
       "notices": {
         "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
       },
@@ -231,7 +231,7 @@
       "licenses": ["asl20"]
     },
     "xlsx": {
-      "skillHash": "caa1e1c29cf974c8d874bf3d0a70838445e7342b570f856ddb3e4a21ef7c7e8b",
+      "skillHash": "f32b1c2b5d5d31e02964df110d6489613d9345f86830c118cfe24159d8448ce6",
       "notices": {
         "LICENSE.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
       },

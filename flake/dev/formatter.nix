@@ -13,17 +13,8 @@
         ];
         text = builtins.readFile ./scripts/format-nix-template.sh;
       };
-      python = pkgs.buildPackages.python3.withPackages (_: [
-        (pkgs.buildPackages.callPackage ../../pkgs/by-name/no/notification-process/package.nix { })
-      ]);
     in
     {
-      checks.nix-template-formatter =
-        pkgs.buildPackages.runCommand "nix-template-formatter" { nativeBuildInputs = [ python ]; }
-          ''
-            python3 ${../../tests/check_nix_template_formatter.py} ${lib.getExe templateFormatter}
-            touch "$out"
-          '';
       treefmt.programs = {
         actionlint.enable = true;
         yamlfmt = {

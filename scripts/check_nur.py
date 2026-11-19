@@ -155,7 +155,7 @@ def main() -> None:
             "--option",
             "allow-import-from-derivation",
             "false",
-            str(ROOT / "tests/nur-supported.nix"),
+            str(ROOT / "scripts/nur-supported.nix"),
             "--argstr",
             "nixpkgsPath",
             str(nixpkgs),

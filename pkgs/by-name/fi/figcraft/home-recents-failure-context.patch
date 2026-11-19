@@ -1,6 +1,8 @@
+diff --git a/crates/ui-egui/src/home_tests.rs b/crates/ui-egui/src/home_tests.rs
+index dfe3a0a7e5e2..d3b794d21cac 100644
 --- a/crates/ui-egui/src/home_tests.rs
 +++ b/crates/ui-egui/src/home_tests.rs
-@@ -215,9 +215,18 @@
+@@ -382,9 +382,18 @@ fn a_first_run_offers_templates_on_recents_and_recent_files_replace_them() {
      assert_eq!(u.app.session.doc().unwrap().name, "Landing page");
      // With a recent file, the list shows in the row's place.
      u.app.ui.home = true;

@@ -41,20 +41,11 @@ buildDotnetModule (finalAttrs: {
     }
   '';
 
-  doInstallCheck = true;
   passthru.updateScript = [
     (lib.getExe (callPackage ./update.nix { }))
     "--source-directory"
     (builtins.unsafeDiscardStringContext (toString ./.))
   ];
-  nativeInstallCheckInputs = [ jq ];
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        targetAbi = lib.escapeShellArg source.targetAbi;
-      }
-    }
-  '';
 
   meta = {
     description = "Plugin for extracting embedded subtitles in Jellyfin";

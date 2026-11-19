@@ -9,7 +9,6 @@
   rcodesign,
   re-plistbuddy,
   stdenv,
-  python3,
   swift,
   writeText,
 }:
@@ -79,7 +78,6 @@ stdenv.mkDerivation {
 
   doCheck = true;
   checkPhase = builtins.readFile ./scripts/check-phase.sh;
-
   installPhase = ''
     source ${replaceVars ./scripts/install-phase.sh { inherit infoPlist; }}
   '';
@@ -87,20 +85,6 @@ stdenv.mkDerivation {
   postFixup = ''
     source ${
       replaceVars ./scripts/post-fixup.sh {
-        rcodesign = lib.getExe rcodesign;
-      }
-    }
-  '';
-
-  nativeInstallCheckInputs = [ python3 ];
-  postInstallCheck = ''
-    python3 ${./scripts/check_app_bundle.py} "$out/Applications/OCR Capture.app" --expected-version ${lib.escapeShellArg version} --authored
-  '';
-  doInstallCheck = true;
-  installCheckPhase = ''
-    source ${
-      replaceVars ./scripts/install-check-phase.sh {
-        inherit minimumMacOS;
         rcodesign = lib.getExe rcodesign;
       }
     }

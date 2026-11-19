@@ -1,6 +1,6 @@
 # FilmCraft
 
-Source build of [FilmCraft 0.8.0](https://github.com/storytold/filmcraft/releases/tag/v0.8.0) at `f03e21556d8e3a7155b91892d958debd5255d7af`.
+Source build of [FilmCraft 0.20.1](https://github.com/storytold/filmcraft/releases/tag/v0.20.1) at `cedf0c9bd060eb06a977d532402be2097c9ebe42`.
 Installs `filmcraft` and `filmcraft-cli`, retaining the default automation/plugin capabilities.
 CPU Whisper transcription and model downloads are enabled. Models download at runtime on request; no model or service credentials are bundled.
 The pinned craft-fonts collection is embedded with required-input checking for multilingual text.
