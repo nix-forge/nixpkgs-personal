@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "packages": {
     "craft-fonts": {
-      "sourceRevision": "3d9ab3a132ed0eff457e424226a435a901da30d3",
+      "sourceRevision": "cc9269cd8d8258785dac603fba3122e5d2556795",
       "patches": []
     },
     "craft-launcher": {
-      "sourceRevision": "cbae640688c5fa3daa120a7f5e050f8e24148a47",
+      "sourceRevision": "9f950e01ef728a3d32d997d59607051dee98a51d",
       "patches": [
         {
           "file": "appimage-runtime-and-safe-refresh.patch",
-          "sha256": "9905276fe5a954300c1dd3d6ee6835ca3738549fce03eec36413b854f591d3e1",
+          "sha256": "2587ebf4dbb29e947a6d85942fd8609c349821f9bf3de9d6108d3a67fec0a011",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/craft-launcher/pull/328",
@@ -21,24 +21,8 @@
           "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
         {
-          "file": "atomic-state-upstream-314.patch",
-          "sha256": "450e5f468be201f631b7e5ce753b93957d405fcc5e2a5b41ac5ed65901799851",
-          "kind": "upstream-backport",
-          "upstream": ["https://github.com/storytold/craft-launcher/pull/314"],
-          "reason": "Retain atomic settings and recovery behavior from merged upstream PR314 at this older source pin, excluding the identical tempfile manifest change already supplied by the accepted backup fix.",
-          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
-        },
-        {
-          "file": "autostart-exec-quoting.patch",
-          "sha256": "8aa77f4c4a587b119aa95b60f6e6ea36c07c01372cf81545331896a37fd29225",
-          "kind": "upstream-candidate",
-          "upstream": ["https://github.com/storytold/craft-launcher/pull/420"],
-          "reason": "Escape executable paths according to the Desktop Entry specification while preserving the packaged command renderer. Validate native autostart paths with spaces, percent signs and quoting when reviewing source adoption.",
-          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
-        },
-        {
           "file": "disable-unused-gtk-tray-features.patch",
-          "sha256": "f693bb3e76e1d84f3ace653ada4cc0464981cee43c329d387f79449236fab8f0",
+          "sha256": "e4f13607d71dda1c7772477b69033c6acfb68c56e5ddef89368f06289d9b677c",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/craft-launcher/blob/cbae640688c5fa3daa120a7f5e050f8e24148a47/apps/artcraft-launcher/Cargo.toml",
@@ -61,19 +45,8 @@
           "removeWhen": "Remove when the original affected compiler/configuration builds libgomp without this patch. Retain exact options and newly reconstructed preprocessed source with its provenance. A GCC report or mailing-list patch requires an actual-code reproduction and applicable runtime-library validation; do not present private negative-input truncation as a valid public-API defect."
         },
         {
-          "file": "macos-quit-handshake.patch",
-          "sha256": "10d0e64520ce48d5b11ac0f60367275b323b1cf94d947a4e04b0b8553891340c",
-          "kind": "upstream-backport",
-          "upstream": [
-            "https://github.com/storytold/craft-launcher/pull/335",
-            "https://github.com/storytold/craft-launcher/issues/333"
-          ],
-          "reason": "Route the launcher's own close request through craft-quit after its close-to-tray decision, addressing the native AppKit termination failure covered by proposal 335. Native quit, tray and packaged dependency validation remain required before retirement. The owning PR 335 is merged; the selected application source still predates it.",
-          "removeWhen": "Remove when the selected Launcher source includes the native close-request repair and native macOS quit, close-to-tray and packaged craft-quit dependency checks pass without this patch."
-        },
-        {
           "file": "nix-bundle-integration.patch",
-          "sha256": "769dde877986dc76a591dc6b8f948cd914e3b52af3d926ea39d362747ad168c7",
+          "sha256": "923e1bc1f507a6e018dddd85bb003abaf79fcc5fd88c68e051f1d0ccd3184bfd",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/craft-launcher/blob/cbae640688c5fa3daa120a7f5e050f8e24148a47/AGENTS.md"
@@ -83,7 +56,7 @@
         },
         {
           "file": "nix-cjk-fonts.patch",
-          "sha256": "4c901bfbfbf4d189c5fe4cd4189e0217c8955a88ee6072db5146ec49ce4265f4",
+          "sha256": "77ca11da66e99f2472db229425c9f1969698fb28ed4c07943836d835afb94729",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/craft-launcher/issues/220",
@@ -96,7 +69,7 @@
         },
         {
           "file": "nix-discovery-priority.patch",
-          "sha256": "bb3204a51e6c1999223c4087d18a3e3f7d02b9da7f6cc13130b2953f478beb87",
+          "sha256": "0c5139ac76c5fbd7e876ddea537aca3c705b1f04a77fbec7ba46738199d13d61",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/craft-launcher/blob/cbae640688c5fa3daa120a7f5e050f8e24148a47/AGENTS.md",
@@ -107,7 +80,7 @@
         },
         {
           "file": "nix-linux-process-locale.patch",
-          "sha256": "63dfe5087209e216968fbe2a6497e47bd0abf1d13214a7317abaa323c4d4716d",
+          "sha256": "3903e32637557ffd99c7b473d18e08bc460c386b4700b3ff82d23a5e3aee82bf",
           "kind": "platform-workaround",
           "upstream": [
             "https://github.com/storytold/craft-launcher/pull/81",
@@ -118,7 +91,7 @@
         },
         {
           "file": "nix-managed-applications.patch",
-          "sha256": "4a4017cac316cbd7c3e9adb85726ca14e6d3d16b0408a9fc314f55d0c4c3460f",
+          "sha256": "f2fcce017f084d5902a1abc5de387b2ed3ee0cf18caaa43388921d9483f97f87",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/craft-launcher/pull/72",
@@ -130,19 +103,8 @@
           "removeWhen": "Reduce ownership and self-update hunks after the packaged source contains the accepted default-store guard and focused native/macOS regressions pass. Review custom stores, wrapper/version detection and AppImage behavior independently; do not delete the composite patch solely because the narrow proposal merges."
         },
         {
-          "file": "preserve-update-backups-upstream-a2e490.patch",
-          "sha256": "1ad3dfbef34424beabf5f5902ed762bee1ba8b57c6b67aa18b4b2a2af3626c08",
-          "kind": "upstream-backport",
-          "upstream": [
-            "https://github.com/storytold/craft-launcher/commit/a2e490094b705c089bd44f79f2d1a13466d97d62",
-            "https://github.com/storytold/craft-launcher/pull/332"
-          ],
-          "reason": "Accepted upstream repair preserves unrelated user backup paths during updates; the packaged stable release predates it.",
-          "removeWhen": "Remove when the stable source includes commit a2e490094b705c089bd44f79f2d1a13466d97d62 or an equivalent repair and the backup-preservation regressions pass without the backport."
-        },
-        {
           "file": "remove-restricted-marks.patch",
-          "sha256": "7482b30f1fae4cf9ea52f79e985176d39b1087526b1bbdd5dda2c08c3ba64340",
+          "sha256": "ef95f57425f8251a03bd6437778c8cd32788ccf364ff3a224ccef2f65f26f92b",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/craft-launcher/blob/0f295d4b9c90d15c2e38e36c322bdbc0fa943a54/AGENTS.md",
@@ -152,42 +114,51 @@
           "removeWhen": "Retain while this distribution needs the documented branding, font selection or immutable-path policy. Remove only when upstream configuration supports the same policy without source edits."
         },
         {
-          "file": "rustls-security-update.patch",
-          "sha256": "49f04119c5c916c7622424d7b3465b3ebeefb75669b1d51f181bbd23611e470b",
+          "file": "autostart-and-download-tests.patch",
+          "sha256": "bd28002cc4385890831eed1d04a6be361d470c7af86fe3c0789cb91f7d170b91",
           "kind": "upstream-candidate",
           "upstream": [
-            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
-            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
-            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
-            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
-            "https://github.com/advisories/GHSA-vp88-798v-h67f"
+            "https://github.com/storytold/craft-launcher/pull/420",
+            "https://github.com/storytold/craft-launcher/blob/9f950e01ef728a3d32d997d59607051dee98a51d/crates/native/src/http.rs"
           ],
-          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
-          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
+          "reason": "Keep Desktop Entry executable paths and launch arguments quoted correctly. Give the Unix partial-download fixture a retained entry so it exercises the intended error on filesystems that report zero bytes for an empty directory.",
+          "removeWhen": "Remove after the pinned release preserves autostart quoting and exercises the retained-download failure on Linux and macOS."
         },
         {
-          "file": "unix-restart-test-path-helpers.patch",
-          "sha256": "0c82c1f78f774fde05ec5f9706b9b7ab595cf64607983ce8d58214ebb1293eb3",
-          "kind": "upstream-backport",
-          "upstream": ["https://github.com/storytold/craft-launcher/pull/424"],
-          "reason": "Resolve sleep and touch through PATH in the existing Unix restart regression. The owning PR 424 is merged; the selected application source still predates it.",
-          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
+          "file": "localization-and-cjk-collection.patch",
+          "sha256": "1a5a6947aedcfd9956e3748376c200a67fc6f7a2105aa718fcef879d2cc48bf7",
+          "kind": "packaging-policy",
+          "upstream": [
+            "https://github.com/storytold/craft-launcher/blob/9f950e01ef728a3d32d997d59607051dee98a51d/crates/ui-egui/src/cjk_font.rs"
+          ],
+          "reason": "Make the packaged CJK font collection available to Traditional Chinese and Japanese fallbacks and repair translated interface text.",
+          "removeWhen": "Remove when the selected launcher loads the packaged collection for both scripts and ships equivalent translations."
+        },
+        {
+          "file": "nix-install-status.patch",
+          "sha256": "74988d18b3b93b4426585698395c5128c0bfb1c91c3700f4fb61f3679a1d69cd",
+          "kind": "packaging-policy",
+          "upstream": [
+            "https://github.com/storytold/craft-launcher/blob/9f950e01ef728a3d32d997d59607051dee98a51d/crates/native/src/detect.rs"
+          ],
+          "reason": "Mark store-backed installs found through the profile, installer manifest, or macOS bundle as externally managed.",
+          "removeWhen": "Remove when the selected launcher reports all store-backed installations as externally managed and rejects launcher-controlled updates and removal."
+        },
+        {
+          "file": "offline-git-patches.patch",
+          "sha256": "7e51e762887eaf1b5f9a9728feae216f5a542b80da4fb01ccdefee02163e728a",
+          "kind": "packaging-policy",
+          "upstream": [
+            "https://github.com/storytold/craft-launcher/blob/9f950e01ef728a3d32d997d59607051dee98a51d/Cargo.toml"
+          ],
+          "reason": "Remove unused egui Git overrides so locked offline Cargo can resolve the selected workspace from its vendored dependencies.",
+          "removeWhen": "Remove when the pinned workspace resolves from its locked offline inputs with the upstream manifest."
         }
       ]
     },
     "designcraft": {
-      "sourceRevision": "11a51d5b665aec8d6e675bd107a8a01514f10d00",
+      "sourceRevision": "33a467872268c98536231491865b4011b0275b17",
       "patches": [
-        {
-          "file": "print-fixture-timestamp.patch",
-          "sha256": "66d4ba637ec7c23c1e144d576b1e9477f16206028d2e80fe007b46f448b14b6a",
-          "kind": "upstream-candidate",
-          "upstream": [
-            "https://github.com/storytold/designcraft/blob/11a51d5b665aec8d6e675bd107a8a01514f10d00/crates/engine/src/cmd/print.rs"
-          ],
-          "reason": "Give the existing private print seam an optional PDF creation timestamp. Production keeps the default wall clock; the selected-export test passes one fixed time to both exports, retaining exact PDF-byte equality and every spooler, selection and refusal assertion across second boundaries.",
-          "removeWhen": "Remove when upstream uses deterministic metadata in the print-submission fixture and the original full engine suite passes across a controlled delay between exports."
-        },
         {
           "file": "zip-header-identity.patch",
           "sha256": "05469a1ecf7ac1a831db8af8246e7e8e1a00f662898bf4327437e3db34acad47",
@@ -202,7 +173,7 @@
         },
         {
           "file": "archive-security.patch",
-          "sha256": "5bbd97b65c8c2b40a9328ab300be909b93f72c394cb1c46eb6e48c6ca5a1436a",
+          "sha256": "bc42584cd6a5ff480f283b5cc35d65d349919be0bbb1e00d222affddeab51a54",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
@@ -215,18 +186,18 @@
         },
         {
           "file": "appstream-screenshot.patch",
-          "sha256": "69c1a84709ba4a22757394bfe041a25fc465962dce88155c187f1ac90e751f8a",
+          "sha256": "2fe575327f3400d738959ce2348347d884f027210fbb33e4b1dec61c6661226d",
           "kind": "upstream-backport",
           "upstream": [
             "https://github.com/storytold/designcraft/pull/957",
             "https://github.com/storytold/designcraft/commit/dd079e1c965a341b76947005424670a4b3f07be8"
           ],
-          "reason": "Accepted upstream screenshot repair, merged after the packaged stable revision. Keep the local replacement until a source update includes the equivalent metadata fix; upstream may use a different valid image URL. The owning PR 1480 is merged; the selected application source still predates it.",
-          "removeWhen": "Remove after updating to a release containing the merged repair and validating the unpatched installed AppStream XML and referenced image. Review any separate immutable-image-URL policy independently."
+          "reason": "Supply a valid attributed screenshot for the selected application release.",
+          "removeWhen": "Remove when the selected release provides valid AppStream screenshot metadata and the screenshot is available."
         },
         {
           "file": "register-all-craft-fonts.patch",
-          "sha256": "7c6dee47bc3ed7ccaa82016900a0b6dd60f708cbd7ba82f75301b15de61f0449",
+          "sha256": "4edcfc1ed6e5f489d4a89035206c3a8f56f76620eb2dfc3451fe14c9f826ca45",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/designcraft/blob/d07cbbe94c2762865eaefeff4ebfd1dbada180a0/crates/fonts/src/fontdb.rs",
@@ -239,7 +210,7 @@
         },
         {
           "file": "remove-restricted-marks.patch",
-          "sha256": "9353d7160e5e6429103b9e27eb330f45e7a398a2047a14e9c16f1a1cc7592023",
+          "sha256": "496683b0424d00a580b97ed8e55f6d73f19d9c3226f523b4a397a454d04d7829",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/designcraft/blob/d07cbbe94c2762865eaefeff4ebfd1dbada180a0/crates/ui-egui/src/about.rs"
@@ -250,19 +221,11 @@
       ]
     },
     "effectcraft": {
-      "sourceRevision": "05955c08b4fd025f1a09882df72e6dbff1a8148a",
+      "sourceRevision": "582344dd4ef462362c02e56e3094de7af01847ab",
       "patches": [
         {
-          "file": "appstream-screenshot.patch",
-          "sha256": "ff093c23f47f4f5fcef77e8aa45c70acfd6c105de87b984ce720926c121a023c",
-          "kind": "upstream-backport",
-          "upstream": ["https://github.com/storytold/effectcraft/pull/1480"],
-          "reason": "Use an existing attributed application screenshot and an accurate caption in software-center metadata. The owning PR 1480 is merged; the selected application source still predates it.",
-          "removeWhen": "Remove after updating to a source revision with the screenshot metadata fix and validating the unpatched installed AppStream file and image reference."
-        },
-        {
           "file": "fontconfig-discovery.patch",
-          "sha256": "cc57cf3ccd3a598ef8d4b7b78d485b5d704be29671b7c4f87b0364288b2bb48c",
+          "sha256": "6bd774710dc1605f7c4b06140acdf5b33a592b211c4f9117354508d97b119a10",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/effectcraft/blob/05955c08b4fd025f1a09882df72e6dbff1a8148a/crates/text/src/fonts.rs",
@@ -276,16 +239,8 @@
           "removeWhen": "Re-evaluate after the selected source contains equivalent configuration selection and deep cycle-safe traversal. Compare configured supported font files without this fallback, including aliases, ordering and filesystem failure behavior. Retain any required executable integration or distribution policy; PR1540 and PR1592 alone are not a universal Fontconfig equivalence proof."
         },
         {
-          "file": "relative-footage-path-order.patch",
-          "sha256": "6985428f1640f725a7f94fe90696e0508eb1189ee710859693fa49796363f97b",
-          "kind": "upstream-candidate",
-          "upstream": ["https://github.com/storytold/effectcraft/pull/1391"],
-          "reason": "Compare expected and reopened footage paths independently of the temporary root ordering. Existing proposal 1391 covers the same failure.",
-          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
-        },
-        {
           "file": "remove-restricted-marks.patch",
-          "sha256": "46c446804faefed4a16767d0404ec86a92fee7f54094bb6255bf8a4297d3c328",
+          "sha256": "1f0c9be1690d47abe7750d7aa72523bde300d99bf43da1472645b0f9f8daa9ce",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/effectcraft/blob/05955c08b4fd025f1a09882df72e6dbff1a8148a/crates/ui-egui/src/header.rs",
@@ -296,7 +251,7 @@
         },
         {
           "file": "system-font-fixture.patch",
-          "sha256": "1b8e09dd5d3f8265cb2b62bcf6198483bcbf2289cd710cdcd36a44314187e49a",
+          "sha256": "9a2664cebbc7a9eb7e3dd3611fe300a7d001cf24fb00b6878d2b71e62fe9e7ed",
           "kind": "platform-workaround",
           "upstream": [
             "https://github.com/storytold/effectcraft/blob/05955c08b4fd025f1a09882df72e6dbff1a8148a/crates/text/src/fonts.rs",
@@ -305,15 +260,27 @@
           ],
           "reason": "Keep the permitted-font sandbox fixture at the selected source. PR1591 adds deterministic DirectorySource, lazy-loading and real-glyph coverage while preserving exact native macOS assertions and the Linux discovery expectation from PR1298 in an explicit checked xtask gate. It changes tests and test orchestration only; whichever overlapping proposal lands second needs a rebase.",
           "removeWhen": "Remove when the selected source contains equivalent portable file-backed discovery coverage and an explicit preserved native host-font gate, then validate the unpatched portable tests in the sandbox. Merely ignoring or deleting native assertions is insufficient."
+        },
+        {
+          "file": "update-candle-for-zip-security.patch",
+          "sha256": "ba6350a62d433171dd515b560a0361ca2bbc43369bf6defd360746f1dd8ec700",
+          "kind": "upstream-backport",
+          "upstream": [
+            "https://github.com/storytold/effectcraft/blob/582344dd4ef462362c02e56e3094de7af01847ab/crates/sam2/Cargo.toml",
+            "https://crates.io/crates/candle-core/0.11.1",
+            "https://github.com/advisories/GHSA-m665-v7pm-7grj"
+          ],
+          "reason": "Update the SAM2 Candle dependencies to 0.11.1 so its ZIP consumer shares the fixed 9.1.3 dependency with the updater. All 48 SAM2 unit tests passed after the update.",
+          "removeWhen": "Remove when the pinned EffectCraft release resolves to a fixed ZIP dependency and its SAM2 tests pass from the shipped lockfile."
         }
       ]
     },
     "figcraft": {
-      "sourceRevision": "833f0d2c27f0acbae5394848930ae531fc89c724",
+      "sourceRevision": "4acc293c2ec941ac1400837ee7e3ab51780399f8",
       "patches": [
         {
           "file": "archive-security.patch",
-          "sha256": "137cec9c12a716bcfded61599a078c7e23f71e5e64256188e3bd13e4d273be54",
+          "sha256": "3e5d7f8898879308853bf9f365054ca8eb732b7e226e0a18b1dea9ddfe22625d",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
@@ -337,82 +304,40 @@
           "removeWhen": "Remove when the selected ZIP release provides equivalent original-header identity, decoded-name uniqueness, flag-selected encoding and lookup semantics. Remove its local Cargo path and synchronized lock changes together; validate the upstream suites and representative legacy and Unicode documents manually."
         },
         {
-          "file": "native-window-app-id.patch",
-          "sha256": "3ef1254fc79a5295b3e7afaca55a44065bb6b6b1e7049d52ca46f20bf0ff0ed4",
-          "kind": "upstream-backport",
-          "upstream": [
-            "https://github.com/storytold/figcraft/pull/346",
-            "https://github.com/storytold/figcraft/commit/e100c165fba1ff6955a7701b5adbef541653581b",
-            "https://github.com/storytold/figcraft/commit/be875da985150a8678685b168ae9b3c1b198feb4"
-          ],
-          "reason": "Merged PR346 sets the native viewport identity and Linux desktop window class to the desktop entry identifier. The maintainer retained the reviewed Linux fix and added a separate FreeBSD desktop-entry adjustment. Keep the backport until the selected stable source includes the accepted behavior and the unpatched regression passes; no fresh FreeBSD runtime validation is claimed.",
-          "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
-        },
-        {
-          "file": "nix-fontconfig-discovery.patch",
-          "sha256": "5f91fd142efef53b4adfaa8ec2b6b122caf22c58292241d06e864b549ff4f9de",
-          "kind": "upstream-candidate",
-          "upstream": [
-            "https://github.com/storytold/figcraft/blob/833f0d2c27f0acbae5394848930ae531fc89c724/crates/text/src/fontdb.rs",
-            "https://github.com/storytold/pdfcraft/pull/1553",
-            "https://github.com/storytold/figcraft/pull/474",
-            "https://github.com/storytold/figcraft/commit/a51b8d2271f68a859d37f9c18048d1468a71dfb3",
-            "https://github.com/storytold/figcraft/pull/582",
-            "https://github.com/storytold/figcraft/commit/2a3309902a4df16ce2b2b4e101e42dfa5441a608"
-          ],
-          "reason": "Keep configured Nix font discovery, opt-out handling, immutable executable selection and duplicate-face suppression at the selected source. Discovery has a five-second TERM deadline and one-second kill grace, with conventional-directory fallback on command failure. The current LF-delimited output and parent-directory scan do not implement the exact-file and unusual-filename behavior described in closed-unmerged PR582. Prefer upstream shared craft-font-catalog after configured-only-font comparison. The orphan test attributes are removed; no project-authored font regression gate remains.",
-          "removeWhen": "Remove with a compatible selected source using the shared craft-font-catalog or equivalent discovery after manually comparing configured-only fonts, conventional roots, opt-out behavior and rendering. Merged XDG and special-file fixes alone do not establish equivalent configured-font discovery."
-        },
-        {
-          "file": "portable-ui-regressions.patch",
-          "sha256": "aa2d9f4cace14f1cbde8e2a9463e3dd120549a85b78375d0f94276b8aefbc482",
-          "kind": "upstream-candidate",
-          "upstream": [
-            "https://github.com/storytold/figcraft/pull/347",
-            "https://github.com/storytold/figcraft/pull/472"
-          ],
-          "reason": "Test actual credits-table column geometry and horizontal scrolling across text sizes without changing production padding; backport the accepted rename fixture from PR472, preserving Cmd coverage everywhere and Ctrl off macOS. PR347 is ready after contributor review of the revised test; the original rename proposal348 closed as a duplicate.",
-          "removeWhen": "Retire the rename hunk when the selected source contains merged PR472 and its regression passes. Retire the independent credits-test hunk when the selected source contains an equivalent font-aware geometry regression and the affected tests pass without this patch."
-        },
-        {
-          "file": "rustls-security-update.patch",
-          "sha256": "cf8aa7753f4da08a06473daea536ab1c1029ce86fe6219cc78118e1997726b19",
-          "kind": "upstream-candidate",
-          "upstream": [
-            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
-            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
-            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
-            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
-            "https://github.com/advisories/GHSA-vp88-798v-h67f"
-          ],
-          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
-          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
-        },
-        {
           "file": "home-recents-failure-context.patch",
-          "sha256": "d7994089c9434013ce7ce43003a08a2e7426252d90afa1c3f4e43ec0ed3920af",
+          "sha256": "c37eb67c92e05ddb484da949da2a1ec9a463c826e0e7bb69991e37451559140c",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/storytold/figcraft/blob/833f0d2c27f0acbae5394848930ae531fc89c724/crates/ui-egui/src/home_tests.rs"
           ],
           "reason": "Wait for repaint notifications from the asynchronous recent-file metadata reader under one bounded deadline before checking the existing rendered-card assertions. Fixed virtual frames can finish while the real reader is still pending. Retain the assertion context, every functional assertion and the production UI behavior.",
           "removeWhen": "Remove when the pinned upstream home-screen test waits for asynchronous recent-file metadata with equivalent assertions, then run the original full native workspace suite without this patch."
+        },
+        {
+          "file": "embedded-font-fallbacks.patch",
+          "sha256": "61dab25475a33842e63ba5c9624018982052685ee7eeb7949414e7b456c7561e",
+          "kind": "packaging-policy",
+          "upstream": [
+            "https://github.com/storytold/figcraft/blob/4acc293c2ec941ac1400837ee7e3ab51780399f8/crates/text/src/fontdb.rs"
+          ],
+          "reason": "Include the packaged Noto families for eight Indic scripts in the embedded fallback list used for browser rendering.",
+          "removeWhen": "Remove when the selected release registers all supplied families in its embedded fallback catalog and renders the affected scripts."
         }
       ]
     },
     "filmcraft": {
-      "sourceRevision": "f03e21556d8e3a7155b91892d958debd5255d7af",
+      "sourceRevision": "cedf0c9bd060eb06a977d532402be2097c9ebe42",
       "patches": [
         {
           "file": "disable-unused-gtk-menu-features.patch",
-          "sha256": "6e66c4dd95a4ea07566e2c0a0f7d577364bfcc36906dc8bb6e1bf2f295822725",
+          "sha256": "80133d1a662bf2071399d0aedc32288d4334de05c176d013acd3c0eff98892c6",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/filmcraft/blob/f03e21556d8e3a7155b91892d958debd5255d7af/apps/filmcraft/Cargo.toml",
             "https://github.com/tauri-apps/muda/blob/88e0c3658a85668872c621f77d6aad1616f42780/Cargo.toml",
             "https://github.com/advisories/GHSA-wrw7-89jp-8q8g"
           ],
-          "reason": "Disable unused Linux/BSD GTK defaults on the macOS-only Muda dependency and prune the unreachable GLib 0.18 graph. Preserve Muda 0.21.0, AppKit menus, all retained dependency versions, checksums and unrelated Windows selections. Locked target graph checks and native Darwin backend compilation guard the boundary.",
+          "reason": "Disable unused GTK defaults on the macOS-only Muda 0.21 dependency and keep the existing native AppKit menu backend.",
           "removeWhen": "Remove when the selected application source disables these unused menu defaults or otherwise removes the affected GLib graph while preserving the native menu backend and passing the same target checks."
         },
         {
@@ -431,7 +356,7 @@
         },
         {
           "file": "rustcrypto-provider.patch",
-          "sha256": "57da2f03effd3a2ecce320958f42a41218c2483fdbd5f693a716b7dc4d8b58cd",
+          "sha256": "063bb49aaa5e86ee925bb0802719c252780ecd7c6030ef39560f975381548a02",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/RustCrypto/rustls-rustcrypto/commit/b840ddb98fc1604e72cec8ed4ef6d83729e207f3",
@@ -457,7 +382,7 @@
         },
         {
           "file": "archive-security.patch",
-          "sha256": "80e7c15b0e59857ad4a74f76bc1109abeed02b02e24dc7dc292ea7d5dbf62fba",
+          "sha256": "68228f1cda7f1be803651346af1245780a528b449abed3ac672403a1dd75730c",
           "kind": "upstream-candidate",
           "upstream": [
             "https://github.com/zip-rs/zip2/releases/tag/v9.5.0",
@@ -487,15 +412,17 @@
         },
         {
           "file": "japanese-font-test-system-fallbacks.patch",
-          "sha256": "e6c68f813709aba6804b840c860b19e21d5ce679facae0d469580ea020f2b4bb",
+          "sha256": "b0e72b919d7624f64daca6bcfe172210f5f1f48d972df24dcea98fb8e20f044b",
           "kind": "upstream-candidate",
-          "upstream": ["https://github.com/storytold/filmcraft/pull/1944"],
+          "upstream": [
+            "https://github.com/storytold/filmcraft/pull/1944"
+          ],
           "reason": "Exclude only named optional CJK and RTL system faces from Japanese-specific ordering assertions while retaining Japanese precedence, glyph and layout checks.",
           "removeWhen": "Remove when the selected source contains equivalent upstream behavior and the relevant upstream suite and documented native or manual acceptance pass without the patch."
         },
         {
           "file": "remove-restricted-marks.patch",
-          "sha256": "afaeef86a019f722e23f535217c9c8fada7edd2e59d1aa0e619c9ca8882879b6",
+          "sha256": "41cec208d5b7ce3599ac3834cf3558fe076f559363be685a4a74a918a485b507",
           "kind": "packaging-policy",
           "upstream": [
             "https://github.com/storytold/filmcraft/blob/f03e21556d8e3a7155b91892d958debd5255d7af/crates/ui-egui/src/brand.rs",
@@ -505,22 +432,8 @@
           "removeWhen": "Retain while this distribution needs the documented branding, font selection or immutable-path policy. Remove only when upstream configuration supports the same policy without source edits."
         },
         {
-          "file": "rustls-security-update.patch",
-          "sha256": "718911ba0f27cad8f61cdff6b9b100a3b79eab6ecc48486e91f66c2e51553170",
-          "kind": "upstream-candidate",
-          "upstream": [
-            "https://github.com/rustls/rustls/releases/tag/v/0.23.46",
-            "https://github.com/advisories/GHSA-c8m5-c952-6cm4",
-            "https://github.com/advisories/GHSA-h2v8-394m-p7vv",
-            "https://github.com/advisories/GHSA-w44r-93j7-qv28",
-            "https://github.com/advisories/GHSA-vp88-798v-h67f"
-          ],
-          "reason": "Select the fixed Rustls stable patch release in source and vendor locks. The update preserves dependency constraints, native TLS providers, public API, Rust minimum and license files; no scanner exception is added.",
-          "removeWhen": "Remove when the pinned upstream lock selects a release fixed for these four advisories and the selected platform lock remains consistent with the patched source."
-        },
-        {
           "file": "system-font-fixture.patch",
-          "sha256": "245c36852460793e889d95907ca9e1e0e0884fc99cd5af80fababb0dcf94e7d7",
+          "sha256": "8446fd1113923bfdcb859eabf77d02486a0c9af14c1ebd8b45500da2ed26de56",
           "kind": "platform-workaround",
           "upstream": [
             "https://github.com/storytold/filmcraft/blob/f03e21556d8e3a7155b91892d958debd5255d7af/crates/text/src/fonts.rs",
@@ -528,6 +441,16 @@
           ],
           "reason": "Use a deterministic file-backed Inter fixture when native macOS font folders are hidden in sandbox builds. PR2072, now ready after contributor review, separates portable discovery/lazy-load coverage from the preserved native Helvetica/count/layout assertions and invokes the native test through macOS xtask ci; it is not yet in the selected source.",
           "removeWhen": "Remove when the selected source contains PR2072 or equivalent deterministic DirectorySource coverage with an explicit preserved native macOS test gate, then validate the unpatched portable tests in the sandbox. An ignored native assertion without its mandatory runner is insufficient."
+        },
+        {
+          "file": "cargo-release-manifest.patch",
+          "sha256": "6255046281dce2dd0edacd0dd25191c44ae53d94b1c145c49acbae2689a4632e",
+          "kind": "packaging-policy",
+          "upstream": [
+            "https://github.com/storytold/filmcraft/blob/cedf0c9bd060eb06a977d532402be2097c9ebe42/Cargo.toml"
+          ],
+          "reason": "Remove unused egui Git overrides so locked offline Cargo can resolve the selected workspace from its vendored dependencies.",
+          "removeWhen": "Remove when the pinned workspace resolves from its locked offline inputs with the upstream manifest."
         }
       ]
     }
