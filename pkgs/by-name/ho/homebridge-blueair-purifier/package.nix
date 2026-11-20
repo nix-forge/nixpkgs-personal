@@ -19,6 +19,9 @@ buildNpmPackage (_finalAttrs: {
     inherit (source) hash;
   };
 
+  # Update the build tools that pin affected minimatch versions.
+  patches = [ ./update-build-dependencies.patch ];
+
   # The selected upstream commit includes log redaction and the Lodash minimum.
   # Retain the reviewed transitive security updates until its lock catches up.
   postPatch = ''
