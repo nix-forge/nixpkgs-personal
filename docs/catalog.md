@@ -895,7 +895,7 @@ Customization and management software for Wooting keyboards.
 
 [Recipe](../pkgs/by-name/wo/wootility-bin/package.nix) · [Package guide](../pkgs/by-name/wo/wootility-bin/README.md) · [Upstream](https://wooting.io/wootility)
 
-- `aarch64-darwin`: 5.4.2; unfree; includes unfree terms.
+- `aarch64-darwin`: 5.4.3; unfree; includes unfree terms.
 
 ```sh
 nix build github:nix-forge/nixpkgs-personal#wootility-bin
